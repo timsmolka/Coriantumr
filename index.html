@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Science Maps — distances and speeds in scientific units</title>
+
+  <!--
+    ===========================================================================
+    Science Maps — index.html
+    ---------------------------------------------------------------------------
+    A static, no-build web app that works like Google Maps but shows every
+    distance and speed in SCIENTIFIC units (light-microseconds, light-years,
+    AU, Mach, %c, ...) and computes the LOCAL speed of sound from live weather.
+
+    The LAYOUT mirrors Google Maps: a full-screen map, a floating search box at
+    the top, floating controls, and a BOTTOM SHEET that holds the directions
+    and all the "science" panels. Tap the sheet's handle to expand/collapse it.
+
+    Structure lives here; styling is in css/style.css; behavior is in
+    js/app.js (an ES module). Everything is keyless and free: Leaflet + CARTO
+    Voyager tiles (OpenStreetMap data), and Nominatim / OSRM / Open-Meteo for
+    search, routing, and weather.
+    ===========================================================================
+  -->
+
+  <!-- Roboto, the typeface Google Maps uses, for a familiar feel. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <!-- Leaflet's stylesheet (the map library). Loaded from a CDN, no key. -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- Our own styles. -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- The map fills the whole screen; everything else floats on top of it. -->
+    <div class="map-area">
+      <div id="map" class="map" role="application" aria-label="Interactive map"></div>
+
+      <!-- FLOATING SEARCH (top-left), like Google Maps. -->
+      <div class="searchbar">
+        <div class="searchbox search-wrap">
+          <span class="brand-logo" aria-hidden="true">🛰️</span>
+          <input
+            id="search-input"
+            class="search-input"
+            type="text"
+            placeholder="Search Science Maps"
+            autocomplete="off"
+            aria-label="Search for a destination"
+          />
+          <span class="search-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+          </span>
+          <ul id="search-results" class="search-results" hidden></ul>
+        </div>
+      </div>
+
+      <!-- FLOATING "use my location" button. -->
+      <button id="locate-btn" class="fab-locate" type="button"
+              title="Use my location" aria-label="Use my location">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+          <path fill="currentColor" d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/>
+        </svg>
+      </button>
+
+      <!-- A floating toast for map messages (e.g. geolocation denied). -->
+      <p id="map-status" class="status-toast" role="status" hidden></p>
+
+      <!-- ================================================================
+           BOTTOM SHEET: directions + all the science panels.
+           ================================================================ -->
+      <section class="sheet" id="sheet" aria-label="Trip details and science panels">
+
+        <!-- Grab handle: click/tap to expand or collapse the sheet. -->
+        <button class="sheet-handle" id="sheet-handle" type="button"
+                title="Expand or collapse" aria-label="Expand or collapse the panel">
+          <span class="sheet-grip" aria-hidden="true"></span>
+        </button>
+
+        <div class="sheet-scroll">
+
+          <!-- DIRECTIONS: the A -> B trip. -->
+          <div class="trip">
+            <div class="trip-row">
+              <span class="trip-dot trip-dot-a" aria-hidden="true"></span>
+              <span id="origin-label" class="trip-text muted">Your location — tap the location button</span>
+            </div>
+            <div class="trip-line" aria-hidden="true"></div>
+            <div class="trip-row">
+              <span class="trip-dot trip-dot-b" aria-hidden="true"></span>
+              <span id="dest-label" class="trip-text muted">Choose destination — search or tap the map</span>
+            </div>
+
+            <div class="trip-mode">
+              <label for="travel-mode-select" class="control-label">Travel mode</label>
+              <select id="travel-mode-select" class="control-select">
+                <option value="driving">🚗 Driving</option>
+                <option value="walking">🚶 Walking</option>
+                <option value="cycling">🚲 Cycling</option>
+              </select>
+            </div>
+            <p id="mode-note" class="mode-note">
+              The free OSRM demo server routes by car, so all modes use car roads.
+            </p>
+          </div>
+
+          <!-- The science panels. -->
+          <div class="panel-body">
+
+            <!-- UNIT CONTROLS -->
+            <section class="card unit-controls">
+              <h2 class="card-title">Display units</h2>
+              <label class="smart-toggle">
+                <input id="smart-mode" type="checkbox" />
+                <span>Smart unit mode (auto-pick the best unit per value)</span>
+              </label>
+              <div class="unit-selectors">
+                <div class="unit-field">
+                  <label for="distance-unit" class="control-label">Distance unit</label>
+                  <select id="distance-unit" class="control-select"></select>
+                </div>
+                <div class="unit-field">
+                  <label for="speed-unit" class="control-label">Speed unit</label>
+                  <select id="speed-unit" class="control-select"></select>
+                </div>
+              </div>
+            </section>
+
+            <!-- ROUTE SUMMARY -->
+            <section class="card route-summary">
+              <h2 class="card-title">Route</h2>
+              <p id="route-empty" class="empty-hint">
+                Set a start and a destination to see a route.
+              </p>
+              <div id="route-details" hidden>
+                <div class="metric">
+                  <div class="metric-label">Distance</div>
+                  <div id="route-distance-primary" class="metric-primary">—</div>
+                  <div id="route-distance-familiar" class="metric-familiar">—</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Estimated travel time</div>
+                  <div id="route-time" class="metric-primary small">—</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Light travel time to destination</div>
+                  <div id="light-time" class="metric-primary small">—</div>
+                </div>
+                <div class="metric">
+                  <div class="metric-label">Sound travel time to destination</div>
+                  <div id="sound-time" class="metric-primary small">—</div>
+                  <div class="metric-note">
+                    Hypothetical: as if sound could travel the whole way through air.
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- DISTANCE IN MANY UNITS -->
+            <section class="card many-units">
+              <h2 class="card-title">Distance in many units</h2>
+              <table class="units-table">
+                <tbody id="distance-table">
+                  <tr><td class="empty-hint" colspan="2">No route yet.</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <!-- LIVE SPEED -->
+            <section class="card live-speed">
+              <h2 class="card-title">Live speed</h2>
+              <button id="track-btn" class="control-btn" type="button">
+                ▶ Start tracking
+              </button>
+              <div class="metric">
+                <div class="metric-label">Current speed</div>
+                <div id="speed-primary" class="metric-primary">—</div>
+                <div id="speed-familiar" class="metric-familiar">—</div>
+              </div>
+              <table class="units-table">
+                <tbody id="speed-table">
+                  <tr><td class="empty-hint" colspan="2">Start tracking to see your speed.</td></tr>
+                </tbody>
+              </table>
+            </section>
+
+            <!-- ATMOSPHERE & SPEED OF SOUND -->
+            <section class="card atmosphere">
+              <h2 class="card-title">Atmosphere &amp; speed of sound</h2>
+              <p id="atmosphere-empty" class="empty-hint">
+                Use your location (or pick a start point) to load live weather.
+              </p>
+              <div id="atmosphere-details" hidden>
+                <div class="metric">
+                  <div class="metric-label">Local speed of sound (Mach 1)</div>
+                  <div id="sos-value" class="metric-primary">—</div>
+                  <div id="sos-basis" class="metric-note">—</div>
+                </div>
+                <dl class="weather-grid">
+                  <div><dt>Temperature</dt><dd id="weather-temp">—</dd></div>
+                  <div><dt>Humidity</dt><dd id="weather-humidity">—</dd></div>
+                  <div><dt>Pressure</dt><dd id="weather-pressure">—</dd></div>
+                  <div><dt>Elevation</dt><dd id="weather-elevation">—</dd></div>
+                  <div><dt>Conditions</dt><dd id="weather-desc">—</dd></div>
+                </dl>
+                <p class="metric-note">
+                  These live weather values drive the speed-of-sound and Mach
+                  calculations above.
+                </p>
+              </div>
+            </section>
+
+            <!-- FACT BOX -->
+            <section class="card fact-box">
+              <h2 class="card-title">Did you know?</h2>
+              <p id="distance-fact" class="fact-text">
+                Find a route to see how your trip compares to cosmic distances.
+              </p>
+              <p id="speed-fact" class="fact-text">
+                Start tracking to compare your speed to jets, orbits, and light itself.
+              </p>
+            </section>
+
+            <!-- Data-source attributions. -->
+            <p class="panel-credit">
+              Map data &copy; OpenStreetMap contributors &amp; CARTO · Search by
+              Nominatim · Routing by OSRM · Weather by Open-Meteo
+            </p>
+
+          </div><!-- /panel-body -->
+        </div><!-- /sheet-scroll -->
+      </section><!-- /sheet -->
+
+    </div><!-- /map-area -->
+  </div><!-- /app -->
+
+  <!-- Leaflet library (must load BEFORE our app.js so L is defined). -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Our app, loaded as a native ES module so it can `import` the engines. -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

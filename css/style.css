@@ -1,0 +1,494 @@
+/* ===========================================================================
+   Science Maps — style.css  (Google-Maps-inspired theme, bottom-sheet layout)
+   ---------------------------------------------------------------------------
+   The look borrows Google Maps' visual language:
+     - A full-screen map.
+     - A floating, rounded search box at the top-left.
+     - A BOTTOM SHEET (a rounded card near the bottom) that holds the directions
+       and all the "science" panels; its handle expands/collapses it.
+     - Floating circular controls (location button + zoom) bottom-right.
+     - Roboto type, Google-blue accents, subtle dividers.
+   No CSS frameworks are used.
+   =========================================================================== */
+
+
+/* ---------------------------------------------------------------------------
+   DESIGN TOKENS
+   --------------------------------------------------------------------------- */
+:root {
+  --blue:        #1a73e8;
+  --blue-dark:   #1765cc;
+  --red:         #ea4335;
+  --green:       #34a853;
+
+  --text:        #202124;
+  --text-muted:  #5f6368;
+  --text-faint:  #80868b;
+
+  --surface:     #ffffff;
+  --surface-2:   #f1f3f4;
+  --divider:     #e8eaed;
+  --border:      #dadce0;
+  --map-bg:      #e5e3df;
+
+  --error:       #c5221f;
+  --error-bg:    #fce8e6;
+
+  --shadow-1: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+  --shadow-2: 0 1px 3px 0 rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
+
+  --sheet-width: 420px;
+  --radius: 12px;
+
+  --font: "Roboto", Arial, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Roboto Mono", "SF Mono", Consolas, monospace;
+}
+
+
+/* ---------------------------------------------------------------------------
+   RESETS
+   --------------------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--map-bg);
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+
+/* ---------------------------------------------------------------------------
+   APP SHELL — full-screen map with floating UI on top
+   --------------------------------------------------------------------------- */
+.app {
+  position: relative;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+.map-area { position: absolute; inset: 0; }
+
+.map {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--map-bg);
+}
+
+
+/* ---------------------------------------------------------------------------
+   FLOATING SEARCH BOX (top-left)
+   --------------------------------------------------------------------------- */
+.searchbar {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 1100;
+  width: min(400px, calc(100% - 24px));
+}
+
+.searchbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow-1);
+  position: relative;            /* anchor for the results dropdown */
+}
+.searchbox:focus-within { box-shadow: var(--shadow-2); }
+
+.brand-logo { font-size: 20px; line-height: 1; flex: 0 0 auto; }
+
+.search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text);
+}
+.search-input::placeholder { color: var(--text-faint); }
+
+.search-icon { flex: 0 0 auto; color: var(--text-muted); display: flex; align-items: center; }
+
+/* SEARCH RESULTS dropdown */
+.search-results {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  max-height: 320px;
+  overflow-y: auto;
+}
+.search-results li { padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.search-results li:hover,
+.search-results li.active { background: var(--surface-2); }
+.search-results .result-name { font-weight: 500; font-size: 14px; }
+.search-results .result-detail {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+
+/* ---------------------------------------------------------------------------
+   BOTTOM SHEET — the directions + science panels, near the bottom
+   ---------------------------------------------------------------------------
+   Desktop: a card anchored to the bottom-left (so most of the map stays clear).
+   Mobile:  a full-width sheet across the bottom with a rounded top.
+   The handle toggles the .expanded class to grow the sheet's height.
+   --------------------------------------------------------------------------- */
+.sheet {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: var(--sheet-width);
+  max-width: calc(100% - 24px);
+  max-height: 56vh;
+  z-index: 1000;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+.sheet.expanded { max-height: 92vh; }
+
+/* Grab handle (click/tap to expand or collapse). */
+.sheet-handle {
+  flex: 0 0 auto;
+  width: 100%;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 8px 0 6px;
+  display: flex;
+  justify-content: center;
+}
+.sheet-grip {
+  display: block;
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.sheet-handle:hover .sheet-grip { background: var(--text-faint); }
+
+/* The scrollable content inside the sheet. */
+.sheet-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+
+/* ---------------------------------------------------------------------------
+   DIRECTIONS (A -> B)
+   --------------------------------------------------------------------------- */
+.trip {
+  padding: 4px 16px 14px;
+  border-bottom: 1px solid var(--divider);
+}
+.trip-row { display: flex; align-items: center; gap: 12px; min-height: 30px; }
+.trip-dot { flex: 0 0 auto; width: 12px; height: 12px; }
+.trip-dot-a { border-radius: 50%; border: 3px solid var(--green); background: #fff; }
+.trip-dot-b {
+  width: 12px; height: 12px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(45deg);
+  background: var(--red);
+}
+.trip-line { width: 0; height: 14px; margin-left: 5px; border-left: 2px dotted var(--border); }
+.trip-text {
+  font-size: 14px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.trip-text.muted { color: var(--text-faint); }
+.trip-mode { margin-top: 12px; }
+.trip-mode .control-select { width: 100%; }
+.mode-note { margin: 8px 0 0; font-size: 12px; color: var(--text-muted); }
+
+
+/* ---------------------------------------------------------------------------
+   SCIENCE PANELS (cards render as flat sections with dividers)
+   --------------------------------------------------------------------------- */
+.panel-body { padding: 0 16px 16px; }
+
+.card { padding: 16px 0; border-top: 1px solid var(--divider); }
+.panel-body > .card:first-child { border-top: none; }
+
+.card-title {
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: var(--text-muted);
+}
+
+
+/* ---------------------------------------------------------------------------
+   FORM CONTROLS
+   --------------------------------------------------------------------------- */
+.control-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.control-select {
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.control-select:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(26,115,232,.2);
+}
+.control-btn {
+  font: inherit;
+  font-weight: 500;
+  color: #fff;
+  background: var(--blue);
+  border: none;
+  border-radius: 18px;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.control-btn:hover { background: var(--blue-dark); box-shadow: var(--shadow-1); }
+.control-btn.active { background: var(--red); }
+
+
+/* ---------------------------------------------------------------------------
+   UNIT CONTROLS
+   --------------------------------------------------------------------------- */
+.smart-toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  margin-bottom: 12px;
+  cursor: pointer;
+}
+.smart-toggle input { margin-top: 2px; width: 16px; height: 16px; accent-color: var(--blue); }
+.unit-selectors { display: flex; gap: 12px; }
+.unit-field { flex: 1 1 0; min-width: 0; }
+.unit-field .control-select { width: 100%; }
+.unit-controls.smart-active .unit-selectors { opacity: 0.5; pointer-events: none; }
+
+
+/* ---------------------------------------------------------------------------
+   METRICS — dual display (big scientific number + quiet familiar line)
+   --------------------------------------------------------------------------- */
+.metric { padding: 10px 0; border-top: 1px solid var(--divider); }
+.metric:first-of-type { border-top: none; padding-top: 0; }
+.metric-label { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+.metric-primary {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--text);
+}
+.metric-primary.small { font-size: 19px; }
+.metric-familiar { font-size: 14px; color: var(--text-faint); margin-top: 2px; }
+.metric-note { font-size: 12px; color: var(--text-muted); margin-top: 4px; font-style: italic; }
+
+
+/* ---------------------------------------------------------------------------
+   "IN MANY UNITS" tables
+   --------------------------------------------------------------------------- */
+.units-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.units-table td { padding: 6px 4px; border-top: 1px solid var(--divider); }
+.units-table tr:first-child td { border-top: none; }
+.units-table .u-label { color: var(--text-muted); }
+.units-table .u-value {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+
+/* ---------------------------------------------------------------------------
+   TURN-BY-TURN STEPS (built dynamically inside #route-details)
+   --------------------------------------------------------------------------- */
+.steps-list { margin: 6px 0 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; }
+.steps-list li { font-size: 14px; }
+.step-instruction { color: var(--text); }
+.step-distance { font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+
+
+/* ---------------------------------------------------------------------------
+   ATMOSPHERE weather grid
+   --------------------------------------------------------------------------- */
+.weather-grid { margin: 12px 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
+.weather-grid > div { display: flex; flex-direction: column; }
+.weather-grid dt {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.weather-grid dd { margin: 0; font-size: 15px; font-weight: 500; }
+
+
+/* ---------------------------------------------------------------------------
+   FACT BOX (subtle tinted card)
+   --------------------------------------------------------------------------- */
+.fact-box {
+  margin: 16px 0 4px;
+  padding: 14px;
+  border-top: none;
+  border-radius: var(--radius);
+  background: #e8f0fe;
+}
+.fact-box .card-title { color: #1967d2; }
+.fact-text { margin: 0 0 10px; font-size: 14px; color: #174ea6; }
+.fact-text:last-child { margin-bottom: 0; }
+
+
+/* ---------------------------------------------------------------------------
+   HINTS, CREDIT, TOASTS
+   --------------------------------------------------------------------------- */
+.empty-hint { margin: 0; color: var(--text-muted); font-size: 14px; }
+.panel-credit { margin: 16px 0 0; font-size: 11px; color: var(--text-faint); line-height: 1.5; }
+
+.status-toast {
+  position: absolute;
+  left: 50%;
+  top: 72px;                     /* just under the floating search box */
+  transform: translateX(-50%);
+  z-index: 1100;
+  margin: 0;
+  max-width: 80%;
+  padding: 10px 16px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+}
+.status-toast.error { color: var(--error); background: var(--error-bg); }
+
+
+/* ---------------------------------------------------------------------------
+   FLOATING MAP CONTROLS
+   --------------------------------------------------------------------------- */
+.fab-locate {
+  position: absolute;
+  right: 12px;
+  bottom: 132px;                /* clear of the zoom control + attribution */
+  z-index: 1000;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  box-shadow: var(--shadow-1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.fab-locate:hover { color: var(--blue); background: #f8f9fa; }
+
+
+/* ---------------------------------------------------------------------------
+   LEAFLET OVERRIDES (markers, zoom, attribution, popups)
+   --------------------------------------------------------------------------- */
+.gm-here-icon, .gm-pin-icon { background: transparent; border: none; }
+
+.gm-here {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px rgba(26,115,232,.35), 0 1px 4px rgba(0,0,0,.4);
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: var(--shadow-1);
+}
+.leaflet-control-zoom a { width: 40px; height: 40px; line-height: 40px; font-size: 20px; color: var(--text-muted); }
+.leaflet-control-zoom a:hover { color: var(--blue); }
+.leaflet-bar a { border-bottom-color: var(--divider); }
+
+.leaflet-control-attribution { font-size: 11px; background: rgba(255,255,255,.8) !important; }
+
+.leaflet-popup-content-wrapper { border-radius: 10px; }
+.leaflet-popup-content { font-size: 13px; }
+
+
+/* ---------------------------------------------------------------------------
+   RESPONSIVE: full-width bottom sheet on small screens
+   --------------------------------------------------------------------------- */
+@media (max-width: 820px) {
+  .sheet {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+    max-height: 45vh;
+  }
+  .sheet.expanded { max-height: 90vh; }
+
+  .searchbar { width: calc(100% - 24px); }
+
+  /* Lift the location button above the (collapsed) sheet. */
+  .fab-locate { bottom: calc(45vh + 12px); }
+
+  /* The full-width sheet would cover the zoom buttons, so hide them on mobile
+     (pinch-to-zoom still works). */
+  .leaflet-control-zoom { display: none; }
+}
+
+@media (max-width: 480px) {
+  .metric-primary { font-size: 22px; }
+}
