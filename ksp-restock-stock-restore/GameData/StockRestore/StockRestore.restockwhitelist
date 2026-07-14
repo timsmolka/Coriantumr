@@ -15,9 +15,14 @@
 
 // --- Command pods / probe cores ---
 Squad/Parts/Command/mk1pod_v2/
-Squad/Parts/Command/HECS2_ProbeCore/
 Squad/Parts/Command/probeStackSmall/
 Squad/Parts/Command/probeStackLarge/
+
+// --- Asteroid Day parts (HECS2 + HG-55) ---
+// HECS2 (Probodobodyne HECS2) and HighGainAntenna (Communotron HG-55) are the
+// old "Asteroid Day" parts; their stock models/textures live in this one flat
+// folder, NOT under Command/ or Utility/. Whitelisting the folder covers both.
+Squad/Parts/Misc/AsteroidDay/
 
 // --- Liquid fuel engines ---
 Squad/Parts/Engine/ionEngine/
