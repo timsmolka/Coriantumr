@@ -1,59 +1,59 @@
 // ============================================================================
 //  StockRestore.restockwhitelist
-//  Re-enables the STOCK art assets that Restock disables (blacklists) for the
-//  parts we are restoring in StockRestore.cfg.
+//  Re-enables the STOCK art assets that Restock disables for the parts we are
+//  restoring in StockRestore.cfg.
+//
+//  IMPORTANT: In this file, comments must be on their OWN line. Do NOT put a
+//  "// comment" after a path on the same line -- Restock's whitelist parser
+//  reads the whole line as the path, so a trailing comment makes the path match
+//  nothing and the part fails to load. Keep paths on their own bare lines.
 //
 //  Each line is a GameData-relative path. A trailing "/" matches every file in
-//  that folder. Restock loads any file that is whitelisted even if it is also
-//  blacklisted, so these stock .mu/.dds assets load again.
-//
-//  Only parts whose stock assets Restock actually blacklists are listed here.
-//  Making History parts (Wolfhound, Mastodon, the S4 Kerbodyne tanks) and the
-//  HECS2 are NOT on Restock's blacklist, so they need no whitelist line -- the
-//  RestockIgnore flag alone restores them.
+//  that folder.
 // ============================================================================
 
 
-// --- Command pods / probe cores -------------------------------------------
-Squad/Parts/Command/mk1pod_v2/          // Mk1 Command Pod
-Squad/Parts/Command/probeStackSmall/    // RC-001S Remote Guidance Unit
-Squad/Parts/Command/probeStackLarge/    // RC-L01 Remote Guidance Unit
+// --- Command pods / probe cores ---
+Squad/Parts/Command/mk1pod_v2/
+Squad/Parts/Command/HECS2_ProbeCore/
+Squad/Parts/Command/probeStackSmall/
+Squad/Parts/Command/probeStackLarge/
 
-// --- Liquid fuel engines ---------------------------------------------------
-Squad/Parts/Engine/ionEngine/               // IX-6315 "Dawn"
-Squad/Parts/Engine/liquidEngineLV-909_v2/   // LV-909 "Terrier"
-Squad/Parts/Engine/liquidEngineLV-T30_v2/   // LV-T30 "Reliant"
-Squad/Parts/Engine/liquidEngineLV-T45_v2/   // LV-T45 "Swivel"
-Squad/Parts/Engine/liquidEnginePoodle_v2/   // RE-L10 "Poodle"
-Squad/Parts/Engine/liquidEngineMainsail_v2/ // RE-M3 "Mainsail"
-Squad/Parts/Engine/liquidEngineSkipper_v2/  // RE-I5 "Skipper"
-Squad/Parts/Engine/Size3AdvancedEngine/     // Kerbodyne KR-2L+ "Rhino"
-Squad/Parts/Engine/liquidEngineSSME/        // S3 KS-25 "Vector"
+// --- Liquid fuel engines ---
+Squad/Parts/Engine/ionEngine/
+Squad/Parts/Engine/liquidEngineLV-909_v2/
+Squad/Parts/Engine/liquidEngineLV-T30_v2/
+Squad/Parts/Engine/liquidEngineLV-T45_v2/
+Squad/Parts/Engine/liquidEnginePoodle_v2/
+Squad/Parts/Engine/liquidEngineMainsail_v2/
+Squad/Parts/Engine/liquidEngineSkipper_v2/
+Squad/Parts/Engine/Size3AdvancedEngine/
+Squad/Parts/Engine/liquidEngineSSME/
 
-// --- Solid rocket boosters -------------------------------------------------
-Squad/Parts/Engine/Size1_SRBs/         // RT-5 "Flea" + RT-10 "Hammer"
-Squad/Parts/Engine/solidBoosterBACC/   // BACC "Thumper"
-Squad/Parts/Engine/MassiveSRB/         // S1 SRB-KD25k "Kickback"
-Squad/Parts/Engine/solidBoosterSep/    // Sepratron I
-Squad/Parts/Engine/SolidBoostersF/     // "Mite" + "Shrimp"
-Squad/Parts/Engine/solidBoosterS2-17/  // "Thoroughbred"
-Squad/Parts/Engine/solidBoosterS2-33/  // "Clydesdale"
+// --- Solid rocket boosters ---
+Squad/Parts/Engine/Size1_SRBs/
+Squad/Parts/Engine/solidBoosterBACC/
+Squad/Parts/Engine/MassiveSRB/
+Squad/Parts/Engine/solidBoosterSep/
+Squad/Parts/Engine/SolidBoostersF/
+Squad/Parts/Engine/solidBoosterS2-17/
+Squad/Parts/Engine/solidBoosterS2-33/
 
-// --- Docking ports ---------------------------------------------------------
-Squad/Parts/Utility/dockingPort/    // Clamp-O-Tron Docking Port
-Squad/Parts/Utility/dockingPortJr/  // Clamp-O-Tron Jr.
-Squad/Parts/Utility/dockingPortSr/  // Clamp-O-Tron Sr.
+// --- Docking ports ---
+Squad/Parts/Utility/dockingPort/
+Squad/Parts/Utility/dockingPortJr/
+Squad/Parts/Utility/dockingPortSr/
 
-// --- Antennas --------------------------------------------------------------
-Squad/Parts/Utility/commDish88-88/  // Communotron 88-88
-Squad/Parts/Utility/DirectAntennas/ // Communotron HG-55 (shared folder)
-Squad/Parts/Utility/RelayAntennas/  // HG-5 High Gain Antenna + RA-2 Relay Antenna (shared folder)
+// --- Antennas ---
+Squad/Parts/Utility/commDish88-88/
+Squad/Parts/Utility/DirectAntennas/
+Squad/Parts/Utility/RelayAntennas/
 
-// --- Rover wheels ----------------------------------------------------------
-Squad/Parts/Wheel/roverWheelS2/     // RoveMax Model S2
+// --- Rover wheels ---
+Squad/Parts/Wheel/roverWheelS2/
 
-// --- Science ---------------------------------------------------------------
-Squad/Parts/Science/MaterialBay/    // SC-9001 Science Jr.
+// --- Science ---
+Squad/Parts/Science/MaterialBay/
 
-// --- Kerbodyne fuel tanks (stock 3.75 m) -----------------------------------
-Squad/Parts/FuelTank/Size3Tanks/    // Kerbodyne S3-3600 / S3-7200 / S3-14400
+// --- Kerbodyne fuel tanks (stock 3.75 m) ---
+Squad/Parts/FuelTank/Size3Tanks/

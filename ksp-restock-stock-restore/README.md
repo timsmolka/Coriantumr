@@ -38,6 +38,11 @@ opt-out flag.
 2. **`StockRestore.restockwhitelist`** re-enables the stock art assets Restock
    would otherwise blacklist, so the stock models/textures actually load.
 
+> **Whitelist gotcha:** in a `.restockwhitelist` file, comments must be on their
+> own line. A `// comment` placed *after* a path on the same line makes Restock
+> read the whole line as the path, so it matches nothing and that part fails to
+> load ("missing part"). Keep asset paths on bare lines.
+
 Because it only sets a flag and whitelists stock assets, it does **not** edit any
 Restock file and survives Restock/CKAN updates.
 
@@ -93,9 +98,10 @@ Restock file and survives Restock/CKAN updates.
 - **"RoveMax Model XL3"** (`roverWheelXL3`) and **"Kerbodyne ADTP-2-3"** are not
   modified by Restock in the first place, so they are already stock — no entry is
   needed and none was added.
-- The Making History parts (Wolfhound, Mastodon, Mite, Shrimp, Thoroughbred,
-  Clydesdale, and the S4 Kerbodyne tanks) require the Making History expansion.
-  If you don't have it, those lines simply do nothing — they're harmless.
+- The Making History parts (Wolfhound, Mastodon, and the S4 Kerbodyne tanks)
+  aren't in Restock's blacklist, so they need only the `RestockIgnore` flag, no
+  whitelist line. If you don't have the Making History expansion, those `.cfg`
+  lines simply do nothing — they're harmless.
 - The `DirectAntennas` and `RelayAntennas` folders are shared by several
   antennas; whitelisting them reloads a couple of stock assets for antennas you
   didn't ask to restore. Those antennas still use their Restock models — only the
