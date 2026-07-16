@@ -18,10 +18,11 @@ Squad/Parts/Command/mk1pod_v2/
 Squad/Parts/Command/probeStackSmall/
 Squad/Parts/Command/probeStackLarge/
 
-// --- Asteroid Day parts (HECS2 + HG-55) ---
-// HECS2 (Probodobodyne HECS2) and HighGainAntenna (Communotron HG-55) are the
-// old "Asteroid Day" parts; their stock models/textures live in this one flat
-// folder, NOT under Command/ or Utility/. Whitelisting the folder covers both.
+// --- Asteroid Day folder (needed for the HG-55 antenna) ---
+// HighGainAntenna (Communotron HG-55) is an old "Asteroid Day" part; its stock
+// model/textures live in this one flat folder, NOT under Utility/. (The HECS2
+// stock assets also live here, but HECS2 is left on Restock in the .cfg, so
+// those just load unused -- harmless.)
 Squad/Parts/Misc/AsteroidDay/
 
 // --- Liquid fuel engines ---

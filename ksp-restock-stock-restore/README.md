@@ -51,7 +51,6 @@ Restock file and survives Restock/CKAN updates.
 | Part | Internal name |
 |------|---------------|
 | Mk1 Command Pod | `mk1pod_v2` |
-| Probodobodyne HECS2 | `HECS2_ProbeCore` |
 | RC-001S Remote Guidance Unit | `probeStackSmall` |
 | RC-L01 Remote Guidance Unit | `probeStackLarge` |
 | IX-6315 "Dawn" Electric Propulsion System | `ionEngine` |
@@ -95,6 +94,12 @@ Restock file and survives Restock/CKAN updates.
 
 ## Notes
 
+- **Probodobodyne HECS2 is deliberately left on Restock.** Its stock model is the
+  old "Asteroid Day" part, whose top face uses a low-resolution texture that looks
+  blurry up close; Restock's version is much sharper. The `.cfg` keeps a
+  commented-out line you can re-enable if you want it stock anyway. The HG-55
+  antenna is from the same old set, so if it also looks rough you can comment out
+  its `@PART[HighGainAntenna]` line the same way.
 - **"RoveMax Model XL3"** (`roverWheelXL3`) and **"Kerbodyne ADTP-2-3"** are not
   modified by Restock in the first place, so they are already stock — no entry is
   needed and none was added.
