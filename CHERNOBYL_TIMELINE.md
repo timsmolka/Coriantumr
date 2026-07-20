@@ -135,7 +135,7 @@ firefighting minutes were reconstructed from survivor accounts, not a clock. Whe
 silent on a person's exact movements, they are not invented.*
 
 **~01:24**
-- **Reactor (+12.5):** **Yuvchenko** runs outside with **Tregub**; they see the building half-gone and the blue-white pillar of ionized air over the reactor. Tregub pulls Yuvchenko back.
+- **Reactor (+12.5):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — grabs a stretcher and, heading down toward +10, meets the blackened, bloodied **Degtyarenko** (known only by his voice); then runs outside with **Tregub**, who pulls him back from the blue-white pillar of ionized air over the reactor.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
 
@@ -146,7 +146,7 @@ silent on a person's exact movements, they are not invented.*
 - **Off-site:** **Bryukhanov** is phoned and sets off for the plant.
 
 **~01:35**
-- **Reactor hall:** **Yuvchenko** braces the shielding door open and lights the way while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses.
+- **Reactor hall:** having the **only working flashlight**, **Yuvchenko** braces the heavy steel door with his shoulder ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. **Proskuryakov** shines the torch around the corner (burns later appear on that hand); **Perevozchenko** then shoves Yuvchenko back from the door.
 - **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
 
 **~01:40**
@@ -245,10 +245,18 @@ recovered and lies entombed in the ruins. A memorial plaque marks the spot insid
 the man his colleagues searched for in vain. No testimony of his survives.
 
 **Alexander Petrovich Yuvchenko** — *Senior mechanical engineer, reactor section.* Aged 24; one of
-the few in the reactor building to survive. **Momentarily transfixed by awe, then dutiful and
-physically brave.** He ran out with Tregub, saw that half the building was gone, and **held a heavy
-door open** while Perevozchenko, Proskuryakov and Kudryavtsev went toward the hall — then helped
-carry the injured. He absorbed ~4.1 Sv and severe beta burns from the radioactive door.
+the few in the reactor building to survive. At the blast he was in the **windowless senior-engineers'
+room on level +12.5**: *"a wave came through the room; the thick concrete walls bent like rubber. I
+thought war had broken out."* The phone to Control Room 4 was dead. Going down toward +10 with a
+stretcher, he was stopped by a **dazed figure, clothes blackened and face bloody** — his friend
+**Degtyarenko**, whom he knew only by his voice; a second, unnamed scalded operator waved him off
+(*"Help Khodemchuk — he's in the pump room"*). Because **he had the only working flashlight**, he was
+in the party sent to lower the rods by hand — and, *"because I had come up the stairs last, I stayed
+behind propping open the door. They took the torch from me and went in."* He braced his **shoulder**
+against the heavy steel door for "a minute at most" while the three stepped onto the ledge; then
+**Perevozchenko shoved him back and the door slammed shut — "There's nothing to see here"** — which
+almost certainly saved his life. His burns were to his **left shoulder, hip and calf**; he absorbed
+~4.1 Sv.
 *Documented (New Scientist, 2004):* "From where I stood I could see a huge beam of projected light
 flooding up into infinity from the reactor. It was like a laser light … it was light-bluish, and
 it was very beautiful." He spent about a year in Hospital No. 6, endured many skin grafts, later
