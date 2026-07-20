@@ -69,6 +69,17 @@ run by a visiting specialist, **Gennady Metlenko**, from the Donbass power autho
 
 ## Into the night — the reactor becomes unstable (26 April)
 
+**Where everyone was at the 00:00 shift change** — Akimov's night shift relieves Tregub's:
+
+- **Control room (BShchU‑4):** **Akimov** (shift chief); **Toptunov** at the reactor panel; **Stolyarchuk** at the unit panel (feedwater/pumps); **Kirschenbaum** at the turbine panel; **Dyatlov** directing; **Tregub** and operator **Sergei Gazin** staying on from the previous shift; test lead **Metlenko** and two assistants rigging the oscillograph; trainees **Proskuryakov** and **Kudryavtsev** observing; reactor-shop foreman **Perevozchenko** watching the rod indicators.
+- **Pump hall:** **Khodemchuk** at the main circulation pumps.
+- **Central hall (+36):** **Kurguz** and **Genrikh** (the latter resting in an adjacent windowless room).
+- **Room 604:** **Shashenok**, phoning pressure readings to the computer room.
+- **Reactor section (+12.5):** **Yuvchenko** in his office between Units 3 and 4.
+- **Turbine hall:** **Davletbayev** supervising; machinists **Brazhnik, Vershinin, Novik, Korneyev** and mechanic **Perchuk**.
+- **Electrical shop:** **Lelechenko** and **Baranov**.
+- **Off-site:** **Bryukhanov** and **Fomin** at home; firefighters **Pravik's** guard on watch at the plant (VPCh‑2) and **Kibenok's** in Pripyat (SVPCh‑6).
+
 | Time | Event | People |
 |---|---|---|
 | **00:00** | **Shift change.** Aleksandr **Akimov's** night shift takes over the Unit 4 control room (BShchU‑4) from **Tregub's** evening shift. Tregub stays on to watch the unfamiliar test. Deputy chief engineer **Dyatlov** is present, directing. | Akimov, Toptunov, Stolyarchuk, Kirschenbaum, Tregub, Dyatlov |
@@ -116,6 +127,59 @@ run by a visiting specialist, **Gennady Metlenko**, from the Donbass power autho
 > Akimov's order** — Akimov ordered, Toptunov pressed. **Why** it was pressed has never been
 > established (INSAG‑7): whether as a routine end-of-test shutdown or in response to rising power.
 > Both men who knew died within weeks.
+
+## The first hours — position by position (01:24–06:35)
+
+*Times marked ~ are approximate: the sequence is firmly documented, but the interior rescue and
+firefighting minutes were reconstructed from survivor accounts, not a clock. Where the record is
+silent on a person's exact movements, they are not invented.*
+
+**~01:24**
+- **Reactor (+12.5):** **Yuvchenko** runs outside with **Tregub**; they see the building half-gone and the blue-white pillar of ionized air over the reactor. Tregub pulls Yuvchenko back.
+- **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
+- **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
+
+**~01:28** — **Firefighters:** Pravik's guard reaches the north side; he raises the **"No. 3" alarm** (mobilising the Kiev oblast) and starts his men on the turbine-hall roof. **Kibenok's** SVPCh‑6 (with **Ignatenko, Vashchuk, Titenok, Tishura**) is called out from Pripyat (~01:29).
+
+**~01:30**
+- **Pump hall (+10):** **Perevozchenko** climbs through rubble toward room 306 seeking Khodemchuk (>10,000 R/hr); the search fails.
+- **Off-site:** **Bryukhanov** is phoned and sets off for the plant.
+
+**~01:35**
+- **Reactor hall:** **Yuvchenko** braces the shielding door open and lights the way while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses.
+- **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
+
+**~01:40**
+- **Turbine hall:** **Brazhnik** runs to the control room to report the fire, then he, **Davletbayev**, **Akimov** and **Palamarchuk** fight oil and hydrogen fires (levels 0 and +12); Brazhnik shuts an oil line; **Vershinin** and **Novik** fight the engine-room fire.
+- **Firefighters:** **Telyatnikov** arrives and takes overall command.
+
+**~01:45**
+- **Electrical shop:** **Lelechenko** shuts off hydrogen and, with **Baranov**, purges turbogenerators 3 and 4 with nitrogen — averting a hydrogen blast — wading three times through radioactive water alone (~2,500 R).
+- **Firefighters:** **Pravik** leads a four-man team up the northern fire-escape (~70 m) toward the Block 3 roof.
+
+**~01:56–02:00** — **Block 3 roof:** Pravik's team fights the bitumen fires threatening the still-running Unit 3, in ordinary gear without respirators; some men handle graphite bare-handed. **Medical:** the first ambulance (Dr. **Skachek**) is on site; Dr. **Belokon** arrives with more and triages, speaking with **Kibenok**.
+
+**~02:00**
+- **Room 604 → out:** **Palamarchuk** meets dosimetrist **Gorbachenko** on the +27 staircase; together they carry **Shashenok** out. Gorbachenko is burned where Shashenok's hand rests.
+- **Control room:** **Tregub** and **Gazin** are sent to open cooling valves but are beaten back by steam; **Stolyarchuk** stays at the unit panel.
+
+**~02:30** — **Bunker:** **Bryukhanov** arrives and sets up in the civil-defense bunker; **Akimov** reports the reactor is intact — the false premise that governs management for hours.
+
+**~03:00** — **Bunker:** Bryukhanov phones Moscow that the situation is under control; **Dyatlov** tells **Babichev** to relieve Akimov; water keeps being pumped in. **Yuvchenko** begins vomiting (~4.1 Sv).
+
+**~03:30–04:00** — Bryukhanov's report carries the **3.6 R/h** dosimeter-ceiling figure; the high-range meter is buried and a second fails, leaving only ~3.6–4 R/h instruments against true fields of thousands of R/h.
+
+**~04:30** — **Control room:** **Fomin** arrives, agitated, and orders continuous water injection, feeding replacement men into Unit 4.
+
+**~05:00**
+- **Bunker:** **Dyatlov** reports to Bryukhanov, blames a control-system fault, does not report the core destroyed, and leaves for the medical unit.
+- **Civil defense:** **Vorobyov** measures fields pegging his 200 R/h instrument; **Bryukhanov** dismisses it as broken. **Gorbachenko** begins vomiting and is hospitalised; the turbine-hall fires are largely out.
+
+**~06:00**
+- **+27 feedwater room:** **Akimov** (relieved but staying) with **Toptunov, Nekhaev, Orlov, Uskov** wade knee-deep in fuel-and-water and open valves by hand for ~30 minutes — futile, and fatal for Akimov (~15–20 Gy) and Toptunov (~13 Gy).
+- **Medical:** **Shashenok** dies (~06:00) at MSCh‑126 under Dr. **Leonenko** — the second fatality. Over 100 workers and firefighters are hospitalised; the control-room shift is being evacuated. Pripyat is still not warned.
+
+**~06:35** — **Firefighters:** the last surface fires are out (~4.5 h after the blast), leaving the graphite fire burning in the crater. The response peaked at ~37 crews, ~186 firefighters, ~81 engines.
 
 ---
 
@@ -355,20 +419,13 @@ love? Or is it the same thing?"; "He started to change — every day I met a bra
 The tragedy of the daylight hours is a tragedy of **denial**. The governing assumption across
 Soviet nuclear engineering was that an RBMK reactor *could not* explode — so for hours the men in
 charge could not accept what had happened, relayed false reassurances up the chain, and kept
-pumping water into a destroyed core.
+pumping water into a destroyed core. (The pre-dawn management sequence — Bryukhanov's arrival, the
+under-reporting, Fomin's water order, Vorobyov's dismissed reading — is in the position-by-position
+section above.)
 
 | Time | Event | People |
 |---|---|---|
-| **02:00** | Dosimetrist Gorbachenko and Palamarchuk carry Shashenok out of room 604. | Palamarchuk, Gorbachenko |
-| **02:30** | **Plant director Viktor Bryukhanov** reaches the plant and sets up in the **civil-defense bunker**. Akimov reports to him that the reactor is intact and the fires are being put out — the false premise that governs management for hours. | Bryukhanov, Akimov |
-| **03:00** | Bryukhanov reports up the ministry chain, **drastically under-reporting radiation** (the 3.6 R/h dosimeter-ceiling figure passed upward as if it were the real level). Dyatlov has incoming shift chief **Vladimir Babichev** relieve Akimov; water keeps being pumped in. | Bryukhanov, Dyatlov, Babichev |
-| **03:00** | Yuvchenko begins vomiting from his exposure. | Yuvchenko |
-| **04:00** | **Dosimetry crisis:** the one high-range (~1000 R) meter is buried/inaccessible and a second fails on start-up, leaving only portable instruments capped at ~3.6–4 R/h — while true fields are thousands of R/h. | Gorbachenko |
-| **04:30** | **Chief engineer Nikolai Fomin** arrives, highly agitated, and **orders continuous water injection** into the reactor, feeding replacement men into Unit 4. | Fomin |
-| **05:00** | Dyatlov reports to Bryukhanov with the pre-explosion parameter printouts, blames a **control-system fault**, does **not** report the core destroyed, and leaves for the medical unit. Civil-defense chief **Serafim Vorobyov** measures fields to his instrument's 200 R/h ceiling; **Bryukhanov dismisses the reading as a broken instrument.** | Dyatlov, Bryukhanov, Vorobyov |
-| **06:00** | Akimov, relieved but staying, goes with Toptunov and operators **Nekhaev, Orlov and Uskov** into the wrecked +27 feedwater room to open valves by hand — futile, and fatal for Akimov and Toptunov. **Shashenok dies (~06:00).** Over **100 people** are now hospitalised with ARS. **Pripyat is still not warned.** | Akimov, Toptunov, Nekhaev, Orlov, Uskov |
-| **06:35** | The last **surface fires** are extinguished; the graphite fire burns on in the crater. | Telyatnikov |
-| **08:00** | A warm, sunny spring **Saturday** begins in an unwarned Pripyat; the day shift arrives at the plant. | |
+| **08:00** | A warm, sunny spring **Saturday** begins in an unwarned Pripyat; the day shift arrives at the plant. Sitnikov comes on, assigned by Fomin to replace the incapacitated Dyatlov. | Sitnikov, Fomin |
 | **09:00** | On Fomin's order, deputy chief engineer **Anatoly Sitnikov** climbs to the vent-block roof to **look down into Unit 4**. He sees the destroyed, glowing core and absorbs a lethal dose. | Sitnikov, Fomin |
 | **10:00** | Sitnikov reports that **the reactor is destroyed** — and, despite his visible burns, is **disbelieved**; water pumping continues. In Moscow, the **Government Commission** is formed under **Boris Shcherbina**, with scientist **Valery Legasov** attached. | Sitnikov, Fomin, Bryukhanov, Shcherbina, Legasov |
 | **15:00** | **Boris Prushinsky** (chief engineer of Soyuzatomenergo) flies a **helicopter reconnaissance**, sees the biological shield glowing red and tilted, and reports the reactor "utterly finished" — the first aerial confirmation. | Prushinsky |
