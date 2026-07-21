@@ -704,6 +704,38 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
 
 ---
 
+# APPENDIX D — Assumed positions (where the record is silent)
+
+For the people the sources stop tracking through some window of the night, the following is a
+best-guess of where they were and what they were doing — inferred from their **role, shift and
+posting** and from standard plant procedure. **None of it is documented.** Each entry is marked
+**ASSUMED**; the "basis" says what the guess rests on.
+
+**Security guards** — the thinnest record of all:
+- **Yekaterina Ivanenko** (VOHR guard) — *ASSUMED:* at her outdoor checkpoint beside Unit 4, **staying at her post in the open** — among the most heavily exposed of anyone outside the building — until overcome. *Basis: her role/posting; died of ARS 26 May. No minute-level record survives.*
+- **Klavdia Luzganova** (VOHR guard) — *ASSUMED:* at her perimeter post near the reactor, **remaining at her post** through the night. *Basis: role/posting; died of ARS 31 July. No first-person account exists.*
+
+**Control-room staff, after the blast:**
+- **Igor Kirschenbaum** — *ASSUMED:* went to and **stayed in the Unit 3 control room** (where Dyatlov sent the non-essential operators) until evacuation. *Basis: Dyatlov's documented order; his own later movements unrecorded. Survived.*
+- **Gennady Metlenko** — *ASSUMED:* after being sent to help open cooling valves, **worked in the turbine hall**, then withdrew as fields rose. *Basis: documented he was sent there; later movements unrecorded. Survived.*
+- **Sergei Gazin** — *ASSUMED:* after being driven back from the valves with Tregub, **stayed in/near the control room** and was evacuated with the shift. *Basis: control-room staff; nothing distinct recorded beyond the valve attempt. Survived.*
+- **Simonenko & Simeonov** (gas-circuit operators) — *ASSUMED:* **made their way to the Unit 4 control room** after the blast, then evacuated. *Basis: reported they reached the control room; individual actions/fates undocumented.*
+- **Vladimir Babichev** (incoming shift chief) — *ASSUMED:* in/around the Unit 4 control room **preparing to take over** between the ~03:00 relief order and his ~06:00 takeover. *Basis: documented relief order and takeover; the hours between not detailed. Survived.*
+
+**Turbine hall:**
+- **Yuri Vershinin & Alexander Novik** (roundsmen) — *ASSUMED:* on their machine-hall rounds at the blast, then **fought the engine-room fire** with the crew until overcome. *Basis: documented they fought the engine-room fire; exact positions unrecorded (Vershinin's death itself disputed).*
+- **Busygin** (turbinist) — *ASSUMED:* at his post; **started the emergency feed-water pumps** on Akimov's order and worked the turbine-hall response. *Basis: documented feed-pump order; nothing else recorded. Presumed survived.*
+- **Nekhaev & Orlov** — *ASSUMED:* at their posts through the first hours before **joining the +27 feed-water valve effort** at ~06:00. *Basis: documented at +27; earlier whereabouts unrecorded. Both survived the acute phase.*
+
+**Firefighters (positions on the roof):**
+- **Vashchuk, Tytenok, Tishura** — *ASSUMED (positions):* on the **Unit 3 / ventilation-block roof** with Kibenok's squad, working the bitumen fires. *Basis: documented the squad was there and that Tishura, then Titenok, collapsed after ~20 min; who stood exactly where is not separately recorded.*
+
+**Medical & officials:**
+- **Dr. Moslenkova, nurses Kudrina & Dedovets** — *ASSUMED:* at Pripyat MSCh‑126 through the night **receiving and treating incoming casualties**. *Basis: documented as the clinic's duty staff that night; individual actions not detailed.*
+- **Maiorets, Shasharin, Meshkov, Abagyan** — *ASSUMED:* in Moscow through the day **assembling the commission**, then flying Vnukovo → Kiev → Pripyat to arrive ~20:00. *Basis: documented commission travel and evening arrival; individual daytime movements unrecorded.*
+
+---
+
 ## Principal sources
 
 - **IAEA, INSAG‑1 (1986)** and **INSAG‑7 (1992)**, *The Chernobyl Accident: Updating of INSAG‑1* —
