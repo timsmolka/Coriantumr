@@ -502,26 +502,34 @@ become less exact, and the story becomes one of mass response rather than indivi
 | **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6**, under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with bone-marrow transplants (most fail). The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
 
-## The "Chernobyl divers" — the bubbler-pool valve drain (6 May)
+## The "Chernobyl divers" — the bubbler-pool valve drain (6 May), step by step
 
-Water from the firefighting and the cooling attempts had pooled in the **bubbler pool** (the
-pressure-suppression tank directly beneath the reactor). The fear was that if the molten core burned
-down into that water, the flash to steam could trigger a **second, far larger explosion**. Three
-volunteers went in to **open the two gate valves and drain the pool**:
+Water from the firefighting and cooling had pooled in the **bubbler pool** — the pressure-suppression
+tank beneath the reactor. Scientists (**Yevgeny Velikhov**, **Valery Legasov**) feared the molten core
+could burn down into it and flash the water to steam, setting off a **second, far larger blast** and
+scattering yet more radioactive material. The commission ordered the pool drained.
 
-- **Alexei Ananenko** — senior mechanical engineer, who knew exactly where the valves were;
-- **Valeri Bespalov** — senior engineer;
-- **Boris Baranov** — shift supervisor, who carried the lamp.
+> **No clock for this one.** Unlike the night of the accident, there is **no minute-level record** of
+> the drain — even the time of day on 6 May is unrecorded. The *order* of the steps is documented
+> (largely from Ananenko's own interviews); the timing is not, so the steps below are sequential,
+> not clocked.
 
-In the flooded, pitch-dark lower corridors their light reportedly failed, and they found the valves
-by **feeling along the pipes**; they opened them and the water drained away.
+- **~2–4 May — the alarm.** Corium (molten fuel, graphite, concrete) is burning downward; **Velikhov** and **Legasov** warn that if it reaches the pooled water the steam flash could cause a second explosion and scatter far more fallout. *(The "megatons that would level Europe" figure is exaggeration — a steam blast is not a nuclear yield.)*
+- **5 May — pumping down.** Shift supervisor **Igor Kazachkov** reports the valves cannot be reached until the pipe corridor is pumped out. Captain **Pyotr Zborovsky's** Civil-Defence team pumps water from the basement, lowering the corridor to about **knee height** — so the men will **wade, not dive**.
+- **6 May · 1 — the assignment.** Not a dramatic "who volunteers" call: because **Ananenko** knows the valve layout he is tasked; he calls shift supervisor **Boris Baranov** and asks for one more man, **Bespalov**, since two valves must be opened.
+- **6 May · 2 — kit up.** They pull on **wetsuits** (no scuba — this is a wade). Ananenko carries an **adjustable spanner** in case a valve is stuck and **two dosimeters**, one on his chest, one below his knee.
+- **6 May · 3 — the route.** They descend through the underground corridors to the suppression-pool valve gallery; the water is about **knee-deep**, the corridor "stuffed with a myriad of pipes and valves" — "like finding a needle in a haystack."
+- **6 May · 4 — finding them.** Their **searchlight works**: when the beam falls on a pipe Ananenko recognises, they follow it to the valves ("we were joyous; the pipe led to the valves"). *(The "lamp failed, groped in the dark" version is a myth.)*
+- **6 May · 5 — the valves.** Two gate valves. **Ananenko and Bespalov** open them, spanner ready; **Baranov** stands by with the light. They **hear the water rushing out** of the tank.
+- **6 May · 6 — in and out.** Inside roughly **10–20 minutes** (Ananenko: "about 15"). Doses elevated but **below the acute-sickness threshold** — the water shielded them and the exposure was brief. *(The oft-cited "92 rem" was Ananenko's cumulative 3-year dose, not this mission.)*
+- **6 May · 7 — exit.** They walk out. No heroes' welcome, by Ananenko's account — "Nobody applauded… it was a regular job." *(The Soviet-era telling has them embraced.)*
+- **7–8 May — drained.** By the next day ~**20,000 tonnes** of radioactive water have drained; Zborovsky's crews finish the pump-out by ~8 May. The **corium-meets-water risk is removed**.
 
-> **Myth vs fact.** Contrary to the widely-repeated story that they died of radiation within days,
-> **all three survived**. Ananenko and Bespalov were still living decades later; Boris Baranov died in
-> **2005** of heart failure. Ukraine awarded the three the **Order "For Courage"** in 2018 (Baranov
-> posthumously). The "deep scuba dive into a reactor pool" image is dramatized — the water had been
-> pumped down and was waded, and Ananenko has said they fully expected to walk back out. *(Boris
-> Baranov the diver is a different man from electrician Anatoly Baranov, ✝ 20 May 1986.)*
+**Fates & honours.** All three survived. **Boris Baranov** died in **2005** of heart disease (not
+radiation); **Ananenko** and **Bespalov** lived on. Ukraine decorated them twice: the **Order "For
+Courage," 3rd class** (Poroshenko, 26 April 2018) and the title **"Hero of Ukraine"** (Zelensky,
+Decree 468/2019, 27 June 2019) — Baranov posthumously in each. *(Boris Baranov the diver is a
+different man from electrician Anatoly Baranov, ✝ 20 May 1986.)*
 
 ---
 
