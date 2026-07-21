@@ -182,9 +182,11 @@ silent on a person's exact movements, they are not invented. **Path-crossings ar
 where people run into each other or join up, "split" where they part.***
 
 **~01:24**
-- **Reactor (+12.5):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — grabs a stretcher and, heading down toward +10, **runs into** the blackened, bloodied **Degtyarenko** *(met)*, known only by his voice; then **runs into Tregub** *(met)*, who has been sent to open the ECCS valves and needs a second man. The two go outside together, ~50 m from the reactor, where Tregub pulls him back from the blue-white pillar — then they **split** *(split)*: Tregub back to the control room to report, Yuvchenko on to the rod party.
+- **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4, then, told by radio to bring stretchers, **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; then a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
+
+**~01:26** — **Reactor → outside:** back in the corridor **Yuvchenko runs into Tregub** *(met)*, whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights into knee-deep water** to a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until **Tregub yanks him back** around the corner *(split)* and heads to the control room to report.
 
 **~01:28** — **Firefighters:** Pravik's guard reaches the north side; he raises the **"No. 3" alarm** (mobilising the Kiev oblast) and starts his men on the turbine-hall roof. **Kibenok's** SVPCh‑6 (with **Ignatenko, Vashchuk, Titenok, Tishura**) is called out from Pripyat (~01:29).
 
@@ -193,7 +195,7 @@ where people run into each other or join up, "split" where they part.***
 - **Off-site:** **Bryukhanov** is phoned and sets off for the plant.
 
 **~01:35**
-- **Reactor hall:** having the **only working flashlight**, **Yuvchenko** braces the heavy steel door with his shoulder ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. **Proskuryakov** shines the torch around the corner (burns later appear on that hand); **Perevozchenko** then shoves Yuvchenko back from the door.
+- **Reactor-hall door:** having the **only working flashlight**, **Yuvchenko** braces the reactor-hall airlock door — **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it — with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand); **Perevozchenko** then shoves Yuvchenko back from the door — "there's nothing to see here."
 - **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
 
 **~01:40**
@@ -307,19 +309,29 @@ in the party sent to lower the rods by hand — and, *"because I had come up the
 behind propping open the door. They took the torch from me and went in."* He braced his **shoulder**
 against the heavy steel door for "a minute at most" while the three stepped onto the ledge; then
 **Perevozchenko shoved him back and the door slammed shut — "There's nothing to see here"** — which
-almost certainly saved his life. His burns were to his **left shoulder, hip and calf**; he absorbed
-~4.1 Sv.
+almost certainly saved his life — his **left side**, turned to the open hall and pressed to the
+contaminated door, took the worst of it, which is why his burns were to his **left shoulder, hip and
+calf**. Passing a man whose **dosimeter needle was pinned off the scale**, he could not be measured;
+his dose (commonly given as **~4.1 Sv**) is a later *clinical estimate*, not a reading.
 *Documented (New Scientist, 2004):* "From where I stood I could see a huge beam of projected light
 flooding up into infinity from the reactor. It was like a laser light … it was light-bluish, and
-it was very beautiful." He spent about a year in Hospital No. 6, endured many skin grafts, later
-became a widely-interviewed witness, and **died of leukemia in 2008**, aged 47.
+it was very beautiful." He began vomiting ~03:00, could not walk by ~06:00, and was **flown to
+Moscow that evening**. He spent about **a year in Hospital No. 6**, kept alive by continuous
+transfusions (*"I lived on other people's blood"*) through many skin grafts as the radiation ulcers
+opened — almost alone among the reactor-building men of that night to survive — and **died of
+leukemia in 2008**, aged 47.
 
 **Valery Ivanovich Perevozchenko** — *Reactor-section shift foreman; a former nuclear-submarine
-sailor.* **Desperate and self-sacrificing.** He drove himself and two young technicians toward the
-reactor hall and searched the wrecked building for the missing Khodemchuk, calling out, refusing
-to give up. He received a fatal dose. **Died of ARS, 13 June 1986.** *(Medvedev's dramatic scene
-of Perevozchenko watching the fuel-channel caps "dancing" before the blast is **disputed** —
-Yuvchenko stated he could not have been there.)*
+sailor.* **Desperate and self-sacrificing.** He led Proskuryakov and Kudryavtsev toward the reactor
+hall (Yuvchenko holding the door), looked into the open core himself — burns later mapped to his
+side and back — then set out to find the missing **Khodemchuk**: through graphite- and fuel-strewn
+rubble on **level +10 to the ruins of room 306**, laying a wooden board over the debris and
+**crawling across it** at risk of falling into a flooded cavity. He found nothing; by the time he
+reached the dosimetry room his **face was already "tanned"** by the radiation. At ~02:45 he went
+again, with Dyatlov, Yuvchenko and a dosimetrist, to search the wrecked pump hall. He received a
+fatal dose. **Died of ARS, 13 June 1986.** *(Medvedev's dramatic scene of Perevozchenko watching
+the fuel-channel caps "dancing" before the blast is **disputed** — Yuvchenko stated he could not
+have been there.)*
 
 **Viktor Vasilyevich Proskuryakov** and **Aleksandr Gennadievich Kudryavtsev** — *reactor control
 engineers/trainees, present to observe the test.* **Dyatlov sent them into the central hall to try
@@ -474,25 +486,54 @@ love? Or is it the same thing?"; "He started to change — every day I met a bra
 
 ---
 
-# PART III — THE NEW SHIFT AND THE RESPONSE THROUGH 26 APRIL
+# PART III — THE REST OF THE FIRST DAY (06:35 on the 26th → ~01:23 on the 27th)
 
 The tragedy of the daylight hours is a tragedy of **denial**. The governing assumption across
 Soviet nuclear engineering was that an RBMK reactor *could not* explode — so for hours the men in
 charge could not accept what had happened, relayed false reassurances up the chain, and kept
-pumping water into a destroyed core. (The pre-dawn management sequence — Bryukhanov's arrival, the
-under-reporting, Fomin's water order, Vorobyov's dismissed reading — is in the position-by-position
-section above.)
+pumping water into a destroyed core. This section carries the **same minute-by-minute record** on
+through the full day and into the second night, to the **~24-hour mark**. (The pre-dawn management
+sequence — Bryukhanov's arrival, the under-reporting, Fomin's water order, Vorobyov's dismissed
+reading — is in the position-by-position section above.) The record genuinely thins as the day
+wears on; where a time is a range or a fact is contested, it is marked. Path-crossings are flagged
+*(met / split)* as before.
 
-| Time | Event | People |
-|---|---|---|
-| **08:00** | A warm, sunny spring **Saturday** begins in an unwarned Pripyat; the day shift arrives at the plant. Sitnikov comes on, assigned by Fomin to replace the incapacitated Dyatlov. | Sitnikov, Fomin |
-| **09:00** | On Fomin's order, deputy chief engineer **Anatoly Sitnikov** climbs to the vent-block roof to **look down into Unit 4**. He sees the destroyed, glowing core and absorbs a lethal dose. | Sitnikov, Fomin |
-| **10:00** | Sitnikov reports that **the reactor is destroyed** — and, despite his visible burns, is **disbelieved**; water pumping continues. In Moscow, the **Government Commission** is formed under **Boris Shcherbina**, with scientist **Valery Legasov** attached. | Sitnikov, Fomin, Bryukhanov, Shcherbina, Legasov |
-| **15:00** | **Boris Prushinsky** (chief engineer of Soyuzatomenergo) flies a **helicopter reconnaissance**, sees the biological shield glowing red and tilted, and reports the reactor "utterly finished" — the first aerial confirmation. | Prushinsky |
+## Dawn into morning (06:35–12:00)
 
-**Anatoly Andreyevich Sitnikov** — *Deputy chief engineer, Units 1–2.* **Dutiful and
-self-sacrificing** — ordered to see for himself, he obeyed and then delivered the truth management
-did not want to hear, knowing what the dose had done to him. **Died of ARS, 30 May 1986.**
+**~06:00–07:00**
+- **+27 feedwater:** **Akimov** and **Toptunov** are still hand-cranking the emergency feedwater gate valves in the flooded gallery — fatal work for both. *Why:* they remain certain the core needs cooling; no one on the operating staff yet accepts the reactor itself is gone. The water they laboriously admit pours out through **severed pipes** into the lower levels — spreading contamination, threatening Unit 3, and never reaching the destroyed core.
+- **Roof/ground:** firemen who had stood on the reactor-block roof (~+71.5) among ejected graphite are **vomiting and collapsing**; **Pravik** and **Kibenok** are among the earliest and worst hit *(met)*. Dr. **Belokon** works the casualties at the scene — sedatives, anti-emetics, recognising radiation sickness — until **he himself begins vomiting** (~06:00) and is evacuated.
+
+**~06:35** — the last **surface fires** are out (plant fire log; some accounts, incl. INSAG, put "all external fires extinguished" nearer **05:00** — the turbine-hall roof fire was firmly out at 02:10). The graphite fire in the crater will burn for days; over 100 workers and firefighters are now hospitalised.
+
+**~08:00**
+- **Plant:** the **day shift** arrives; on the bunker's standing order, management keeps **feeding men into Unit 4** and the water effort is **resumed and continued**. **Sitnikov** comes on, assigned by **Fomin** to replace the incapacitated Dyatlov. *(split)* The stricken night crew — Akimov, Toptunov, Dyatlov and the rest — are being pulled toward MSCh‑126.
+- **Pripyat:** a warm, sunny **Saturday** begins, the town unwarned — children outdoors, a normal Soviet **school morning** with open-air exercises, mothers with strollers, gardening at dachas, weddings, fishing at the warm outflow channel.
+
+**~08:00–09:00** — **MSCh‑126:** the Pripyat medical unit **fills** — firemen and operators with vomiting, headache, weakness, reddening skin, the darkening "nuclear tan." The staff (Belokon, Skachek, Dr. Moslencova, nurses) cannot yet grade acute radiation sickness, and — critically — **no systematic stable-iodine prophylaxis** is given to the responders or the town.
+
+**~09:00** — **Block roof:** on Fomin's order (with Bryukhanov's backing), **Sitnikov** climbs high — accounts place him on the **Unit 3 / block roof, looking down into the wrecked central hall (+35.5) and the crater** — to **see the reactor's state for himself**. *Why him:* he is a reactor physicist and deputy chief engineer, and management will accept it from no one else. He sees the core is **destroyed and open**, and absorbs a massive dose (some accounts ~1,500 rad, heavy to the head). *(The vivid "gazed into the glowing core" phrasing traces to Medvedev — reported.)*
+
+**~10:00–11:00**
+- **Bunker:** **Sitnikov** returns and **reports the reactor destroyed** to **Fomin** and **Bryukhanov** *(met)* — and, despite his visible burns, is **still partly disbelieved**; the order to pump water stands. **Vorobyov's** ~200 R/h reading is still dismissed as a "broken instrument."
+- **Moscow:** the **State Commission** is formed under **Shcherbina**, with **Legasov** as scientific lead; advance groups (**Prushinsky's** OPAS emergency team, deputy minister **Shasharin**) begin moving south ahead of the main party.
+
+## Midday & afternoon (12:00–18:00)
+
+**~afternoon**
+- **Aerial:** military helicopters fly **radiation reconnaissance** over the open reactor; near-plume readings are extreme. **Prushinsky** (OPAS) sees the "Elena" shield glowing and tilted and reports the reactor **"utterly finished."** The systematic dumping of sand, boron, clay, dolomite and lead is settled with the commission that evening; the **mass drops begin the next day.**
+- **Medical:** MSCh‑126 is overwhelmed; a specialist is dispatched from Moscow's **Hospital No. 6** (under **Dr. Guskova**) to triage. The **decision is taken to fly the most severely exposed to Moscow.** *(The numbers are muddled across sources — the often-cited "~28" conflates first-flight, total-flown, and the eventual 28 ARS deaths.)*
+
+**~16:00** — **Vnukovo:** the commission's core group assembles, flies to Kiev, then drives to Pripyat. On the flight **Legasov and Shcherbina discuss Three Mile Island**; Legasov concludes the RBMK's causes are likely quite different — the first stirring of the design argument that will consume him.
+
+**Anatoly Andreyevich Sitnikov** — *Deputy chief engineer, Units 1–2; a reactor physicist.*
+**Dutiful and self-sacrificing.** Ordered by Fomin (with Bryukhanov's backing) to settle the
+argument management refused to accept, he climbed high — accounts place him on the **Unit 3 / block
+roof, looking down into the wrecked central hall and the crater** — and confirmed with his own eyes
+that **the core was destroyed and open**. *Why him:* he was a physicist and deputy chief engineer,
+senior enough that his word could not be waved away. He absorbed a massive dose (some accounts
+~1,500 rad, heavy to the head), came down visibly burned, delivered the truth — and was **still
+partly disbelieved. Died of ARS, 30 May 1986.**
 
 **Viktor Petrovich Bryukhanov** — *Plant director.* **Calm denial verging on psychological
 shock.** He could not accept the reactor had exploded, dismissed extreme readings as instrument
@@ -505,13 +546,34 @@ test. **Shaken and disoriented that night**, then, under prosecution, a catastro
 before trial he attempted suicide in his cell, and later suffered a nervous breakdown and
 psychiatric confinement. **Survived**; convicted; later returned to nuclear work; died 2011.
 
-**The Government (State) Commission — evening of 26 April:**
+## Evening, and into the small hours (18:00 → ~01:23 on 27 April)
 
-| Time | Event | People |
-|---|---|---|
-| **20:00–20:20** | The Commission **arrives in Pripyat**, ~18 hours after the blast: chairman **Boris Shcherbina** (Deputy Chairman of the USSR Council of Ministers), scientist **Valery Legasov**, Energy Minister **Anatoly Maiorets**, deputy minister **Gennady Shasharin**, first deputy minister **Aleksandr Meshkov**, and VNIIAES director **Armen Abagyan**. Scattered graphite seen en route confirms the core is breached. | Shcherbina, Legasov, Maiorets, Shasharin, Meshkov, Abagyan |
-| **20:40–21:00** | Shcherbina convenes the **first working session** at the Pripyat city Party committee; the leadership **collectively accepts the core is destroyed** and splits into groups (cause, dosimetry, evacuation). | Shcherbina, Meshkov, Abagyan, Prushinsky, Shasharin |
-| **23:00–23:30** | After the dosimetry prognosis, Shcherbina **decides to evacuate Pripyat the next day** and telephones Premier **Nikolai Ryzhkov**, who confirms "evacuation tomorrow." | Shcherbina, Abagyan, Ryzhkov |
+**~20:00** — **Pripyat:** the **State Commission arrives**, ~18–19 hours after the blast, and sets
+up in the city executive-committee (ispolkom) building: chairman **Boris Shcherbina** (Deputy
+Chairman of the USSR Council of Ministers), scientist **Valery Legasov**, Energy Minister **Anatoly
+Maiorets**, deputy minister **Gennady Shasharin**, Minsredmash deputy **Aleksandr Meshkov**, and
+VNIIAES director **Armen Abagyan**. General **Nikolai Antoshkin** is on hand to organise the
+helicopters. On the approach **Legasov saw a crimson glow over roughly half the sky**; scattered
+graphite en route confirms the core is breached. *(Individual members had arrived at different,
+earlier hours — "20:00" is the main party.)*
+
+**~20:40–21:00**
+- **City Party HQ:** Shcherbina convenes the **first working session**; the leadership **collectively accepts the core is destroyed** and *(split)* divides into groups — cause (**Meshkov**), dosimetry (**Abagyan**), civil defense / evacuation (**Gen. Berdov**).
+- **Kiev road:** a fleet is staged — **~1,350 buses** (plus reported trains and river craft) assembles along the Chernobyl–Pripyat road and idles for hours, the drivers accumulating dose as they wait.
+
+**~23:00–23:30** — **City Party HQ:** after the dosimetry prognosis, Shcherbina **decides to
+evacuate Pripyat the next day** and telephones Premier **Nikolai Ryzhkov**, who confirms "evacuation
+tomorrow." *Why the day-long delay:* fear of panic, the earlier false "controlled" reports, and the
+political weight of moving a city of ~49,000.
+
+**~00:00–01:00 (27 Apr)**
+- **Overnight to Moscow:** the first and worst cases are moved to a Kiev airfield and **flown to Moscow overnight**, to land at **Vnukovo around dawn**, met by staff in protective gear — the control-room and reactor-hall men, and the stricken firemen. Bulk transfers will continue over the following days.
+- **Pripyat:** orders to **compile resident lists** reach city officials (~01:00); the bus columns will begin repositioning ~01:30. Residents spend a **second night** in the contaminated town, most still unaware.
+
+**~01:23 (27 Apr)** — **~24 hours on.** Unit 4's core still burns; the futile water injection
+ordered from the bunker persists; the worst-exposed are en route to or already at Hospital No. 6;
+Pripyat sleeps, hours from evacuation. **Here the detailed record closes and Part IV's overview
+begins.**
 
 **Boris Yevdokimovich Shcherbina** — *Commission chairman.* Personally calm; arrived skeptical and
 inclined to downplay, then hardened into a **decisive coordinator** once the destroyed core was
@@ -529,10 +591,13 @@ years and one day after the accident.
 While the plant burned, the town of **~49,000** — a young company town, average age ~26 — lived a
 normal warm Saturday, **unwarned**. Children played outside; mothers pushed strollers; people
 gardened at their dachas and **fished in the plant's warm outflow channel** (Medvedev names anglers
-**Pustovoit and Protasov**, who received very high doses). A **wedding** was celebrated; the town
-band Pulsar played; the new stadium and amusement park were being readied for a **May Day** opening
-that never came. A neighbour sunbathed, marvelling at how easily he tanned, and was hospitalised
-that evening. As invisible fallout settled, some residents gathered on balconies; Alexievich
+**Pustovoit and Protasov**, who received very high doses). It was a normal Soviet **school
+Saturday** — morning lessons and open-air exercises on the school squares. **Several weddings** were
+held (a commonly cited figure is four); the town band Pulsar played. The new stadium and the
+**amusement park with its Ferris wheel** were being readied for a **May Day** opening that never
+came — the oft-repeated story that the fair was *opened early on the 27th* to calm residents is
+disputed. A neighbour sunbathed, marvelling at how easily he tanned, and was hospitalised that
+evening. As invisible fallout settled, some residents gathered on balconies; Alexievich
 records one lifting children to admire the coloured glow over the plant, standing in black dust.
 Radiation in the town ran into the **tens of milliroentgens per hour and rising**; iodine
 prophylaxis, when it came, was late and largely futile.
@@ -541,13 +606,12 @@ prophylaxis, when it came, was late and largely futile.
 
 # PART IV — ABOUT 24 HOURS LATER, AND AFTER (the overview)
 
-From here the minute-by-minute record thins deliberately into a summary — the sources themselves
-become less exact, and the story becomes one of mass response rather than individual minutes.
+The detailed record closed at ~01:23 on the 27th, the ~24-hour mark (end of Part III). From here it
+thins deliberately into a summary — the sources themselves become less exact, and the story becomes
+one of mass response rather than individual minutes.
 
 | Time | Event |
 |---|---|
-| **27 Apr, ~01:00** | Orders to compile evacuation lists reach Pripyat officials; bus and truck convoys begin assembling on the approaches overnight. Residents spend a **second night** in the contaminated city. |
-| **27 Apr, ~01:23** | **~24 hours after the explosion.** The detailed record ends here; what follows is overview. |
 | **27 Apr, ~13:10** | A radio announcement tells residents to prepare for a temporary evacuation "for three days." |
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
 | **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Major-General Nikolai Antoshkin** (pilots) and **Legasov** (materials). Over the following days roughly 5,000 tonnes are dropped. Chemical-troops commander **Colonel-General Vladimir Pikalov** personally drives into the high-radiation zone to take measurements. |
