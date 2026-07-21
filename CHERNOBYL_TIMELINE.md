@@ -46,6 +46,36 @@ histories — **Grigori Medvedev**, *The Truth About Chernobyl*; **Anatoly Dyatl
 
 ---
 
+# THE GEOGRAPHY — where these places are, and how far from the core
+
+The four units stand in one long line, Unit 1 (west) → Unit 4 (east). In cross-section from the
+south: the **turbine hall** → the **de-aerator gallery** (the spine, with the control rooms at +10)
+→ the **reactor block** (central hall directly over the core) → the north auxiliaries. The
+de-aerator **"Golden Corridor"** — a ~600 m passage at **+10 m** — threads the whole plant and is the
+route survivors moved along. Elevations are the plant's own "+NN metre" marks (ground = 0.0).
+
+| Location (name as used) | Level | What it was, and where it sits |
+|---|---|---|
+| **Main control room — BShchU-4** | **+10 m** | In the de-aerator building on the **turbine-hall side**, *not* inside the reactor building; the reactor desk is at the east end. **~30 m horizontally from the core**, at the core's base elevation. |
+| **Central (reactor) hall & "Elena"** | **+35.5 m** | The refuelling hall **directly above the core**; its floor is the top of the reactor. Elena, the ~1,000-t upper shield, sits just below it. |
+| **Reactor vault / core** | **+10 → +35.5 m** | The graphite stack in its shaft, between the lower shield (~+10) and Elena (+35.5). |
+| **Pump halls — north & south** | **~+10 m** | Flank the reactor. **Khodemchuk was in the north hall — the far side from the control room** — and is entombed there. |
+| **De-aerator gallery ("Golden Corridor")** | **+10 m** | The long spine between turbine hall and reactor block; feed-water/de-aerators above (+16–24). The main horizontal artery. |
+| **Turbine (machine) hall** | **0.0 / +12 m** | The long hall on the south side, shared; Unit 4's TG-7 & TG-8. Across the de-aerator spine from the reactor. |
+| **Room 604 (Shashenok)** | **+24 m** | An instrument / manometer room high in the feed-water block, near the reactor. |
+| **Feed-water valve gallery (Akimov's crew)** | **+27 m** | The "300-line" valves, a level above room 604. |
+| **Yuvchenko's senior-engineers' room** | **+12.5 m** | Windowless, in the shared zone **between Units 3 and 4**, low in the reactor building off the spine — near the control-room end. |
+| **Central-hall operators' room (Kurguz & Genrikh)** | **+36 m** | At the very top of the reactor block, doorways open to the hall; level with the top of the core. |
+| **Vent block / VSRO & the roof** | **+21.5 → ~+71 m** | Between Units 3 and 4, topped by the tall stack; an external fire-escape on the **north face** climbs ~70 m to the reactor-block roof — the firefighters' climb, opposite the control-room side. |
+| **Admin block ABK-1 & civil-defence bunker (Bryukhanov)** | **basement** | At the **far west end** (Units 1–2), reached from Unit 4 only along the ~600 m Golden Corridor — a long way from the reactor. |
+
+> **Where the plans disagree.** Elevations are firm where the plant's own plans survive (control room
+> +10, central hall +35.5), softer where only survivor accounts give them (Khodemchuk at +6 or +10;
+> room 604 at +24 vs the +27 valve level; Elena 1,000 t vs 2,000 t). Exact stairwell/lift IDs, and
+> the control room's precise compass bearing to the core, are **not cleanly documented**.
+
+---
+
 # PART I — THE CHRONOLOGY
 
 ## The test and the run-down (25 April 1986)
@@ -240,9 +270,14 @@ instruction he **closed the turbine stop valves at 01:23:04** to start the test.
 the explosion. **Survived.**
 
 **Yuri Eduardovich Tregub** — *Shift foreman of the preceding shift, who stayed on to observe.*
-Quick-reacting under shock. Sent by Dyatlov to help with emergency feedwater, he went outside with
-Yuvchenko, recognised the blue-white glow as an **open, unshielded reactor**, and **pulled
-Yuvchenko back out of the beam** before returning to report the damage. Hospitalised; **survived.**
+Quick-reacting under shock. Akimov sent him from the control room to open the emergency-coolant
+valves by hand; needing a second man, he was joined by **Yuvchenko**. The two went **down two
+flights into knee-deep water** to a jammed door, glimpsed the tanks *"torn apart like wet cardboard,"*
+were driven back, and turned out through the ground-level (+0.0) **transport corridor** into the open
+~50 m from the reactor — where Tregub **pulled Yuvchenko back** from the blue beam of an unshielded
+core. He then walked the wrecked exterior with Dyatlov ("This is Hiroshima" — *reported via Medvedev,
+treated with caution*). Hospitalised; **survived.** *(A separate, contested account has Tregub make
+the valve attempt with operator **Gazin** instead — the two tellings can't be cleanly reconciled.)*
 
 ## The reactor hall, central hall, and pump hall
 
