@@ -195,7 +195,7 @@ where people run into each other or join up, "split" where they part.***
 - **Off-site:** **Bryukhanov** is phoned and sets off for the plant.
 
 **~01:35**
-- **Reactor-hall door:** having the **only working flashlight**, **Yuvchenko** braces the reactor-hall airlock door — **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it — with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand); **Perevozchenko** then shoves Yuvchenko back from the door — "there's nothing to see here."
+- **Reactor-hall door:** having the **only working flashlight**, **Yuvchenko** braces the reactor-hall airlock door — **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it — with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand). When the three stagger back and **Yuvchenko goes to look into the core himself, Perevozchenko** — a nuclear-submarine veteran who grasps exactly what is there — **shoves him aside** and the door slams shut: "there's nothing to see here."
 - **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
 
 **~01:40**
@@ -307,11 +307,13 @@ stretcher, he was stopped by a **dazed figure, clothes blackened and face bloody
 (*"Help Khodemchuk — he's in the pump room"*). Because **he had the only working flashlight**, he was
 in the party sent to lower the rods by hand — and, *"because I had come up the stairs last, I stayed
 behind propping open the door. They took the torch from me and went in."* He braced his **shoulder**
-against the heavy steel door for "a minute at most" while the three stepped onto the ledge; then
-**Perevozchenko shoved him back and the door slammed shut — "There's nothing to see here"** — which
-almost certainly saved his life — his **left side**, turned to the open hall and pressed to the
-contaminated door, took the worst of it, which is why his burns were to his **left shoulder, hip and
-calf**. Passing a man whose **dosimeter needle was pinned off the scale**, he could not be measured;
+against the heavy steel door for "a minute at most" while the three stepped onto the ledge. As they
+staggered back into the corridor in shock, **Yuvchenko wanted to look into the core himself — but
+Perevozchenko, a veteran of the nuclear-submarine fleet who understood exactly what was there,
+shoved the younger man aside** and the door slammed shut: *"There's nothing to see here."* That
+shove almost certainly saved his life — his **left side**, turned to the open hall and pressed to
+the contaminated door, took the worst of it, which is why his burns were to his **left shoulder, hip
+and calf**. Passing a man whose **dosimeter needle was pinned off the scale**, he could not be measured;
 his dose (commonly given as **~4.1 Sv**) is a later *clinical estimate*, not a reading.
 *Documented (New Scientist, 2004):* "From where I stood I could see a huge beam of projected light
 flooding up into infinity from the reactor. It was like a laser light … it was light-bluish, and
