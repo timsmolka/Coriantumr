@@ -224,7 +224,7 @@ where people run into each other or join up, "split" where they part.***
 
 **~05:00**
 - **Bunker:** **Dyatlov** reports to Bryukhanov, blames a control-system fault, does not report the core destroyed, and leaves for the medical unit.
-- **Civil defense:** **Vorobyov** measures fields pegging his 200 R/h instrument; **Bryukhanov** dismisses it as broken. **Gorbachenko** begins vomiting and is hospitalised; the turbine-hall fires are largely out.
+- **Civil defense:** **Vorobyov** measures fields pegging his 200 R/h instrument and urges a public warning — *"close the windows and stay inside"*; **Bryukhanov** stalls and waits for a second reading, keeping the figure out of the reports. *(The crisp "your instrument is broken" rebuke is dramatized; the documented behaviour is the stall.)* **Gorbachenko** begins vomiting and is hospitalised; the turbine-hall fires are largely out.
 
 **~06:00**
 - **+27 feedwater room:** **Akimov** (relieved but staying) with **Toptunov, Nekhaev, Orlov, Uskov** wade knee-deep in fuel-and-water and open valves by hand for ~30 minutes — futile, and fatal for Akimov (~15–20 Gy) and Toptunov (~13 Gy).
@@ -257,6 +257,36 @@ narrative — each graded, each told more fully in the timeline and the accounts
 - **The optimistic letter.** In the deceptive latent phase of radiation sickness, Pravik writes his wife a hopeful letter, expecting to recover. *[reported]*
 - **Graphite, bare-handed.** With no dosimeters and no idea what it was, firemen kick and pick up chunks of reactor graphite — among the most radioactive material on Earth. *[documented]*
 - **The blue beam.** Outside, Yuvchenko and Tregub look up at a shaft of ionised blue light rising from the reactor — the visible sign of an open, unshielded core. *[reported]*
+
+---
+
+# RECORDED WORDS & CALLS — WHAT WAS ACTUALLY SAID, AND PHONED
+
+Documented spoken lines and phone/radio calls, attributed and graded. Most control-room words
+survive only through the survivors' memory — Akimov and Toptunov died within weeks — so those are
+second-hand. The famous dramatized lines ("3.6 roentgen — not great, not terrible"; "what is the
+cost of lies?") are **not real quotes** and are kept out (see *Appendix C*). Spoken in Russian;
+English wording varies book to book.
+
+- **"Attention. Oscillograph — on!"** — test engineer **Metlenko** → the operators; the signal that began the turbine run-down, ~01:23:04. *[documented]* (Higginbotham: "Oscilloscope, on!" — no Hollywood countdown is recorded.)
+- **"AZ‑5!"** — **Akimov** → Toptunov; the order to drop all the rods, ~01:23:40. *[documented]* (The press is not disputed; why it was pressed is.)
+- **"The walls began to shake and the concrete itself made a kind of creaking noise."** — **Stolyarchuk**, recalling the blast in a later interview. *[documented]*
+- **"Lads, we've got to get water into the reactor."** — **Dyatlov** → Akimov and the operators, minutes after the blast — the fatal misjudgment. *[documented]*
+- **"Help Khodemchuk. He's in the pump room."** — a steam-scalded operator → **Yuvchenko**, ~01:30 (Khodemchuk was already dead). *[documented]* (The scalded man is not reliably named.)
+- **"This is Hiroshima." / "Not even in my nightmares had I imagined anything like this."** — **Tregub** → **Dyatlov**, and Dyatlov back, walking the wreck. *[documented]*
+- **"There's nothing to see here."** — **Perevozchenko** → Yuvchenko, shoving him back from the open core at the +35.5 door. *[documented]* (as rendered by Higginbotham)
+- **Call — the director woken.** Bryukhanov is phoned at home, cannot raise Unit 4, and drives in; on the bus he sees the reactor building's top is gone. *[reported]*
+- **Call — "under control."** ~03:00, **Bryukhanov** reports up the chain (to Party official Marin / the ministry) that there has been an accident but the reactor is intact — carrying the false 3.6 R/h ceiling figure. *[documented — paraphrase]*
+- **"We need to tell people there's been a radiation accident — close the windows and stay inside."** — civil-defense chief **Vorobyov** → Bryukhanov, after his meter pegged at 200 R/h; Bryukhanov stalled and waited for a second reading. *[documented]* (The crisp "your instrument is broken, get out" is dramatized wording — the documented behaviour is the stall.)
+- **Call — "Evacuation tomorrow."** Evening of the 26th, **Shcherbina** phones Premier **Ryzhkov**: *"Pripyat has to be evacuated… people are living it up full blast, weddings are going on."* Ryzhkov: *"Evacuation tomorrow."* *[documented]* (Ryzhkov's memoir, recalling both sides.)
+- **"We did everything correctly… Why?"** — **Akimov**, dying, to shift-chief Smagin at Hospital No. 6, early May. *[reported]* (single chain via Medvedev; wording varies.)
+- **"This is not your husband anymore… that's a nuclear reactor."** — a hospital staffer → **Lyudmila Ignatenko**. *[literary]* (Alexievich — edited oral history, not verbatim.)
+
+> **Two often-quoted lines that are NOT clean quotes.** The **Dyatlov "threat" to Toptunov** to raise
+> power ("I'll find someone who will") is Medvedev's reconstruction, which Dyatlov denied and no
+> survivor corroborated — disputed. And Akimov's control-room *"We did everything right… something
+> strange has happened"* was popularised by the miniseries writer but can't be tied to a surviving
+> witness — treat as weakly sourced.
 
 ---
 
@@ -605,8 +635,9 @@ senior enough that his word could not be waved away. He absorbed a massive dose 
 partly disbelieved. Died of ARS, 30 May 1986.**
 
 **Viktor Petrovich Bryukhanov** — *Plant director.* **Calm denial verging on psychological
-shock.** He could not accept the reactor had exploded, dismissed extreme readings as instrument
-faults, and passed reassuring figures to Moscow. He later admitted: "I looked — pieces of graphite
+shock.** He could not accept the reactor had exploded; when Vorobyov's meter pegged at 200 R/h he
+**stalled and waited for a second dosimetrist** rather than warn the town (the crisp "your instrument
+is broken" rebuke is dramatized), and he passed reassuring figures to Moscow. He later admitted: "I looked — pieces of graphite
 under my feet. But I still did not think that the reactor was destroyed." **Survived**; convicted
 (July 1987) and sentenced to 10 years; released ~1991; **died 2021** in Kyiv.
 
@@ -631,8 +662,9 @@ earlier hours — "20:00" is the main party.)*
 - **Kiev road:** a fleet is staged — **~1,350 buses** (plus reported trains and river craft) assembles along the Chernobyl–Pripyat road and idles for hours, the drivers accumulating dose as they wait.
 
 **~23:00–23:30** — **City Party HQ:** after the dosimetry prognosis, Shcherbina **decides to
-evacuate Pripyat the next day** and telephones Premier **Nikolai Ryzhkov**, who confirms "evacuation
-tomorrow." *Why the day-long delay:* fear of panic, the earlier false "controlled" reports, and the
+evacuate Pripyat the next day** and telephones Premier **Nikolai Ryzhkov** — *"Pripyat has to be
+evacuated… people are living it up full blast, weddings are going on"* — who answers *"evacuation
+tomorrow."* *Why the day-long delay:* fear of panic, the earlier false "controlled" reports, and the
 political weight of moving a city of ~49,000.
 
 **~00:00–01:00 (27 Apr)**
