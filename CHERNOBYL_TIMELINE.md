@@ -281,8 +281,9 @@ literally unthinkable. Received ~390 rem; **survived**. Convicted in the July 19
 and sentenced to 10 years; released early (1990) on health grounds. In his memoir he blamed the
 **RBMK reactor's design**, not his operators — a position later substantially vindicated by
 INSAG‑7. *Documented (his memoir):* "The time has come to say openly: the design of the RBMK‑1000
-was … the sole reason for the Chernobyl accident." **Died 1995** of heart failure linked to his
-radiation exposure.
+was … the sole reason for the Chernobyl accident." He was married (his wife Isabella taught at a
+Pripyat kindergarten); one of their sons had **died of leukaemia in childhood** before the disaster.
+**Died 1995** of heart failure linked to his radiation exposure.
 
 **Aleksandr Fyodorovich Akimov** — *Shift supervisor of the Unit 4 night shift; in charge of the
 crew during the test.* Aged 33. His demeanor moved from **disbelief to anguished, self-sacrificing
@@ -369,8 +370,8 @@ flooding up into infinity from the reactor. It was like a laser light … it was
 it was very beautiful." He began vomiting ~03:00, could not walk by ~06:00, and was **flown to
 Moscow that evening**. He spent about **a year in Hospital No. 6**, kept alive by continuous
 transfusions (*"I lived on other people's blood"*) through many skin grafts as the radiation ulcers
-opened — almost alone among the reactor-building men of that night to survive — and **died of
-leukemia in 2008**, aged 47.
+opened — almost alone among the reactor-building men of that night to survive. He was **married,
+with a young son, Kirill**, and **died of leukemia in 2008**, aged 47.
 
 **Valery Ivanovich Perevozchenko** — *Reactor-section shift foreman; a former nuclear-submarine
 sailor.* **Desperate and self-sacrificing.** He led Proskuryakov and Kudryavtsev toward the reactor
@@ -485,8 +486,9 @@ leaving the graphite fire burning in the crater.
 **Lt. Vladimir Pavlovich Pravik** — *Guard commander of the plant's own brigade (VPCh‑2); first on
 scene (~01:28).* Aged 23; calm and decisive. He raised the highest ("No. 3") alarm, summoning
 Kiev-oblast units, and led men onto the roofs. In hospital, during the deceptive latent phase of
-ARS, he wrote his wife an **optimistic letter** expecting to recover. **Died of ARS, 11 May 1986.**
-Posthumous Hero of the Soviet Union; buried at Mitino.
+ARS, he wrote his wife **Nadezhda** an **optimistic letter** expecting to recover; they had a baby
+daughter, Natalya, born just before the disaster. **Died of ARS, 11 May 1986.** Posthumous Hero of
+the Soviet Union; buried at Mitino.
 
 **Lt. Viktor Nikolaevich Kibenok** — *Guard commander of the Pripyat city brigade (SVPCh‑6); first
 reinforcement (~01:35, some accounts 01:45).* Born into a firefighting family. He told the
@@ -756,6 +758,44 @@ bodies were radioactive.
 > 19 of the 134 ARS survivors died over 1987–2004 of various causes. The list above names ~26 of
 > the 28 ARS dead; a few turbine-hall names and dates (Vershinin, Savenkov, Novik, Orlov, Shapovalov)
 > **vary between sources** — see *Appendix B*.
+
+---
+
+# FAMILY — MARRIED? CHILDREN? (only where the record actually says)
+
+Whether each person was married or had children. For about a dozen it is documented; for most of the
+workers it simply **is not in the record** — and a missing record is *not* evidence they had no
+family, so those are marked "not recorded" rather than guessed. **[documented]** = a reputable source
+states it; **[reported]** = a single or weaker source.
+
+| Person | Married | Children | Grade |
+|---|---|---|---|
+| **Anatoly Dyatlov** | Yes — wife Isabella (a Pripyat kindergarten teacher) | Three; one son had **died of leukaemia in childhood** before 1986 (Higginbotham links it to Dyatlov's 1977 radiation exposure) | [documented] |
+| **Aleksandr Akimov** | Yes — wife Natalya | not recorded | [documented] |
+| **Alexander Yuvchenko** | Yes — wife Natalia | Son **Kirill**, a small child in 1986 | [documented] |
+| **Viktor Bryukhanov** | Yes — wife Valentina (an electrical engineer at the plant) | Daughter Lilia and son Oleg, both before 1986 | [documented] |
+| **Valery Legasov** | Yes — wife Margarita | Daughter Inga and son Alexei | [documented] |
+| **Anatoly Sitnikov** | Yes — wife Elvira (his widow later gave interviews) | not recorded | [documented] |
+| **Vladimir Pravik** | Yes — wife Nadezhda | Daughter **Natalya**, a newborn born **shortly before** the disaster | [documented] |
+| **Vasily Ignatenko** | Yes — wife **Lyudmila** (pregnant at the time) | Daughter **Natasha, born after his death**, who died within hours; buried with him at Mitino | [documented / testimonial] |
+| **Valery Khodemchuk** | Yes — left a widow | not recorded | [reported] |
+| **Viktor Kibenok** | Yes — wife reported as Tatiana | not recorded | [reported] |
+| **Leonid Telyatnikov** | Yes | Two sons (reported) | [reported] |
+| **Aleksandr Lelechenko** | Yes — an older married man | not recorded | [reported] |
+| **Grigori Khmel** | Yes | Sons, incl. **Piotr Khmel** (also a firefighter that night) | [reported] |
+| **Vladimir Shashenok** | Yes | not recorded | [reported] |
+| **Nikolai Fomin** | Yes | not recorded | [reported] |
+| **Boris Shcherbina** | Yes | not recorded | [reported] |
+
+**Two infant "Natashas" — keep them apart.** Pravik's daughter Natalya was born *shortly before* the
+disaster; Ignatenko's daughter Natasha was born *after* his death and lived only hours. Retellings
+frequently conflate them — only the Ignatenko baby is the post-death birth and death.
+
+**Family status not recorded** (so nothing is stated — this is *not* a claim they had none): Toptunov
+(only his mother, Vera, is documented), Stolyarchuk, Kirschenbaum, Tregub, Perevozchenko,
+Proskuryakov, Kudryavtsev, Kurguz, Genrikh, Degtyarenko, Davletbayev, Brazhnik, Anatoly Baranov
+(electrician), Perchuk, Vershinin, Korneyev, Palamarchuk, Gorbachenko, Belokon, Vashchuk, Tishura,
+Tytenok, the Shavrey brothers, Piotr Khmel, and the divers Ananenko, Bespalov and Boris Baranov.
 
 ---
 
