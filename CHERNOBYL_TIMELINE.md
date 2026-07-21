@@ -186,7 +186,7 @@ where people run into each other or join up, "split" where they part.***
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
 
-**~01:26** — **Reactor → outside:** back in the corridor **Yuvchenko runs into Tregub** *(met)*, whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights into knee-deep water** to a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until **Tregub yanks him back** around the corner *(split)* and heads to the control room to report.
+**~01:26** — **Reactor → outside:** back in the corridor **Yuvchenko runs into Tregub** *(met)*, whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights into knee-deep water** to a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until the two, recognising an open, unshielded core, **pull back** around the corner *(split)*; Tregub heads to the control room to report.
 
 **~01:28** — **Firefighters:** Pravik's guard reaches the north side; he raises the **"No. 3" alarm** (mobilising the Kiev oblast) and starts his men on the turbine-hall roof. **Kibenok's** SVPCh‑6 (with **Ignatenko, Vashchuk, Titenok, Tishura**) is called out from Pripyat (~01:29).
 
@@ -197,6 +197,8 @@ where people run into each other or join up, "split" where they part.***
 **~01:35**
 - **Reactor-hall door:** having the **only working flashlight**, **Yuvchenko** braces the reactor-hall airlock door — **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it — with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand). When the three stagger back and **Yuvchenko goes to look into the core himself, Perevozchenko** — a nuclear-submarine veteran who grasps exactly what is there — **shoves him aside** and the door slams shut: "there's nothing to see here."
 - **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
+
+**~01:38** — **After the door — the four disperse, for good.** The trainees **Proskuryakov** and **Kudryavtsev** go back down to **BShchU‑4 (+10)** and report that **the reactor itself is destroyed** — and are **disbelieved** (dismissed as merely the burst emergency‑feedwater tank); their skin is already darkening *(split)*. **Perevozchenko and Yuvchenko stay together, joined by Dyatlov** *(met)*, for a corridor search for **Khodemchuk** with the low‑range dosimeters pegged at maximum. Then it breaks up: **Dyatlov** leaves to report, **Perevozchenko presses on alone** toward room 306 (+10, >10,000 R/hr), and **Yuvchenko** is on his own until the sickness takes him. *The four never reassemble.*
 
 **~01:40**
 - **Turbine hall:** **Brazhnik** runs to the control room to report the fire, then he, **Davletbayev**, **Akimov** and **Palamarchuk** fight oil and hydrogen fires (levels 0 and +12); Brazhnik shuts an oil line; **Vershinin** and **Novik** fight the engine-room fire.
@@ -232,6 +234,32 @@ where people run into each other or join up, "split" where they part.***
 
 ---
 
+# MOMENTS THAT DECIDED WHO LIVED AND DIED
+
+The discrete, documented acts and exchanges that a factual account should not lose inside the
+narrative — each graded, each told more fully in the timeline and the accounts. The popular
+"moments" that are *not* documented (the Bridge of Death, Pravik's eyes changing colour, the reactor
+"laser beam") are excluded on purpose and refuted in *Appendix C*.
+
+- **The door.** Yuvchenko braces the multi-tonne reactor-hall door with his left shoulder; when he goes to look into the core, Perevozchenko — who grasps what is there — shoves him aside ("there's nothing to see here"). The door shields him; the three who looked in are fatally dosed. *[documented]* — Yuvchenko (survived); Perevozchenko, Proskuryakov, Kudryavtsev (died).
+- **Back into the water.** Believing the core intact and starved of coolant, Akimov and Toptunov wade back into the flooded feedwater room and turn the valves by hand for ~half an hour — lethal, and futile, because the lines were severed. *[documented]*
+- **"We did everything right."** Disfigured and dying, Akimov insists to the end that the crew followed procedure — a cry INSAG‑7 later half-vindicated. *[reported]*
+- **The shielding door.** Scalded by the steam front, Kurguz forces the heavy central-hall door shut, taking the worst of the burns himself and sparing Genrikh behind him. *[reported]*
+- **Wash and change.** Knowing the danger, Genrikh showers and changes clothes before evacuating — a small, informed act that cut his dose. *[documented]*
+- **Three times into the water.** Lelechenko sends his young electricians away and himself wades three times through radioactive water to cut the hydrogen and avert a second explosion — then goes back to work after first aid. *[documented act; dose figures soft]*
+- **Carried out — and burned by a hand.** Palamarchuk and Gorbachenko carry the pinned, scalded Shashenok from room 604; Gorbachenko is later burned on the back exactly where the dying man's hand had rested. *[documented]*
+- **Too late at turbine 8.** Running through the turbine hall, Palamarchuk warns the two visiting Kharkiv vibration-lab technicians to get out — but both had already taken lethal doses. *[documented]*
+- **The search for Khodemchuk.** Perevozchenko goes back into >10,000 R/hr rubble toward room 306 to reach his missing pump operator — already dead and entombed — doubling his own dose. *[documented]*
+- **"This is Hiroshima."** Walking the wrecked exterior amid scattered graphite, Tregub says it to Dyatlov, who stays silent, still unwilling to accept the core is gone. *[reported]*
+- **Sent up to look.** With his report of destruction rejected, Sitnikov climbs to survey the reactor from above, takes a fatal dose confirming the core is open — and is disbelieved anyway. *[documented]*
+- **"Your instrument is broken."** Vorobyov brings a reading pegged at 200 R/h and urges a warning; Bryukhanov dismisses it and sends him away — and the town is not told. *[documented]*
+- **Collapse at the doctor's feet.** Kibenok tells the ambulance physician there are no burn casualties, the situation unclear — then drops, vomiting, in front of him. *[documented]* — Kibenok (died); Dr. Belokon (survived).
+- **The optimistic letter.** In the deceptive latent phase of radiation sickness, Pravik writes his wife a hopeful letter, expecting to recover. *[reported]*
+- **Graphite, bare-handed.** With no dosimeters and no idea what it was, firemen kick and pick up chunks of reactor graphite — among the most radioactive material on Earth. *[documented]*
+- **The blue beam.** Outside, Yuvchenko and Tregub look up at a shaft of ionised blue light rising from the reactor — the visible sign of an open, unshielded core. *[reported]*
+
+---
+
 # PART II — THE ACCOUNTS OF THE PEOPLE
 
 Each account is followed from where that person began the night. Emotional states and
@@ -245,7 +273,11 @@ supervising the test.* Widely described as **strict, domineering, and abrasive**
 for deep reactor knowledge. He pushed the test forward at the unstable 200 MWt. After the blast
 he fell into **adamant denial**: he attributed the destruction to an exploding emergency feedwater
 tank, disbelieved the men who reported the core was gone, and kept ordering water pumped into a
-reactor that no longer existed. Received ~390 rem; **survived**. Convicted in the July 1987 trial
+reactor that no longer existed. In his first fear — scalding water raining from the burst deaerators
+above the control room — he briefly **ordered the crew out to the reserve panel, then rescinded it**
+when no rain came, keeping them at their posts. *Why the denial held:* the dosimeters were dead or
+off-scale, the instruments blank, and total destruction of an RBMK core was, to him, almost
+literally unthinkable. Received ~390 rem; **survived**. Convicted in the July 1987 trial
 and sentenced to 10 years; released early (1990) on health grounds. In his memoir he blamed the
 **RBMK reactor's design**, not his operators — a position later substantially vindicated by
 INSAG‑7. *Documented (his memoir):* "The time has come to say openly: the design of the RBMK‑1000
@@ -270,10 +302,22 @@ Akimov's futile valve-opening effort in lethal radiation (~13 Gy). **Died of ARS
 despite a bone-marrow transplant. Buried at Mitino. *(The often-told story that Toptunov "refused"
 to raise power is **disputed** — no control-room survivor confirms such an argument.)*
 
+> **Why these two can't be taken deeper.** Akimov and Toptunov are the pivotal operators of the
+> night — yet, unlike the survivors, their **inner experience cannot be reconstructed first-hand**.
+> Both died within weeks, too ill to give structured testimony, so everything past their documented
+> *movements* (the panel, the AZ‑5 press, the valves, the water) is second-hand recollection. The
+> people who *can* carry a Yuvchenko-style minute-by-minute are the ones who lived to tell it —
+> **Dyatlov, Stolyarchuk, Davletbayev, Tregub, Genrikh, Gorbachenko, Belokon**. For the dead we
+> record what they did, not what they felt. That limit is deliberate.
+
 **Boris Vladimirovich Stolyarchuk** — *Senior Unit Control Engineer (feedwater/turbine systems).*
-One of the very few in the control room to survive. **Calm and matter-of-fact** in later
-recollection; he remained at the desk for hours in the radioactive dust, developed ARS symptoms,
-but **survived** and has given many interviews. He firmly blames the reactor's design, not the
+One of the very few in the control room to survive. At his desk the readings showed **all eight main
+safety valves open, yet no water in the separators** — the signature of a coolant-stripped core.
+Akimov ordered him to keep feedwater on the reactor, and he stayed at the panel about **three hours**
+lining up and holding pumps by hand. *Why he lived:* he spent the night at **+10, shielded by the
+massive concrete deaerator stack** — the single fact that most explains his survival while men one
+plane of exposure away died. **Calm and matter-of-fact** in later recollection; he developed ARS
+symptoms but **survived** and has given many interviews. He firmly blames the reactor's design, not the
 crew, and has publicly said the HBO series exaggerated panic and shouting: *"There were no serious
 discussions between the staff that night."*
 
@@ -281,15 +325,19 @@ discussions between the staff that night."*
 instruction he **closed the turbine stop valves at 01:23:04** to start the test. Present through
 the explosion. **Survived.**
 
-**Yuri Eduardovich Tregub** — *Shift foreman of the preceding shift, who stayed on to observe.*
-Quick-reacting under shock. Akimov sent him from the control room to open the emergency-coolant
-valves by hand; needing a second man, he was joined by **Yuvchenko**. The two went **down two
-flights into knee-deep water** to a jammed door, glimpsed the tanks *"torn apart like wet cardboard,"*
-were driven back, and turned out through the ground-level (+0.0) **transport corridor** into the open
-~50 m from the reactor — where Tregub **pulled Yuvchenko back** from the blue beam of an unshielded
-core. He then walked the wrecked exterior with Dyatlov ("This is Hiroshima" — *reported via Medvedev,
-treated with caution*). Hospitalised; **survived.** *(A separate, contested account has Tregub make
-the valve attempt with operator **Gazin** instead — the two tellings can't be cleanly reconciled.)*
+**Yuri Eduardovich Tregub** — *Shift foreman of the preceding shift, who stayed on to observe.* His
+own shift had ended, but he **stayed on as a volunteer** to watch the test he had helped prepare —
+which is why Dyatlov used him as a runner afterward. Quick-reacting under shock, he was sent from
+the control room to open the emergency-coolant valves by hand; needing a second man, he was joined
+by **Yuvchenko**. The two went **down two flights into knee-deep water** to a jammed door, glimpsed
+the tanks *"torn apart like wet cardboard,"* were driven back, and turned out through the ground-level
+(+0.0) **transport corridor** into the open ~50 m from the reactor — where they saw the **blue beam
+of an unshielded core** and pulled back around the corner. Back inside their paths **split**:
+Yuvchenko went on to hold the reactor-hall door, while Tregub went to **wrestle the heavy ECCS gate
+valves open by hand** in a rising field. He later walked the wrecked exterior with Dyatlov ("This is
+Hiroshima" — *reported via Medvedev, treated with caution*). Hospitalised; **survived.** *(A separate,
+contested account has Tregub make the valve attempt with operator **Gazin** instead — the two
+tellings can't be cleanly reconciled.)*
 
 ## The reactor hall, central hall, and pump hall
 
@@ -313,7 +361,8 @@ Perevozchenko, a veteran of the nuclear-submarine fleet who understood exactly w
 shoved the younger man aside** and the door slammed shut: *"There's nothing to see here."* That
 shove almost certainly saved his life — his **left side**, turned to the open hall and pressed to
 the contaminated door, took the worst of it, which is why his burns were to his **left shoulder, hip
-and calf**. Passing a man whose **dosimeter needle was pinned off the scale**, he could not be measured;
+and calf** — as much as the shove, he credited the shielding: *"That wall and the door basically
+saved my life."* Passing a man whose **dosimeter needle was pinned off the scale**, he could not be measured;
 his dose (commonly given as **~4.1 Sv**) is a later *clinical estimate*, not a reading.
 *Documented (New Scientist, 2004):* "From where I stood I could see a huge beam of projected light
 flooding up into infinity from the reactor. It was like a laser light … it was light-bluish, and
@@ -326,14 +375,16 @@ leukemia in 2008**, aged 47.
 **Valery Ivanovich Perevozchenko** — *Reactor-section shift foreman; a former nuclear-submarine
 sailor.* **Desperate and self-sacrificing.** He led Proskuryakov and Kudryavtsev toward the reactor
 hall (Yuvchenko holding the door), looked into the open core himself — burns later mapped to his
-side and back — then set out to find the missing **Khodemchuk**: through graphite- and fuel-strewn
-rubble on **level +10 to the ruins of room 306**, laying a wooden board over the debris and
-**crawling across it** at risk of falling into a flooded cavity. He found nothing; by the time he
-reached the dosimetry room his **face was already "tanned"** by the radiation. At ~02:45 he went
-again, with Dyatlov, Yuvchenko and a dosimetrist, to search the wrecked pump hall. He received a
-fatal dose. **Died of ARS, 13 June 1986.** *(Medvedev's dramatic scene of Perevozchenko watching
-the fuel-channel caps "dancing" before the blast is **disputed** — Yuvchenko stated he could not
-have been there.)*
+side and back. After the door he stayed with **Yuvchenko** and, **joined by Dyatlov**, searched the
+corridors for the missing **Khodemchuk** with the low‑range dosimeters pegged at maximum. When that
+failed and the others peeled away, he **pressed on alone** through graphite- and fuel-strewn rubble
+on **level +10 to the ruins of room 306**, close to debris throwing >10,000 R/hr. He found nothing —
+Khodemchuk was already dead and entombed. By the time he reached the dosimetry room his **face was
+already "tanned"** by the radiation. He received a fatal dose. **Died of ARS, 13 June 1986.**
+*(Two soft details, flagged: Medvedev's scene of Perevozchenko watching the fuel-channel caps
+"dancing" before the blast is **disputed** — Yuvchenko stated he could not have been there — and the
+oft-repeated image of him **crawling a plank over a flooded cavity** during the search is a
+Medvedev-flavoured detail the firmer sources don't corroborate.)*
 
 **Viktor Vasilyevich Proskuryakov** and **Aleksandr Gennadievich Kudryavtsev** — *reactor control
 engineers/trainees, present to observe the test.* **Dyatlov sent them into the central hall to try
@@ -358,9 +409,11 @@ May 1986.**
 ## The turbine (machine) hall
 
 **Razim Ilgamovich Davletbayev** — *Deputy chief of the turbine shop.* **Calm, methodical,
-duty-bound.** He led operators fighting oil and burning-debris fires in the machine hall to prevent
-a far larger blaze, draining oil and displacing hydrogen from the generators. His trial testimony
-and memoir *The Last Shift* are a strong primary source. *Documented:* he recalled "a roar of a
+duty-bound.** He led operators fighting oil and burning-debris fires in the machine hall, draining
+oil and displacing the generators' hydrogen with nitrogen. *Why they ran toward it:* the hall held
+**hydrogen-cooled generators and tonnes of turbine oil**, and a hydrogen blast could have spread
+down the shared roof to the still-running **Unit 3** — a second catastrophe. His trial testimony and
+memoir *The Last Shift* are the single best primary source for the turbine side. *Documented:* he recalled "a roar of a
 completely unfamiliar kind, very low in tone, like a human moan." **Survived** the acute phase.
 
 **Vyacheslav Stepanovich Brazhnik** — *Senior turbine machinist.* Ran to the control room to
