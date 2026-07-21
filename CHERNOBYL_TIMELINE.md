@@ -145,7 +145,7 @@ below would hand it instead to the night shift.
 | Time | Event | People |
 |---|---|---|
 | **01:23:04** | **The test begins.** The turbogenerator No. 8 **steam stop valves are closed** (turbine trip) — Kirschenbaum closes them on Akimov's instruction; Metlenko gives the start command. The four pumps driven by the coasting turbine begin to slow, coolant flow falls, boiling and reactivity rise. *(The two-turbine trip had been blocked, so the reactor did not shut down here.)* | Akimov, Kirschenbaum, Metlenko, Stolyarchuk |
-| **01:23:40** | **AZ‑5 emergency shutdown.** Akimov orders *"AZ‑5!"*; **Toptunov presses the button.** All rods begin to insert — but their **graphite displacer tips push water out of the lower channels, adding positive reactivity** ("positive scram") instead of killing the reaction. | Akimov, Toptunov |
+| **01:23:40** | **AZ‑5 emergency shutdown.** Akimov orders *"AZ‑5!"*; **Toptunov presses the button.** The rods begin to insert — but their **graphite displacer tips** reach the bottom of the core first and push out the water there, replacing a column of **neutron‑absorbing water with graphite — a moderator that barely absorbs neutrons**. Reactivity **spikes at the base of the core** ("positive scram") instead of the reaction being killed. | Akimov, Toptunov |
 | **01:23:43** | Power-excursion-rate emergency signals actuate; power exceeds **530 MWt** and climbs uncontrollably. | |
 | **01:23:43–44** | **Prompt-critical power excursion.** Fuel ruptures, steam surges, and the large positive void coefficient drives a runaway — power spikes on the order of **~100× nominal within about four seconds**. | |
 | **01:23:45** | **First explosion** *(best-supported second; disputed — see below)*. A steam/thermal explosion destroys the core region and lifts the **~1000-tonne upper biological shield ("Elena")**. **Valery Khodemchuk**, at his post in the main circulation pump hall, is **killed instantly — the first fatality. His body is never recovered.** | Khodemchuk |
@@ -164,6 +164,15 @@ below would hand it instead to the night shift.
 > Akimov's order** — Akimov ordered, Toptunov pressed. **Why** it was pressed has never been
 > established (INSAG‑7): whether as a routine end-of-test shutdown or in response to rising power.
 > Both men who knew died within weeks.
+
+> **Why a "shutdown" raised power.** The RBMK was **over-moderated** by its graphite stack, so the
+> cooling water in the channels acted mainly as a **neutron absorber** — the same reason the reactor
+> had a **positive void coefficient** (losing water raised power). Each control rod hung a **graphite
+> displacer below its boron absorber**. With the rods almost fully withdrawn (the near-zero reactivity
+> margin), pressing AZ‑5 drove the **graphite tips into the bottom of the core first**, expelling the
+> absorbing water and putting non-absorbing, moderating graphite in its place — a burst of positive
+> reactivity at the base of the core **before the boron could reach it**. The flaw was corrected on
+> all RBMKs afterward.
 
 ## The first hours — position by position (01:24–06:35)
 
