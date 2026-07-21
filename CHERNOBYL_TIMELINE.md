@@ -500,7 +500,28 @@ become less exact, and the story becomes one of mass response rather than indivi
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
 | **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Major-General Nikolai Antoshkin** (pilots) and **Legasov** (materials). Over the following days roughly 5,000 tonnes are dropped. Chemical-troops commander **Colonel-General Vladimir Pikalov** personally drives into the high-radiation zone to take measurements. |
 | **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6**, under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with bone-marrow transplants (most fail). The deaths chronicled in Part V follow over the next three months. |
-| **6 May 1986** | *(Beyond scope, for completeness.)* Engineers **Alexei Ananenko, Valeri Bespalov and Boris Baranov** — the "Chernobyl divers" — wade through flooded basements to open valves draining the water beneath the core, averting a possible steam explosion. Contrary to legend, **all three survived** the mission (Ananenko and Bespalov were still living in 2024; Baranov died in 2005). |
+| **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
+
+## The "Chernobyl divers" — the bubbler-pool valve drain (6 May)
+
+Water from the firefighting and the cooling attempts had pooled in the **bubbler pool** (the
+pressure-suppression tank directly beneath the reactor). The fear was that if the molten core burned
+down into that water, the flash to steam could trigger a **second, far larger explosion**. Three
+volunteers went in to **open the two gate valves and drain the pool**:
+
+- **Alexei Ananenko** — senior mechanical engineer, who knew exactly where the valves were;
+- **Valeri Bespalov** — senior engineer;
+- **Boris Baranov** — shift supervisor, who carried the lamp.
+
+In the flooded, pitch-dark lower corridors their light reportedly failed, and they found the valves
+by **feeling along the pipes**; they opened them and the water drained away.
+
+> **Myth vs fact.** Contrary to the widely-repeated story that they died of radiation within days,
+> **all three survived**. Ananenko and Bespalov were still living decades later; Boris Baranov died in
+> **2005** of heart failure. Ukraine awarded the three the **Order "For Courage"** in 2018 (Baranov
+> posthumously). The "deep scuba dive into a reactor pool" image is dramatized — the water had been
+> pumped down and was waded, and Ananenko has said they fully expected to walk back out. *(Boris
+> Baranov the diver is a different man from electrician Anatoly Baranov, ✝ 20 May 1986.)*
 
 ---
 
