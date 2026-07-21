@@ -182,11 +182,11 @@ silent on a person's exact movements, they are not invented. **Path-crossings ar
 where people run into each other or join up, "split" where they part.***
 
 **~01:24**
-- **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4, then, told by radio to bring stretchers, **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; then a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
+- **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4, then, told by radio to bring stretchers, **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs **between +12.5 and +10**, before he reaches the control room, a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; beyond a pile of wreckage a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
 
-**~01:26** — **Reactor → outside:** back in the corridor **Yuvchenko runs into Tregub** *(met)*, whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights into knee-deep water** to a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until the two, recognising an open, unshielded core, **pull back** around the corner *(split)*; Tregub heads to the control room to report.
+**~01:26** — **Reactor → outside:** back in the **+10 corridor by the control room**, **Yuvchenko runs into Tregub** *(met)* (emerging from the dark), whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights of stairs — and are at once knee-deep in water** at a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until the two, recognising an open, unshielded core, **pull back** around the corner and run back inside to report. *(Which stairwell they took down, the water's exact level, and the door they exited are not in the record — only "two flights down" and "out through the transport corridor.")*
 
 **~01:28** — **Firefighters:** Pravik's guard reaches the north side; he raises the **"No. 3" alarm** (mobilising the Kiev oblast) and starts his men on the turbine-hall roof. **Kibenok's** SVPCh‑6 (with **Ignatenko, Vashchuk, Titenok, Tishura**) is called out from Pripyat (~01:29).
 
@@ -195,7 +195,7 @@ where people run into each other or join up, "split" where they part.***
 - **Off-site:** **Bryukhanov** is phoned and sets off for the plant.
 
 **~01:35**
-- **Reactor-hall door:** having the **only working flashlight**, **Yuvchenko** braces the reactor-hall airlock door — **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it — with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand). When the three stagger back and **Yuvchenko goes to look into the core himself, Perevozchenko** — a nuclear-submarine veteran who grasps exactly what is there — **shoves him aside** and the door slams shut: "there's nothing to see here."
+- **+10 corridor → +35.5 door:** running back to report, **Yuvchenko and Tregub are stopped in the +10 corridor** by **Perevozchenko** and the trainees **Proskuryakov** and **Kudryavtsev** (sent to hand-lower the rods) *(met)*. **Tregub goes on to BShchU‑4** *(split)*; Yuvchenko — the only man with a working flashlight — joins the other three, and they **climb the stairs from ~+12 up toward +35** (Yuvchenko last, *"through a labyrinth of collapsed walls"*) — almost certainly the **vent-block/VSRO stairwell** the trainees had just used, though the source doesn't name it — to the reactor-hall airlock door, **a multi-tonne, concrete-filled steel slab whose counterweight is wrecked**, so it must be held or it traps whoever is beyond it. He braces it with his **left shoulder** ("because I had come up the stairs last") while **Perevozchenko, Proskuryakov, Kudryavtsev** look into the glowing core for under a minute — all three take fatal doses. *Why his dose:* his **left side is turned to the open hall and pressed to the contaminated door** — which is why his beta burns later map to his **left shoulder, hip and calf**. **Proskuryakov** shines the torch around the corner (burns later appear on that hand). When the three stagger back and **Yuvchenko goes to look into the core himself, Perevozchenko** — a nuclear-submarine veteran who grasps exactly what is there — **shoves him aside** and the door slams shut: "there's nothing to see here."
 - **Firefighters:** **Kibenok's** guard arrives (some accounts ~01:45) and is sent to the reactor/vent-block roof and toward Unit 3.
 
 **~01:38** — **After the door — the four disperse, for good.** The trainees **Proskuryakov** and **Kudryavtsev** go back down to **BShchU‑4 (+10)** and report that **the reactor itself is destroyed** — and are **disbelieved** (dismissed as merely the burst emergency‑feedwater tank); their skin is already darkening *(split)*. **Perevozchenko and Yuvchenko stay together, joined by Dyatlov** *(met)*, for a corridor search for **Khodemchuk** with the low‑range dosimeters pegged at maximum. Then it breaks up: **Dyatlov** leaves to report and **Perevozchenko presses on alone** toward room 306 (+10, >10,000 R/hr). **Yuvchenko does not follow him into the pump hall** — his own posts that night were the **+35.5 reactor-hall door** and this **+10 corridor**, never the pump hall — and he is on his own until the sickness takes him. *(The exact spot he waited is not recorded.)* *The four never reassemble.*
@@ -206,12 +206,12 @@ where people run into each other or join up, "split" where they part.***
 
 **~01:45**
 - **Electrical shop:** **Lelechenko** shuts off hydrogen and, with **Baranov**, purges turbogenerators 3 and 4 with nitrogen — averting a hydrogen blast — wading three times through radioactive water alone (~2,500 R).
-- **Firefighters:** **Pravik** leads a four-man team up the northern fire-escape (~70 m) toward the Block 3 roof.
+- **Firefighters:** **Pravik** leads a four-man team up an external stairway on the north face toward the Block 3 roof (Kibenok climbs the VSRO roof ~01:42 with Ivanchenko and Romashevsky). *(The much-repeated "~70 m northern fire-escape" is not firmly documented as the exact ascent — sources say only "up the ladder / to the roof.")*
 
 **~01:56–02:00** — **Block 3 roof:** Pravik's team fights the bitumen fires threatening the still-running Unit 3, in ordinary gear without respirators; some men handle graphite bare-handed. **Medical:** the first ambulance (Dr. **Skachek**) is on site; Dr. **Belokon** arrives with more and triages, speaking with **Kibenok**.
 
 **~02:00**
-- **Room 604 → out:** **Palamarchuk** meets dosimetrist **Gorbachenko** on the +27 staircase; together they carry **Shashenok** out. Gorbachenko is burned where Shashenok's hand rests.
+- **Room 604 → out:** **Palamarchuk** (sent by Akimov), after failing to reach Shashenok alone and running around **turbine 8 down to level 0** to warn two Kharkiv vibration-lab men, meets dosimetrist **Gorbachenko** on the **+27 staircase**; together they go to **room 604 (+24)**, find **Shashenok** unconscious and pinned under a beam, and carry him out. Gorbachenko is burned where Shashenok's hand rests.
 - **Control room:** **Tregub** and **Gazin** are sent to open cooling valves but are beaten back by steam; **Stolyarchuk** stays at the unit panel.
 
 **~02:30** — **Bunker:** **Bryukhanov** arrives and sets up in the civil-defense bunker; **Akimov** reports the reactor is intact — the false premise that governs management for hours.
@@ -269,7 +269,7 @@ it is labelled. Dramatized lines are excluded (see *Appendix C*).
 ## The control room (BShchU-4)
 
 **Anatoly Stepanovich Dyatlov** — *Deputy Chief Engineer for Operations; the senior man present,
-supervising the test.* Widely described as **strict, domineering, and abrasive**, but respected
+supervising the test.* Aged 55. Widely described as **strict, domineering, and abrasive**, but respected
 for deep reactor knowledge. He pushed the test forward at the unstable 200 MWt. After the blast
 he fell into **adamant denial**: he attributed the destruction to an exploding emergency feedwater
 tank, disbelieved the men who reported the core was gone, and kept ordering water pumped into a
@@ -286,11 +286,13 @@ Pripyat kindergarten); one of their sons had **died of leukaemia in childhood** 
 **Died 1995** of heart failure linked to his radiation exposure.
 
 **Aleksandr Fyodorovich Akimov** — *Shift supervisor of the Unit 4 night shift; in charge of the
-crew during the test.* Aged 33. His demeanor moved from **disbelief to anguished, self-sacrificing
-duty**. He first refused to accept the core was destroyed and reported upward that the reactor was
-intact — then stayed and, with Toptunov and others, **waded into the flooded feedwater rooms and
-cranked valves open by hand for about half an hour** trying to cool a reactor that no longer
-existed, taking an estimated 15+ Gy. Colleague V. G. Smagin, who saw him in Moscow Hospital No. 6,
+crew during the test.* Aged 32 (he turned 33 on 10 May, the day he died). His demeanor moved from
+**disbelief to anguished, self-sacrificing duty**. He first refused to accept the core was destroyed
+and reported upward that the reactor was intact — then stayed and, with Toptunov, Nekhaev, Orlov and
+Uskov, went up from the control room (+10) into the wrecked **feedwater room at +24**, opened the
+two feedwater-line valves, then **climbed to the +27 gallery (Room 712)** and cranked the "300 line"
+open by hand, **knee-deep in a fuel-and-water mixture for about half an hour** — trying to cool a
+reactor that no longer existed, taking an estimated 15+ Gy. Colleague V. G. Smagin, who saw him in Moscow Hospital No. 6,
 described him swollen and turned "deep reddish-brown," consumed by bewilderment and guilt.
 *Reported (via Medvedev/Smagin):* to the end he insisted, *"we did everything correctly … Why?"*
 **Died of ARS, 10 May 1986** (some sources 11 May), Hospital No. 6.
@@ -333,9 +335,11 @@ the control room to open the emergency-coolant valves by hand; needing a second 
 by **Yuvchenko**. The two went **down two flights into knee-deep water** to a jammed door, glimpsed
 the tanks *"torn apart like wet cardboard,"* were driven back, and turned out through the ground-level
 (+0.0) **transport corridor** into the open ~50 m from the reactor — where they saw the **blue beam
-of an unshielded core** and pulled back around the corner. Back inside their paths **split**:
-Yuvchenko went on to hold the reactor-hall door, while Tregub went to **wrestle the heavy ECCS gate
-valves open by hand** in a rising field. He later walked the wrecked exterior with Dyatlov ("This is
+of an unshielded core** and pulled back around the corner. Back inside, in the **+10 corridor**,
+their paths **split**: Yuvchenko went on (with Perevozchenko and the trainees) to hold the
+reactor-hall door, while **Tregub carried their report on to the control room** — his documented
+emergency-valve attempt is the joint one with Yuvchenko; a further solo valve-route is not in the
+record. He later walked the wrecked exterior with Dyatlov ("This is
 Hiroshima" — *reported via Medvedev, treated with caution*). Hospitalised; **survived.** *(A separate,
 contested account has Tregub make the valve attempt with operator **Gazin** instead — the two
 tellings can't be cleanly reconciled.)*
@@ -353,9 +357,17 @@ room on level +12.5**: *"a wave came through the room; the thick concrete walls 
 thought war had broken out."* The phone to Control Room 4 was dead. Going down toward +10 with a
 stretcher, he was stopped by a **dazed figure, clothes blackened and face bloody** — his friend
 **Degtyarenko**, whom he knew only by his voice; a second, unnamed scalded operator waved him off
-(*"Help Khodemchuk — he's in the pump room"*). Because **he had the only working flashlight**, he was
-in the party sent to lower the rods by hand — and, *"because I had come up the stairs last, I stayed
-behind propping open the door. They took the torch from me and went in."* He braced his **shoulder**
+(*"Help Khodemchuk — he's in the pump room"*), but the pump side was collapsed and impassable. Back
+in the **+10 corridor** he ran into **Tregub**, sent to open the ECCS valves by hand; the two went
+**down two flights of stairs into knee-deep water** to a jammed door (the tanks *"torn apart like
+wet cardboard"*), then out through the **+0.0 transport corridor** into the open ~50 m from the
+reactor, where they saw the blue pillar and pulled back. Running back to report, they were stopped
+in the **+10 corridor** by **Perevozchenko** and the two trainees; **Tregub went on to the control
+room**, and Yuvchenko — who had **the only working flashlight** — joined the other three. Together
+they **climbed the stairs from ~+12 up toward +35** (Yuvchenko last, *"through a labyrinth of
+collapsed walls"* — almost certainly the vent-block/VSRO stairwell, though the source doesn't name
+it) to the reactor-hall airlock door: *"because I had come up the stairs last, I stayed behind
+propping open the door. They took the torch from me and went in."* He braced his **shoulder**
 against the heavy steel door for "a minute at most" while the three stepped onto the ledge. As they
 staggered back into the corridor in shock, **Yuvchenko wanted to look into the core himself — but
 Perevozchenko, a veteran of the nuclear-submarine fleet who understood exactly what was there,
@@ -384,8 +396,8 @@ Khodemchuk was already dead and entombed. By the time he reached the dosimetry r
 already "tanned"** by the radiation. He received a fatal dose. **Died of ARS, 13 June 1986.**
 *(Two soft details, flagged: Medvedev's scene of Perevozchenko watching the fuel-channel caps
 "dancing" before the blast is **disputed** — Yuvchenko stated he could not have been there — and the
-oft-repeated image of him **crawling a plank over a flooded cavity** during the search is a
-Medvedev-flavoured detail the firmer sources don't corroborate.)*
+oft-repeated image of him **crawling a plank over a flooded cavity** during the search is **not in
+the source books** — it appears to be a screen (miniseries) device, not a documented route detail.)*
 
 **Viktor Vasilyevich Proskuryakov** and **Aleksandr Gennadievich Kudryavtsev** — *reactor control
 engineers/trainees, present to observe the test.* **Dyatlov sent them into the central hall to try
@@ -796,6 +808,26 @@ frequently conflate them — only the Ignatenko baby is the post-death birth and
 Proskuryakov, Kudryavtsev, Kurguz, Genrikh, Degtyarenko, Davletbayev, Brazhnik, Anatoly Baranov
 (electrician), Perchuk, Vershinin, Korneyev, Palamarchuk, Gorbachenko, Belokon, Vashchuk, Tishura,
 Tytenok, the Shavrey brothers, Piotr Khmel, and the divers Ananenko, Bespalov and Boris Baranov.
+
+---
+
+# AGES — HOW OLD EACH PERSON WAS ON 26 APRIL 1986
+
+Ages on the accident date — birthdays falling later in the year make some a year younger than the
+"age at death" that obituaries print. **[documented]** unless marked **[reported]**; those with no
+reliable birth record are listed as not recorded rather than guessed.
+
+- **Control room:** Dyatlov **55** · Akimov **32** (turned 33 on 10 May — the day he died) · Toptunov **25** · Stolyarchuk **~26** [reported]
+- **Reactor & halls:** Khodemchuk **35** · Yuvchenko **24** · Perevozchenko **38** · Proskuryakov **31** · Kudryavtsev **28** · Kurguz **28** · Degtyarenko **31**
+- **Turbine & electrical:** Brazhnik **28** · Anatoly Baranov (electrician) **32** · Perchuk **33** · Lelechenko **47** · Korneyev **~28** [reported]
+- **Room 604 & medical:** Shashenok **35** · Palamarchuk **~30** [reported]
+- **Firefighters:** Pravik **23** · Kibenok **23** · Ignatenko **25** · Tytenok **23** · Tishura **26** · Vashchuk **27** [reported] · Telyatnikov **35** · Leonid Shavrey **~36** [reported]
+- **Management & commission:** Bryukhanov **50** · Fomin **~49** · Sitnikov **46** · Legasov **49** · Shcherbina **66** · Antoshkin **43**
+- **Divers & later:** Ananenko **26** · Bespalov **28** · Boris Baranov **45** · Protsenko **40**
+
+**Age not recorded** (no reliable birth record — not a guess): Kirschenbaum, Tregub, Metlenko,
+Genrikh, Davletbayev, Vershinin, Novik, Gorbachenko, Belokon, Skachek, Ivan & Petr Shavrey, Grigori
+& Piotr Khmel, Zakharov, Petrovsky, Vorobyov, Prushinsky, Zborovsky.
 
 ---
 
