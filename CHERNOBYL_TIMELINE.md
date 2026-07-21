@@ -169,10 +169,11 @@ below would hand it instead to the night shift.
 
 *Times marked ~ are approximate: the sequence is firmly documented, but the interior rescue and
 firefighting minutes were reconstructed from survivor accounts, not a clock. Where the record is
-silent on a person's exact movements, they are not invented.*
+silent on a person's exact movements, they are not invented. **Path-crossings are flagged — "met"
+where people run into each other or join up, "split" where they part.***
 
 **~01:24**
-- **Reactor (+12.5):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — grabs a stretcher and, heading down toward +10, meets the blackened, bloodied **Degtyarenko** (known only by his voice); then runs outside with **Tregub**, who pulls him back from the blue-white pillar of ionized air over the reactor.
+- **Reactor (+12.5):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — grabs a stretcher and, heading down toward +10, **runs into** the blackened, bloodied **Degtyarenko** *(met)*, known only by his voice; then **runs into Tregub** *(met)*, who has been sent to open the ECCS valves and needs a second man. The two go outside together, ~50 m from the reactor, where Tregub pulls him back from the blue-white pillar — then they **split** *(split)*: Tregub back to the control room to report, Yuvchenko on to the rod party.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
 
