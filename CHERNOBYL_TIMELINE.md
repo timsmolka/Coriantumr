@@ -56,9 +56,16 @@ inertia after a power cut, generate enough electricity to keep the cooling pumps
 ~40–60 seconds until the diesel generators took over? It was, on paper, an electrical test. It was
 run by a visiting specialist, **Gennady Metlenko**, from the Donbass power authority.
 
+**The day before, in brief.** Reactor No. 4 had run since December 1983; on 25 April it was being
+taken down for **routine annual maintenance**, and the shutdown was the long-awaited chance to run
+the turbine-rundown test at last — it had been **attempted without success three times before**
+(1982, 1984, 1985). The experienced **day shift** had prepared for it; the grid-dispatcher delay
+below would hand it instead to the night shift.
+
 | Time (25 Apr) | Event |
 |---|---|
-| **01:06** | Deliberate power reduction of Unit 4 begins from full nominal power (**~3200 MW thermal**), as the first step of preparing for the turbogenerator No. 8 rundown test. |
+| **~00:00** | Unit 4 is running at **full power (~3200 MWt)**, feeding the grid; the day's scheduled shutdown will be used to run the test. |
+| **01:06** | Deliberate power reduction of Unit 4 begins from full power, as the first step of preparing for the turbogenerator No. 8 rundown test. |
 | **03:47** | Power reduced to **~1600 MWt (about 50%)**; the reactor is held near half power for test preparation. |
 | **14:00** | The **Emergency Core Cooling System (ECCS) is isolated** from the primary circuit for the test. About the same time, because another power station has unexpectedly gone offline, the **Kiev (Kievenergo) grid dispatcher asks that further power reduction be postponed** to cover the evening demand peak. The reactor is held at ~1600 MWt for roughly **nine hours** — long enough for the neutron poison **xenon‑135** to build up in the core. *(INSAG‑7: the disabled ECCS did not materially affect the accident.)* |
 | **23:10** | The dispatcher releases the unit; **power reduction resumes** toward the test band. |
