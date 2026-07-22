@@ -944,97 +944,97 @@ Everyone of at least modest significance to the events of 25–27 April 1986. **
 accident (1986)**; otherwise the later fate is given.
 
 ### Control room, Unit 4
-- **Anatoly Dyatlov** — deputy chief engineer, supervised the test; convicted; d. 1995.
-- **Aleksandr Akimov** — night-shift supervisor. ✝ 10 May 1986.
-- **Leonid Toptunov** — senior reactor control engineer; pressed AZ‑5. ✝ 14 May 1986.
-- **Boris Stolyarchuk** — senior unit control engineer; survived.
-- **Igor Kirschenbaum** — senior turbine control engineer; closed the stop valves; survived.
-- **Yuri Tregub** — prior-shift foreman, stayed to observe; survived.
-- **Gennady Metlenko** — visiting test specialist (Donbass), ran the experiment; survived.
+- **Anatoly Dyatlov** (55) — deputy chief engineer; drove the test forward at the unstable 200 MWt, then denied the core was destroyed and kept ordering water pumped in (~390 rem). Convicted (10 yrs); d. 1995.
+- **Aleksandr Akimov** (32) — night-shift supervisor; ordered the scram, insisted the reactor was intact, then died opening the feedwater valves by hand in radioactive water. ✝ 10 May 1986.
+- **Leonid Toptunov** (25) — senior reactor control engineer; let power collapse, physically pressed AZ‑5 on Akimov's order, then joined the fatal valve effort. ✝ 14 May 1986.
+- **Boris Stolyarchuk** (~26) — senior unit control engineer; held the feed-water pumps at his desk for hours, shielded by the deaerator stack — a rare control-room survivor.
+- **Igor Kirschenbaum** — senior turbine control engineer; closed the No. 8 stop valves at 01:23:04 to start the test; survived.
+- **Yuri Tregub** — prior-shift foreman who stayed to observe; sent to the ECCS valves, went with Yuvchenko down to the water and outside to the blue beam; survived.
+- **Gennady Metlenko** — visiting Dontekhenergo test specialist; ran the experiment and gave the "oscillograph on" command; survived.
 
 ### Reactor hall / central hall / pump hall
-- **Valery Khodemchuk** — pump operator; first killed. ✝ 26 Apr 1986 (no grave).
-- **Alexander Yuvchenko** — mechanical engineer; the "blue beam" witness; survived, d. 2008.
-- **Valery Perevozchenko** — reactor-shop foreman; searched for Khodemchuk. ✝ 13 June 1986.
-- **Viktor Proskuryakov** — engineer/trainee; sent to lower rods by hand. ✝ 17 May 1986.
-- **Aleksandr Kudryavtsev** — trainee; sent to lower rods by hand. ✝ 14 May 1986.
-- **Anatoly Kurguz** — central-hall operator; shut the steam door. ✝ 12 May 1986.
-- **Oleg Genrikh** — reactor-hall operator; survived.
-- **Viktor Degtyarenko** — coolant-pump operator. ✝ 19 May 1986.
+- **Valery Khodemchuk** (35) — senior main-circulation-pump operator; at his post beside the reactor when the blast killed him instantly — body entombed, never recovered. ✝ 26 Apr 1986 (no grave).
+- **Alexander Yuvchenko** (24) — senior mechanical engineer; met the injured, saw the blue beam outside, then held the reactor-hall door while the others looked in — its shielding saved him; survived, d. 2008.
+- **Valery Perevozchenko** (38) — reactor-section foreman; led the trainees up to the door, then searched the >10,000 R/hr pump-hall rubble for Khodemchuk. ✝ 13 June 1986.
+- **Viktor Proskuryakov** (31) — engineer/trainee; sent to hand-lower the rods, looked into the open core from the +35.5 ledge. ✝ 17 May 1986.
+- **Aleksandr Kudryavtsev** (28) — trainee; with Proskuryakov, looked into the open core from the ledge. ✝ 14 May 1986.
+- **Anatoly Kurguz** (28) — central-hall operator; scalded by the steam blast, forced the pressurised door shut to shield Genrikh. ✝ 12 May 1986.
+- **Oleg Genrikh** — central-hall operator; shielded from the steam by a wall, showered and changed to cut his contamination; survived.
+- **Viktor Degtyarenko** (31) — coolant-pump operator; scalded by steam near his post — the bloodied man Yuvchenko met on the stairs. ✝ 19 May 1986.
 - **Simonenko / Simeonov** — gas-circuit operators; survived (poorly documented).
 
 ### Turbine (machine) hall
-- **Razim Davletbayev** — deputy turbine-shop chief; survived.
-- **Vyacheslav Brazhnik** — senior turbine machinist. ✝ 14 May 1986.
-- **Kostyantyn Perchuk** — senior turbine mechanic. ✝ 20 May 1986.
-- **Anatoly Baranov** — electrical duty engineer; averted a hydrogen blast. ✝ 20 May 1986.
-- **Vladimir Savenkov** — turbine vibration specialist. ✝ 21 May 1986.
-- **Yuri Korneyev** — turbine operator; survived (last of the turbine night shift).
-- **Arkady Uskov** — opened feedwater valves at +27; survived.
-- **Nekhaev**, **Orlov** (turbine operators) — opened valves at +27; survived the acute phase.
-- **Busygin**, **Vershinin** — turbine-hall crew (fates less certain — *Appendix B*).
+- **Razim Davletbayev** — deputy turbine-shop chief; led the crew fighting the oil and hydrogen fires to keep them from reaching Unit 3; wrote the memoir *The Last Shift*; survived.
+- **Vyacheslav Brazhnik** (28) — senior turbine machinist; ran to the control room to report the fire, then went back to shut off a burning oil line. ✝ 14 May 1986.
+- **Kostyantyn Perchuk** (33) — senior turbine mechanic; fought the oil fires and cut the pumps off from fractured pipes. ✝ 20 May 1986.
+- **Anatoly Baranov** (32) — electrical duty engineer; purged turbogenerators 3 & 4 with nitrogen, averting a hydrogen blast. ✝ 20 May 1986.
+- **Vladimir Savenkov** — Kharkiv vibration-lab specialist; at turbine 8 at the moment of the blast, lethally dosed before he could be warned off. ✝ 21 May 1986.
+- **Yuri Korneyev** — turbine operator; came through as the last living member of the turbine night shift; survived.
+- **Arkady Uskov** — operating engineer; opened feedwater valves at +27; his diary ("the mind refuses to believe…") is a primary source; survived.
+- **Nekhaev**, **Orlov** (turbine operators) — waded to the +27 valves with Akimov and Toptunov; survived the acute phase.
+- **Busygin** (switched on the emergency pumps), **Vershinin** — turbine-hall crew (fates less certain — *Appendix B*).
 
 ### Electrical shop
-- **Aleksandr Lelechenko** — deputy chief; disconnected hydrogen units by hand. ✝ 7 May 1986.
-- **Viktor Lopatyuk** — electrician. ✝ 17 May 1986.
-- **Oleksandr Novik** — electrician/machinist. ✝ 26 July 1986.
+- **Aleksandr Lelechenko** (47) — deputy chief; sent his younger men away and waded three times through radioactive water to cut the hydrogen and avert a second explosion. ✝ 7 May 1986 · Hero of Ukraine (2006).
+- **Viktor Lopatyuk** — electrician; helped localise the fire to Unit 4 and isolate electrics in high fields. ✝ 17 May 1986.
+- **Oleksandr Novik** — electrician/machinist; worked with Lelechenko to localise the fire. ✝ 26 July 1986.
 
 ### Dosimetry, rescue, and medical
-- **Nikolai Gorbachenko** — control-room dosimetrist; carried out Shashenok; survived.
-- **Pyotr Palamarchuk** — commissioning-group head; carried out Shashenok; survived.
-- **Vladimir Shashenok** — adjuster, room 604; second victim. ✝ 26 Apr 1986.
-- **Dr. Valentin Belokon** — Pripyat ambulance doctor; survived.
-- **Dr. Skachek** — ambulance physician (first responders).
-- **Dr. Vitaly Leonenko** — chief physician, Pripyat MSCh‑126; survived.
-- **Dr. Angelina Guskova** — head of clinical dept., Moscow Hospital No. 6; d. 2015.
-- **Dr. Alexander Baranov** — hematologist, Hospital No. 6; survived.
-- **Dr. Leonid Ilyin** — director, Institute of Biophysics; d. 2023.
-- **Dr. Robert Gale** — US bone-marrow-transplant specialist; living.
+- **Nikolai Gorbachenko** — control-room dosimetrist; his instruments were useless (capped/buried), yet he met Palamarchuk on the +27 stair and carried out Shashenok — burned where the dying man's hand rested; survived.
+- **Pyotr Palamarchuk** — commissioning-group head; sent by Akimov, warned the vibration-lab men off turbine 8, then carried Shashenok from room 604; survived.
+- **Vladimir Shashenok** (35) — commissioning adjuster, room 604; crushed under a fallen beam and steam-scalded — the second victim, first to reach hospital. ✝ 26 Apr 1986.
+- **Dr. Valentin Belokon** — Pripyat ambulance doctor; treated the stricken at the scene and recognised radiation sickness, then fell ill himself; survived.
+- **Dr. Skachek** — ambulance physician on the first vehicle out, in no protective clothing.
+- **Dr. Vitaly Leonenko** — chief physician, Pripyat MSCh‑126; Shashenok died under his care; survived.
+- **Dr. Angelina Guskova** — head of the clinical dept., Moscow Hospital No. 6; led the acute-radiation treatment; d. 2015.
+- **Dr. Alexander Baranov** — hematologist, Hospital No. 6; ran the bone-marrow work; survived.
+- **Dr. Leonid Ilyin** — director, Institute of Biophysics; shaped the dose and evacuation policy; d. 2023.
+- **Dr. Robert Gale** — US bone-marrow-transplant specialist; assisted (most transplants failed); living.
 
 ### Firefighters
-- **Major Leonid Telyatnikov** — VPCh‑2 chief; overall command; survived, d. 2004.
-- **Lt. Vladimir Pravik** — VPCh‑2 guard commander; first on scene. ✝ 11 May 1986.
-- **Lt. Viktor Kibenok** — SVPCh‑6 guard commander. ✝ 11 May 1986.
-- **Sgt. Vasily Ignatenko** — SVPCh‑6. ✝ 13 May 1986.
-- **Nikolai Vashchuk** — SVPCh‑6. ✝ 14 May 1986.
-- **Mykola Tytenok** — SVPCh‑6. ✝ 16 May 1986.
-- **Vladimir Tishura** — SVPCh‑6; first firefighter to die. ✝ 10 May 1986.
-- **Leonid Shavrey** (d. 2012), **Ivan Shavrey** (d. 2020), **Petr Shavrey** — brothers; survived.
-- **Grigori Khmel** (driver), **Lt. Piotr Khmel** (swapped shifts with Pravik) — survived.
-- **Anatoly Zakharov**, **Alexander Petrovsky**, **Anatoly Ivanchenko** — survived.
+- **Major Leonid Telyatnikov** (35) — garrison fire chief; took overall command, climbed the Unit‑3 roof, and survived a heavy dose; survived, d. 2004.
+- **Lt. Vladimir Pravik** (23) — VPCh‑2 guard commander; first on scene, raised the top "No. 3" alarm, led the roof firefight; wrote his wife an optimistic letter in the latent phase. ✝ 11 May 1986.
+- **Lt. Viktor Kibenok** (23) — SVPCh‑6 guard commander; led the Pripyat crew into the reactor/vent-block roof, then collapsed at the doctor's feet. ✝ 11 May 1986.
+- **Sgt. Vasily Ignatenko** (25) — SVPCh‑6; fought on the roof "in shirt sleeves"; his wife Lyudmila's account opens *Voices from Chernobyl*. ✝ 13 May 1986.
+- **Nikolai Vashchuk** (27) — SVPCh‑6; on the reactor-block roof among graphite. ✝ 14 May 1986.
+- **Mykola Tytenok** (23) — SVPCh‑6; on the reactor-block roof among graphite. ✝ 16 May 1986.
+- **Vladimir Tishura** (26) — SVPCh‑6; the first firefighter to die. ✝ 10 May 1986.
+- **Leonid Shavrey** (d. 2012), **Ivan Shavrey** (d. 2020), **Petr Shavrey** — brothers from Belarus; all fought and lived (Leonid took the highest dose of any Chernobyl firefighter).
+- **Grigori Khmel** (driver) & **Lt. Piotr Khmel** (off-duty, drained the champagne on the way in) — father and son; survived.
+- **Anatoly Zakharov**, **Alexander Petrovsky**, **Anatoly Ivanchenko** — went in knowing the danger (Zakharov: "we were like kamikaze"); survived.
 
 ### Plant management, officials, and scientists
-- **Viktor Bryukhanov** — plant director; convicted; d. 2021.
-- **Nikolai Fomin** — chief engineer; convicted; breakdown; d. 2011.
-- **Anatoly Sitnikov** — deputy chief engineer, Units 1–2; confirmed the core was gone. ✝ 30 May 1986.
-- **Vladimir Babichev** — incoming shift chief; relieved Akimov; survived.
+- **Viktor Bryukhanov** (50) — plant director; could not accept the reactor had exploded, dismissed the high readings, and passed "under control" up to Moscow. Convicted (10 yrs); d. 2021.
+- **Nikolai Fomin** — chief engineer; approved the test, ordered the water pumped in, later collapsed under prosecution (suicide attempt, breakdown). Convicted; d. 2011.
+- **Anatoly Sitnikov** (46) — deputy chief engineer, Units 1–2; sent up to look, confirmed the core destroyed — and was disbelieved. ✝ 30 May 1986.
+- **Vladimir Babichev** — incoming day-shift chief; relieved Akimov ~06:00; survived.
 - **Boris Rogozhkin** — night station shift chief; convicted (5 years).
 - **Aleksandr Kovalenko** — head of Reactor Shop No. 2; convicted (3 years).
 - **Sergei Parashyn** — plant Party secretary; survived.
-- **Serafim Vorobyov** — plant civil-defense chief; his high readings were dismissed; survived.
+- **Serafim Vorobyov** — plant civil-defense chief; measured 200 R/h and urged a warning — dismissed, and the town was not told; survived.
 - **Mikhail Lyutov** — deputy chief engineer for science; survived.
-- **Boris Prushinsky** — Soyuzatomenergo chief engineer; flew the first recon; survived.
+- **Boris Prushinsky** — Soyuzatomenergo chief engineer; flew the first recon and reported the reactor "utterly finished"; survived.
 - **Yuri Laushkin** — state nuclear-safety inspector; convicted (2 years).
 
 ### Government Commission and response leadership
-- **Boris Shcherbina** — Commission chairman; d. 1990.
-- **Valery Legasov** — chief scientist; suicide 27 Apr 1988.
-- **Anatoly Maiorets** — USSR Energy Minister.
-- **Gennady Shasharin** — deputy energy minister.
-- **Aleksandr Meshkov** — first deputy minister (Medium Machine Building).
-- **Armen Abagyan** — VNIIAES director (dosimetry/evacuation prognosis).
-- **Nikolai Ryzhkov** — Premier; confirmed the evacuation.
-- **Maj.-Gen. Nikolai Antoshkin** — directed the helicopter drops; d. 2021.
-- **Col.-Gen. Vladimir Pikalov** — chemical-troops commander; d. 2003.
+- **Boris Shcherbina** (66) — Commission chairman; drove the evacuation and the aerial dumping, and took the "evacuation tomorrow" decision to Ryzhkov; d. 1990.
+- **Valery Legasov** (49) — chief scientist; led the on-site response, then despaired at the refusal to confront the RBMK's flaws; suicide 27 Apr 1988.
+- **Anatoly Maiorets** — USSR Energy Minister; on the commission.
+- **Gennady Shasharin** — deputy energy minister; travelled south early to assess.
+- **Aleksandr Meshkov** — first deputy minister (Medium Machine Building); led the "cause" group.
+- **Armen Abagyan** — VNIIAES director; led the dosimetry / evacuation prognosis.
+- **Nikolai Ryzhkov** — USSR Premier; answered Shcherbina "evacuation tomorrow".
+- **Maj.-Gen. Nikolai Antoshkin** (43) — organised and directed the helicopter drops; d. 2021.
+- **Col.-Gen. Vladimir Pikalov** — chemical-troops commander; personally drove into the high-radiation zone to measure it; d. 2003.
 
 ### Pripyat city
-- **Maria Protsenko** — chief city architect; organised the evacuation; survived.
-- **Alexander Esaulov** — deputy chairman, city executive; survived.
-- **Vladimir Voloshko** — chairman, city executive; survived.
+- **Maria Protsenko** (40) — chief city architect; drew the maps and organised the evacuation district by district; survived.
+- **Alexander Esaulov** — deputy chairman, city executive; ran the city side of the evacuation; survived.
+- **Vladimir Voloshko** — chairman, city executive committee; survived.
 
 ### Security guards
-- **Yekaterina Ivanenko** — perimeter guard. ✝ 26 May 1986.
-- **Klavdia Luzganova** — perimeter guard. ✝ 31 July 1986.
+- **Yekaterina Ivanenko** — perimeter security guard; exposed at her post in the open through the night. ✝ 26 May 1986.
+- **Klavdia Luzganova** — perimeter guard (near the spent-fuel store); exposed at her post through the night. ✝ 31 July 1986.
 
 ---
 
