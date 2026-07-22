@@ -56,7 +56,7 @@ route survivors moved along. Elevations are the plant's own "+NN metre" marks (g
 
 | Location (name as used) | Level | What it was, and where it sits |
 |---|---|---|
-| **Main control room — BShchU-4** | **+10 m** | In the de-aerator building on the **turbine-hall side**, *not* inside the reactor building; the reactor desk is at the east end. **~30 m horizontally from the core**, at the core's base elevation. |
+| **Main control room — BShchU-4** *(Blochny Shchit Upravleniya, "unit control panel")* | **+10 m** | In the de-aerator building on the **turbine-hall side**, *not* inside the reactor building; the reactor desk is at the east end. **~30 m horizontally from the core**, at the core's base elevation. |
 | **Central (reactor) hall & "Elena"** | **+35.5 m** | The refuelling hall **directly above the core**; its floor is the top of the reactor. Elena, the ~1,000-t upper shield, sits just below it. |
 | **Reactor vault / core** | **+10 → +35.5 m** | The graphite stack in its shaft, between the lower shield (~+10) and Elena (+35.5). |
 | **Pump halls — north & south** | **~+10 m** | Flank the reactor. **Khodemchuk was in the north hall — the far side from the control room** — and is entombed there. |
@@ -73,6 +73,33 @@ route survivors moved along. Elevations are the plant's own "+NN metre" marks (g
 > +10, central hall +35.5), softer where only survivor accounts give them (Khodemchuk at +6 or +10;
 > room 604 at +24 vs the +27 valve level; Elena 1,000 t vs 2,000 t). Exact stairwell/lift IDs, and
 > the control room's precise compass bearing to the core, are **not cleanly documented**.
+
+---
+
+# TERMS & ABBREVIATIONS — the Soviet plant shorthand, in plain words
+
+The abbreviations the record uses, spelled out — kept here on the side so the timeline can stay in
+the plant's own shorthand.
+
+- **BShchU-4** — the **Unit 4 main control room** (Russian *Blochny Shchit Upravleniya*, "block/unit control panel"); the operators worked here, at +10.
+- **AZ-5** — the **emergency-shutdown ("full scram") button** that drops every control rod (Russian *Avariynaya Zashchita*, "emergency protection," 5th level).
+- **RBMK** — the reactor type: a **graphite-moderated, water-cooled, channel-type reactor** (*Reaktor Bolshoy Moshchnosti Kanalny*, "high-power channel reactor").
+- **ECCS** — **Emergency Core Cooling System**: the emergency water supply meant to flood the core.
+- **MCP** — **Main Circulation Pump** (Russian GTsN): the big pumps driving coolant through the core; Khodemchuk's post.
+- **SIUR / SIUB / SIUT** — senior control engineers for the **Reactor** (SIUR — Toptunov), the **unit / balance-of-plant** (SIUB — Stolyarchuk) and the **Turbine** (SIUT).
+- **ORM** — **Operating Reactivity Margin**: the number of "equivalent" control rods left in the core; the safety floor was ~15, and it had sunk to ~6–8.
+- **ChNPP** — the **Chernobyl Nuclear Power Plant** itself.
+- **MSCh-126** — **Medical-Sanitary Unit No. 126**, the Pripyat hospital that took the first casualties.
+- **VPCh-2 / SVPCh-6** — the two **paramilitary fire brigades**: VPCh-2 based at the plant (Pravik), SVPCh-6 in Pripyat town (Kibenok).
+- **VSRO / vent block** — the **ventilation-stack structure between Units 3 and 4**, whose roof the firefighters climbed.
+- **DP-5** — the **military radiometer** (200 R/h ceiling) that Vorobyov used off-site.
+- **SKALA / DREG** — the plant's **central process computer** (SKALA) and its **event logger** (DREG), which fixed the AZ-5 press at ~01:23:39.
+- **Deaerator** — kit that strips dissolved gas from feed-water; its long "**Golden Corridor**" gallery is the plant's +10 spine.
+- **Bubbler pool** — the **pressure-suppression water pool beneath the reactor** (the "divers" drained it).
+- **"Elena" (the *pyatak*)** — the ~1,000-tonne **upper biological-shield disc** over the core, blown up and left tilted.
+- **Corium** — the **lava-like melt** of fuel, cladding, graphite and concrete.
+- **Elevation marks (+NN)** — metres above the **+0.0 ground / transport level**; control room +10, core top +35.5, roofs to ~+71.
+- **R/h · rem · Gy · Sv** — radiation units: **R/h** = roentgens per hour (a dose *rate*); **rem** and **Sv** measure absorbed dose to a person (1 Sv = 100 rem); **Gy** (gray) is absorbed energy. Fatal whole-body ARS begins around **~4–6 Gy/Sv**.
 
 ---
 
