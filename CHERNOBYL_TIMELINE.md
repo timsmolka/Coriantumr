@@ -771,43 +771,57 @@ radiation syndrome (ARS)** within the first ~3–4 months, out of **134 confirme
 **Mitino (Mitinskoe) Cemetery, Moscow**, in sealed zinc coffins under concrete because their
 bodies were radioactive.
 
+**What ARS is, and how they got it.** Acute radiation syndrome follows a very large **whole-body
+dose absorbed in a short time**: it wipes out the bone marrow and strips the gut lining, so death
+comes over **days to weeks** — usually after a deceptive "latent" period when the victim briefly
+seems to recover, then collapses. The men below did not die of a vague "radiation" — each took his
+dose in a specific place doing a specific thing: **fighting the fire on the graphite-strewn roofs**,
+**opening valves by hand in radioactive water**, **looking into the open core**, being **scalded by
+radioactive steam**, or **standing guard in the open**. The "how & where" is given for each.
+
 **The two immediate deaths (26 April 1986):**
 
-| Name | Role | Death |
-|---|---|---|
-| **Valery Khodemchuk** | Main circulation pump operator | Killed instantly, ~01:23; **body never recovered** |
-| **Vladimir Shashenok** | Commissioning adjuster, room 604 | ~06:00, Pripyat MSCh‑126 (first buried) |
+| Name | Role | Death | How & why |
+|---|---|---|---|
+| **Valery Khodemchuk** | Main circulation pump operator | Killed instantly, ~01:23; **body never recovered** | At his post **beside the main circulation pumps** (south end, +10) when the explosion and collapsing structure killed him outright. |
+| **Vladimir Shashenok** | Commissioning adjuster, room 604 (+24) | ~06:00, Pripyat MSCh‑126 (first buried) | Taking pressure readings in **room 604**; the blast **crushed him under a fallen beam and scalded him with radioactive steam** — broken spine/ribs, whole-body burns. Carried out by Palamarchuk & Gorbachenko; died without regaining consciousness. |
 
 **The acute-radiation-syndrome deaths (chronological):**
 
-| Date (1986) | Name | Role |
-|---|---|---|
-| **7 May** | Aleksandr Lelechenko | Deputy chief, electrical shop |
-| **10 May** | Vladimir Tishura | Firefighter (SVPCh‑6) — first firefighter to die |
-| **10 May** *(some 11 May)* | Aleksandr Akimov | Unit 4 shift supervisor |
-| **11 May** | Vladimir Pravik | Fire lieutenant (VPCh‑2) |
-| **11 May** | Viktor Kibenok | Fire lieutenant (SVPCh‑6) |
-| **12 May** | Anatoly Kurguz | Central-hall operator |
-| **13 May** | Vasily Ignatenko | Firefighter (SVPCh‑6) |
-| **14 May** | Leonid Toptunov | Senior reactor control engineer |
-| **14 May** | Nikolai Vashchuk | Firefighter |
-| **14 May** | Aleksandr Kudryavtsev | Control engineer/trainee |
-| **14 May** | Vyacheslav Brazhnik | Senior turbine machinist |
-| **16 May** | Mykola Tytenok (Titenok) | Firefighter |
-| **17 May** | Viktor Lopatyuk | Electrician |
-| **17 May** | Viktor Proskuryakov | Engineer/trainee |
-| **19 May** | Viktor Degtyarenko | Reactor operator |
-| **19 May** | Anatoly Shapovalov | Plant worker *(role disputed)* |
-| **20 May** | Anatoly Baranov | Electrical engineer |
-| **20 May** | Kostyantyn Perchuk | Senior turbine machinist |
-| **21 May** | Vladimir Savenkov | Turbine vibration specialist |
-| **26 May** | Yekaterina Ivanenko | Security guard (one of the few women) |
-| **28 May** | Yuriy Konoval | Plant operator |
-| **30 May** *(some 31 May)* | Anatoly Sitnikov | Deputy chief engineer, Units 1–2 |
-| **13 June** | Valery Perevozchenko | Reactor-shop shift foreman |
-| **26 July** | Oleksandr Novik | Turbine machinist |
-| **31 July** | Klavdia Luzganova | Security guard |
-| **May 1986** *(date uncertain)* | Ivan Orlov | Plant worker |
+| Date (1986) | Name | Role | How the fatal dose was received — where & why |
+|---|---|---|---|
+| **7 May** | Aleksandr Lelechenko | Deputy chief, electrical shop | Waded **three times through radioactive water** to cut the hydrogen and avert a second explosion — to spare his younger men — then went back to work (~2,500 R). |
+| **10 May** | Vladimir Tishura | Firefighter (SVPCh‑6) — first firefighter to die | On the **reactor-block / vent-block roof** among ejected **graphite**, no respirator or working dosimeter. |
+| **10 May** *(some 11 May)* | Aleksandr Akimov | Unit 4 shift supervisor | Opening the **feedwater valves by hand, knee-deep in radioactive fuel-and-water** (+24 → +27, Room 712), ~½ hr — cooling a reactor already gone (~15–20 Gy). |
+| **11 May** | Vladimir Pravik | Fire lieutenant (VPCh‑2) | First officer on scene; **directed the roof firefight** on beds of graphite over ~2 hours, no protection. |
+| **11 May** | Viktor Kibenok | Fire lieutenant (SVPCh‑6) | Led the Pripyat crew into the **most dangerous zone — the reactor / vent-block roof**, closest to the open core. |
+| **12 May** | Anatoly Kurguz | Central-hall operator (+35.5) | Scalded **head-to-foot by radioactive steam** at the central-hall airlock as he forced the door shut to shield Genrikh. |
+| **13 May** | Vasily Ignatenko | Firefighter (SVPCh‑6) | On the **reactor-block roof among graphite**, "in shirt sleeves," kicking burning debris — no protection. |
+| **14 May** | Leonid Toptunov | Senior reactor control engineer | With Akimov at the **feedwater valves in radioactive water** — the same futile effort (~13 Gy). |
+| **14 May** | Nikolai Vashchuk | Firefighter (SVPCh‑6) | On the reactor-block / vent-block roof among graphite, no protection. |
+| **14 May** | Aleksandr Kudryavtsev | Control engineer/trainee | **Looked directly into the open core** from the +35.5 ledge, sent to hand-lower the (non-existent) rods. |
+| **14 May** | Vyacheslav Brazhnik | Senior turbine machinist | Fighting the **turbine-hall oil fires** (levels 0/+12); a fuel fragment lodged in a nearby transformer added to his dose. |
+| **16 May** | Mykola Tytenok (Titenok) | Firefighter (SVPCh‑6) | On the reactor-block roof among graphite, no protection. |
+| **17 May** | Viktor Lopatyuk | Electrician | Worked to **localise the fire to Unit 4** and isolate electrics (with Lelechenko) in high fields. |
+| **17 May** | Viktor Proskuryakov | Engineer/trainee | **Looked into the open core** from the +35.5 ledge and shone a torch around the corner (severe burns to that hand). |
+| **19 May** | Viktor Degtyarenko | Reactor / coolant-pump operator | **Scalded by steam near his pump station** at the moment of the blast (the bloodied man Yuvchenko met). |
+| **19 May** | Anatoly Shapovalov | Plant worker *(role disputed)* | At the plant during the response — *exposure specifics thinly recorded.* |
+| **20 May** | Anatoly Baranov | Electrical duty engineer | Purged turbogenerators 3 & 4 with nitrogen to **avert a hydrogen explosion** in the burning machine hall. |
+| **20 May** | Kostyantyn Perchuk | Senior turbine machinist | Fought the turbine-oil fires and **cut the pumps off from fractured pipes** to stop radioactive water flooding in. |
+| **21 May** | Vladimir Savenkov | Vibration-lab specialist (Kharkiv) | At **turbogenerator No. 8** recording vibrations at the blast — took a lethal dose before he could be warned off. |
+| **26 May** | Yekaterina Ivanenko | Security guard (one of the few women) | **At her perimeter post** through the night, unprotected, in the open near the block. |
+| **28 May** | Yuriy Konoval | Plant operator | On the plant staff during the response — *exposure specifics thinly recorded.* |
+| **30 May** *(some 31 May)* | Anatoly Sitnikov | Deputy chief engineer, Units 1–2 | Sent up to a **high vantage to look down into the reactor**, confirming the core destroyed (heavy dose to the head, ~1,500 rad). |
+| **13 June** | Valery Perevozchenko | Reactor-shop shift foreman | Searched the **>10,000 R/hr pump-hall rubble for Khodemchuk** and looked into the open core — a very high, drawn-out dose. |
+| **26 July** | Oleksandr Novik | Electrician / turbine machinist | Worked to localise the fire and isolate electrics (with Lelechenko) in high fields. |
+| **31 July** | Klavdia Luzganova | Security guard | **At a perimeter guard post** (near the spent-fuel store), unprotected, through the night. |
+| **May 1986** *(date uncertain)* | Ivan Orlov | Plant worker | On the plant staff during the response — *date and exposure specifics uncertain.* |
+
+> **Reading the date footnotes.** *"(some 11 May)"* / *"(some 31 May)"* / *"(date uncertain)"* mean the
+> **death date differs between sources** (Akimov 10 vs 11 May; Sitnikov 30 vs 31 May; Orlov's is only
+> "May"). *"(role disputed)"* and *"thinly recorded"* mark the tail of turbine-hall and plant names
+> whose exact role, date, or exposure varies source to source — the **total (28 ARS deaths) is firmer
+> than any single line in that tail**. Full disagreements are in *Appendix B*.
 
 > **On the "28 vs 31" figures.** These are **not competing counts**. **28** ARS deaths + the **2**
 > immediate deaths (Khodemchuk, Shashenok) = **30** early acute-phase deaths; the older Soviet total
