@@ -301,6 +301,24 @@ offered on the spot** (the miniseries' "400 rubles" is invented).
 - **"We walked quicker… because if you went slowly, the dose would be higher."** — **Ananenko**, 2019. *[documented]*
 - **"I never felt like a hero. I was doing my job."** — **Ananenko**, 2019 (often misattributed to Bespalov — it is Ananenko's). *[documented]*
 
+## The day shift & the dosimetrists
+
+Thin ground: the managers' orders (Fomin, Bryukhanov) and Sitnikov's disbelieved report survive as
+**substance, not quoted words** — the gap the miniseries filled with invention. The genuinely
+documented lines come from **day-shift engineers** (Uskov, Orlov, Smagin) and Medvedev's
+dosimetry-dismissal scene.
+
+- **"The mind refuses to believe that the worst that could happen has happened."** — day-shift engineer **Uskov**, in his own diary, 26 April. *[documented]*
+- **"Did these graphite blocks lie here before the accident?" — "Not really; we'd cleaned everything to prepare for the 1st of May."** — **Orlov** → **Smagin**, standing among the ejected graphite outside Unit 4 — the grim moment the day shift grasped the core was open. *[documented]*
+- **"Their lips and tongues were so swollen that they could hardly talk."** — **Smagin**, finding Akimov and Toptunov (swollen, "dark brown" faces) that morning. *[documented — via Medvedev]*
+- **"Get away from me — I'm from the reactor compartment."** — the dying **Shashenok** → a nurse, as dosimetrist Gorbachenko and Palamarchuk brought him in. *[reported]*
+- **"There's something wrong with your instrument… toss it in the garbage!"** — plant management → a dosimetry staffer, dismissing a ~250-roentgen reading in the bunker. *[reported]* (Medvedev's reconstructed dialogue — the documented dismissal; the HBO "your instrument is broken, get out" is a different, invented wording.)
+
+**No verbatim words survive** for **Sitnikov**'s report that the reactor was destroyed (recorded only
+as substance — and whether he even reached the roof is disputed), for **Fomin** and **Bryukhanov**'s
+orders to keep pumping water (paraphrase only; Bryukhanov's "under control" to Moscow is the one
+phrase near-verbatim), or for incoming shift chief **Babichev**.
+
 ---
 
 # PART II — THE ACCOUNTS OF THE PEOPLE
@@ -619,7 +637,7 @@ wears on; where a time is a range or a fact is contested, it is marked. Path-cro
 **~06:35** — the last **surface fires** are out (plant fire log; some accounts, incl. INSAG, put "all external fires extinguished" nearer **05:00** — the turbine-hall roof fire was firmly out at 02:10). The graphite fire in the crater will burn for days; over 100 workers and firefighters are now hospitalised.
 
 **~08:00**
-- **Plant:** the **day shift** arrives; on the bunker's standing order, management keeps **feeding men into Unit 4** and the water effort is **resumed and continued**. **Sitnikov** comes on, assigned by **Fomin** to replace the incapacitated Dyatlov. *(split)* The stricken night crew — Akimov, Toptunov, Dyatlov and the rest — are being pulled toward MSCh‑126.
+- **Plant:** the **day shift** arrives and grasps the scale — engineers **Orlov and Smagin**, seeing graphite strewn on the ground, trade a grim joke (*"Did these graphite blocks lie here before the accident?" — "Not really; we'd cleaned up for the 1st of May"*). On the bunker's standing order, management keeps **feeding men into Unit 4** and the water effort is **resumed and continued**. **Sitnikov** comes on, assigned by **Fomin** to replace the incapacitated Dyatlov. *(split)* The stricken night crew — Akimov, Toptunov, Dyatlov and the rest — are being pulled toward MSCh‑126.
 - **Pripyat:** a warm, sunny **Saturday** begins, the town unwarned — children outdoors, a normal Soviet **school morning** with open-air exercises, mothers with strollers, gardening at dachas, weddings, fishing at the warm outflow channel.
 
 **~08:00–09:00** — **MSCh‑126:** the Pripyat medical unit **fills** — firemen and operators with vomiting, headache, weakness, reddening skin, the darkening "nuclear tan." The staff (Belokon, Skachek, Dr. Moslencova, nurses) cannot yet grade acute radiation sickness, and — critically — **no systematic stable-iodine prophylaxis** is given to the responders or the town.
