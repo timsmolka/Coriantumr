@@ -113,6 +113,15 @@ unit shift chief → console operators → field foremen). On the night of the t
 the note). People who were *present but outside* the plant's command line (the external test crew, the
 commissioning group, contractors) are listed under the note that follows.
 
+**How to read this:** work top-down — each person **answered to the one directly above them**; the
+label in *italics* after a name is their **job or rank**; and the names branching underneath are **the
+people they were in charge of**.
+
+> **The line that actually ran the test:** **Dyatlov → Akimov → Toptunov** (who pressed the rods). That
+> three-man path — a deputy chief engineer who took charge, the shift chief who deferred to him, and the
+> young operator at the console — is the command chain that matters most on the night; everything else
+> below is the fuller structure around it.
+
 ## The plant, that night · operations
 
 - **Viktor Bryukhanov** — *Plant Director* — top of the plant; the whole station answered to him *(off-site during the test)*
