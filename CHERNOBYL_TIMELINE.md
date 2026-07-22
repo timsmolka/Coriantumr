@@ -1069,15 +1069,16 @@ Genrikh, Davletbayev, Vershinin, Novik, Gorbachenko, Belokon, Skachek, Ivan & Pe
 # APPENDIX A — Full roster of significant personnel
 
 Everyone of at least modest significance to the events of 25–27 April 1986. **✝ = died of the
-accident (1986)**; otherwise the later fate is given.
+accident (1986)**; otherwise the later fate is given. The four groups that open the roster — **control
+room through electrical shop — are the night shift** on duty at the explosion; the **evening shift** that
+had handed over and the **day shift** that relieved them follow.
 
-### Control room, Unit 4
+### Control room, Unit 4 · *night shift*
 - **Anatoly Dyatlov** (55) — deputy chief engineer; drove the test forward at the unstable 200 MWt, then denied the core was destroyed and kept ordering water pumped in (~390 rem). Convicted (10 yrs); d. 1995.
 - **Aleksandr Akimov** (32) — night-shift supervisor; ordered the scram, insisted the reactor was intact, then died opening the feedwater valves by hand in radioactive water. ✝ 10 May 1986.
 - **Leonid Toptunov** (25) — senior reactor control engineer; let power collapse, physically pressed AZ‑5 on Akimov's order, then joined the fatal valve effort. ✝ 14 May 1986.
 - **Boris Stolyarchuk** (~26) — senior unit control engineer; held the feed-water pumps at his desk for hours, shielded by the deaerator stack — a rare control-room survivor.
 - **Igor Kirschenbaum** — senior turbine control engineer; closed the No. 8 stop valves at 01:23:04 to start the test; survived.
-- **Yuri Tregub** — prior-shift foreman who stayed to observe; sent to the ECCS valves, went with Yuvchenko down to the water and outside to the blue beam; survived.
 - **Gennady Metlenko** — visiting Dontekhenergo test specialist; ran the experiment and gave the "oscillograph on" command; survived.
 
 ### Reactor hall / central hall / pump hall
@@ -1098,14 +1099,22 @@ accident (1986)**; otherwise the later fate is given.
 - **Anatoly Baranov** (32) — electrical duty engineer; purged turbogenerators 3 & 4 with nitrogen, averting a hydrogen blast. ✝ 20 May 1986.
 - **Vladimir Savenkov** — Kharkiv vibration-lab specialist; at turbine 8 at the moment of the blast, lethally dosed before he could be warned off. ✝ 21 May 1986.
 - **Yuri Korneyev** — turbine operator; came through as the last living member of the turbine night shift; survived.
-- **Arkady Uskov** — operating engineer; opened feedwater valves at +27; his diary ("the mind refuses to believe…") is a primary source; survived.
-- **Nekhaev**, **Orlov** (turbine operators) — waded to the +27 valves with Akimov and Toptunov; survived the acute phase.
 - **Busygin** (switched on the emergency pumps), **Vershinin** — turbine-hall crew (fates less certain — *Appendix B*).
 
-### Electrical shop
+### Electrical shop · *night shift*
 - **Aleksandr Lelechenko** (47) — deputy chief; sent his younger men away and waded three times through radioactive water to cut the hydrogen and avert a second explosion. ✝ 7 May 1986 · Hero of Ukraine (2006).
 - **Viktor Lopatyuk** — electrician; helped localise the fire to Unit 4 and isolate electrics in high fields. ✝ 17 May 1986.
 - **Oleksandr Novik** — electrician/machinist; worked with Lelechenko to localise the fire. ✝ 26 July 1986.
+
+### The evening shift · *handed over at 00:00*
+- **Yuri Tregub** — *evening-shift foreman*; ran the shift **before** Akimov's and handed over at 00:00, then stayed on voluntarily — a shift chief off duty, not a subordinate; sent to the ECCS valves, went with Yuvchenko down to the water and out to the blue beam, and ran back after the blast to report the core was gone; survived.
+- **Sergei Gazin** — operator who also stayed on from the previous shift; survived (poorly documented).
+
+### The next day shift · *relief, from the early hours of 26 April*
+- **Anatoly Sitnikov** (46) — *deputy chief engineer, Units 1–2*; brought in by Fomin to take Dyatlov's place on Unit 4, sent up to look, confirmed the core destroyed — and was disbelieved. ✝ 30 May 1986.
+- **Vladimir Babichev** — *incoming day-shift unit chief (NSB)*; relieved the stricken Akimov ~06:00; survived.
+- **Viktor Smagin** — *incoming Unit-4 morning foreman*; went to the feedwater valves (~280 rad) and found Akimov & Toptunov already dying; survived.
+- **Arkady Uskov**, **Viacheslav Orlov**, **Nekhaev** — *day-shift operating engineers*, called in from home before dawn (~04:00); waded knee-deep at Level +27 to open the feedwater valves; Uskov's diary ("the mind refuses to believe…") is a primary source; survived the acute phase.
 
 ### Dosimetry, rescue, and medical
 - **Nikolai Gorbachenko** — control-room dosimetrist; his instruments were useless (capped/buried), yet he met Palamarchuk on the +27 stair and carried out Shashenok — burned where the dying man's hand rested; survived.
@@ -1134,9 +1143,7 @@ accident (1986)**; otherwise the later fate is given.
 ### Plant management, officials, and scientists
 - **Viktor Bryukhanov** (50) — plant director; could not accept the reactor had exploded, dismissed the high readings, and passed "under control" up to Moscow. Convicted (10 yrs); d. 2021.
 - **Nikolai Fomin** — chief engineer; approved the test, ordered the water pumped in, later collapsed under prosecution (suicide attempt, breakdown). Convicted; d. 2011.
-- **Anatoly Sitnikov** (46) — deputy chief engineer, Units 1–2; sent up to look, confirmed the core destroyed — and was disbelieved. ✝ 30 May 1986.
-- **Vladimir Babichev** — incoming day-shift chief; relieved Akimov ~06:00; survived.
-- **Boris Rogozhkin** — night station shift chief; convicted (5 years).
+- **Boris Rogozhkin** — night station shift supervisor (NSS) for the whole plant; convicted (5 years).
 - **Aleksandr Kovalenko** — head of Reactor Shop No. 2; convicted (3 years).
 - **Sergei Parashyn** — plant Party secretary; survived.
 - **Serafim Vorobyov** — plant civil-defense chief; measured 200 R/h and urged a warning — dismissed, and the town was not told; survived.
