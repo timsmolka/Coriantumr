@@ -103,6 +103,69 @@ the plant's own shorthand.
 
 ---
 
+# CHAIN OF COMMAND — who was in charge of whom (rank & authority)
+
+Ranks and reporting lines, so it is clear who outranked whom and who each person commanded. The plant
+ran on **two parallel chains** — an **administrative line** (director → chief engineer → deputies →
+shops) and an **operational shift** (station shift supervisor → unit shift chief → console operators
+→ field foremen). On the night of the test the two collided (see the note).
+
+## The plant, that night · operations
+
+- **Viktor Bryukhanov** — *Plant Director* — top of the plant; the whole station answered to him *(off-site during the test)*
+  - **Nikolai Fomin** — *Chief Engineer* — technical head of the plant; approved the test *(off-site)*
+    - **Anatoly Dyatlov** — *Dep. Chief Engineer, Operations* — the senior man in the control room; directed the test and outranked **everyone present** *(de-facto command, by seniority)*
+      - **Aleksandr Akimov** — *Unit 4 Shift Chief (NSB)* — formally ran Unit 4's crew; deferred to Dyatlov
+        - **Leonid Toptunov** — *SIUR* (senior reactor-control engineer) — worked the rods at the console
+        - **Boris Stolyarchuk** — *SIUB* (senior unit-control engineer) — feedwater & unit systems
+        - **Igor Kirschenbaum** — *SIUT* (senior turbine-control engineer) — the turbine console
+        - **Valery Perevozchenko** — *Reactor-shop shift foreman* — over the reactor-hall & pump operators: **Khodemchuk** (pump), **Kurguz** & **Genrikh** (central hall), **Degtyarenko** (pump), and trainees **Proskuryakov** & **Kudryavtsev**
+        - **Razim Davletbayev** — *Dep. turbine-shop chief (shift)* — over the turbine machinists: **Brazhnik**, **Perchuk**, **Vershinin**, **Korneyev**, **Uskov**
+        - **Aleksandr Lelechenko** — *Dep. electrical-shop chief* — over the on-shift electricians: **Lopatyuk**, **Novik**
+
+> **The command knot — formal vs de-facto.** By the book, station shift supervisor **Boris Rogozhkin**
+> (NSS — senior on-duty officer for the *whole plant*) sat above unit shift chief Akimov, and Unit 4
+> was Akimov's to run. But **Dyatlov, a deputy chief engineer, outranked them both and was in the room
+> directing the test**, so real command ran **Dyatlov → Akimov → Toptunov**, with Rogozhkin sidelined;
+> the test program never cleanly named one accountable director (at trial Dyatlov even tried to pin
+> the power reduction on Rogozhkin's orders). Off to the side of the live shift: **Kovalenko** (head of
+> Reactor Shop No. 2) and **Lyutov** (deputy chief engineer for science) — senior, but not on shift.
+
+## Firefighting (Major > Lieutenant)
+
+- **Maj. Leonid Telyatnikov** — *Garrison fire chief* — took overall command on arrival, over all crews on scene
+  - **Lt. Vladimir Pravik** — *Guard cmdr, VPCh-2 (plant unit)* — first on scene; held command until Telyatnikov came
+  - **Lt. Viktor Kibenok** — *Guard cmdr, SVPCh-6 (Pripyat unit)* — led the Pripyat crew: **Ignatenko**, **Vashchuk**, **Tytenok**, **Tishura** (on the roof the two lieutenants' crews merged)
+
+## Radiation & medical
+
+- **Serafim Vorobyov** — *Plant civil-defense chief* — responsible for the radiation-emergency response; his warnings were overruled by management
+- **Nikolai Gorbachenko** — *Shift dosimetrist* — on-duty radiation monitoring (his instruments were off-scale)
+- **Dr. Vitaly Leonenko** — *Chief physician, MSCh-126* — ran the Pripyat plant hospital that took the first casualties
+- **Dr. Angelina Guskova** — *Clinical head, Hospital No. 6 (Moscow)* — led the acute-radiation treatment of the airlifted worst cases
+
+## Above the plant · the state response
+
+- **Mikhail Gorbachev** — *General Secretary, CPSU* — ultimate political authority
+  - **Nikolai Ryzhkov** — *Premier (Chairman, Council of Ministers)* — headed the Politburo operations group; the "evacuate tomorrow" decision
+    - **Boris Shcherbina** — *State Commission chairman; Dep. Chairman, Council of Ministers* — ran the entire on-site response
+      - **Valery Legasov** — *Chief scientist; 1st Dep. Director, Kurchatov Institute* — senior scientific authority on scene
+      - **Anatoly Maiorets** — *USSR Energy Minister* — head of the plant's own ministry (Minenergo)
+      - **Aleksandr Meshkov** — *1st Dep. Minister, Minsredmash* — the reactor *designers'* ministry; led the cause inquiry
+      - **Gennady Shasharin** (Dep. Energy Minister), **Armen Abagyan** (VNIIAES Director), **Boris Prushinsky** (Soyuzatomenergo chief engineer) — technical experts to the commission
+      - **Col.-Gen. Vladimir Pikalov** — *Chemical Troops commander* — radiation reconnaissance **(outranks the air-ops general)**
+      - **Maj.-Gen. Nikolai Antoshkin** — *Air operations* — directed the helicopter drops onto the reactor
+      - **Gen. Gennadi Berdov** — *Dep. Interior Minister, Ukraine* — police & troops for the evacuation and cordon
+
+> **The operator-vs-designer split.** The plant *reported to* the **Ministry of Energy (Minenergo)**
+> through the **Soyuzatomenergo** directorate — but the RBMK reactor was *designed under* the
+> **Ministry of Medium Machine Building (Minsredmash)** via the NIKIET design bureau and the Kurchatov
+> Institute. Minenergo **ran** the reactor; Minsredmash **owned the design and its hidden flaws** —
+> which is why responsibility was fought over between operators and designers, and why INSAG-7 (1992)
+> shifted the primary blame onto the design.
+
+---
+
 # PART I — THE CHRONOLOGY
 
 ## The test and the run-down (25 April 1986)
