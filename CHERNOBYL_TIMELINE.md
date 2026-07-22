@@ -553,7 +553,9 @@ the tanks *"torn apart like wet cardboard,"* were driven back, and turned out th
 (+0.0) **transport corridor** into the open ~50 m from the reactor — where they saw the **blue beam
 of an unshielded core** and pulled back around the corner. Back inside, in the **+10 corridor**,
 their paths **split**: Yuvchenko went on (with Perevozchenko and the trainees) to hold the
-reactor-hall door, while **Tregub carried their report on to the control room** — his documented
+reactor-hall door, while **Tregub carried their report on to the control room — where Akimov and
+Dyatlov would not accept it: Dyatlov held that an emergency feedwater tank had burst and the reactor
+was whole, and the standing order to keep pumping water never changed.** His documented
 emergency-valve attempt is the joint one with Yuvchenko; a further solo valve-route is not in the
 record. He later walked the wrecked exterior with Dyatlov ("This is
 Hiroshima" — *reported via Medvedev, treated with caution*). Hospitalised; **survived.** *(A separate,
@@ -570,10 +572,16 @@ the man his colleagues searched for in vain. No testimony of his survives.
 **Alexander Petrovich Yuvchenko** — *Senior mechanical engineer, reactor section.* Aged 24; one of
 the few in the reactor building to survive. At the blast he was in the **windowless senior-engineers'
 room on level +12.5**: *"a wave came through the room; the thick concrete walls bent like rubber. I
-thought war had broken out."* The phone to Control Room 4 was dead. Going down toward +10 with a
-stretcher, he was stopped by a **dazed figure, clothes blackened and face bloody** — his friend
-**Degtyarenko**, whom he knew only by his voice; a second, unnamed scalded operator waved him off
-(*"Help Khodemchuk — he's in the pump room"*), but the pump side was collapsed and impassable. Back
+thought war had broken out."* The phone to Control Room 4 was dead. Ordered to **fetch stretchers**, he grabbed one
+and ran down toward +10 to carry out the wounded — and was stopped by a **dazed figure, clothes
+blackened and face bloody** — his friend **Degtyarenko**, whom he knew only by his voice. Told there
+were others hurt near the coolant tanks, he took a **torch** and searched the wreckage, finding a
+**second scalded operator** who had crawled clear — soaked, filthy and shaking, but still on his
+feet; another waved him off (*"Help Khodemchuk — he's in the pump room"*), but the pump side was
+collapsed and impassable. **(So the story that Yuvchenko "carried someone" is rooted in fact — he
+took up a stretcher and went to the wounded — but in his own account the two scalded men he reached
+were still standing, and he was pulled straight on to the coolant valves; the record does not have
+him carrying any one man to safety.)** Back
 in the **+10 corridor** he ran into **Tregub**, sent to open the ECCS valves by hand; the two went
 **down two flights of stairs into knee-deep water** to a jammed door (the tanks *"torn apart like
 wet cardboard"*), then out through the **+0.0 transport corridor** into the open ~50 m from the
@@ -607,7 +615,9 @@ with a young son, Kirill**, and **died of leukemia in 2008**, aged 47.
 **Valery Ivanovich Perevozchenko** — *Reactor-section shift foreman; a former nuclear-submarine
 sailor.* **Desperate and self-sacrificing.** He led Proskuryakov and Kudryavtsev toward the reactor
 hall (Yuvchenko holding the door), looked into the open core himself — burns later mapped to his
-side and back. After the door he stayed with **Yuvchenko** and, **joined by Dyatlov**, searched the
+side and back. **He carried word back to the control room that the reactor itself was destroyed —
+and Akimov, still certain it was intact, told him it was not true.** After the door he stayed with
+**Yuvchenko** and, **joined by Dyatlov**, searched the
 corridors for the missing **Khodemchuk** with the low‑range dosimeters pegged at maximum. When that
 failed and the others peeled away, he **pressed on alone** through graphite- and fuel-strewn rubble
 on **level +10 to the ruins of room 306**, close to debris throwing >10,000 R/hr. He found nothing —
@@ -622,6 +632,9 @@ the source books** — it appears to be a screen (miniseries) device, not a docu
 engineers/trainees, present to observe the test.* **Dyatlov sent them into the central hall to try
 to lower the control rods by hand** — a task that was already impossible, the reactor being
 destroyed. They looked directly into the exposed core and absorbed enormous doses in minutes.
+**When they staggered back and reported what they had seen — the hall gone, the core open — Dyatlov
+refused to believe them, insisting the glow was an exploded emergency feedwater tank and that the
+reactor was intact.** He then sent them back to keep trying to lower rods that no longer existed.
 **Kudryavtsev died 14 May 1986; Proskuryakov died 17 May 1986.**
 
 **Anatoly Kharlampievich Kurguz** — *Senior operator of the central reactor hall.* Scalded across
@@ -637,6 +650,19 @@ contamination before evacuating. **Survived**, and gave filmed interviews decade
 the explosion and badly burned by steam; Yuvchenko found him with blackened clothes and a bloody
 face. Contrary to the impression left by the miniseries, he lived about a month. **Died of ARS, 19
 May 1986.**
+
+> **What the reports got — a wall of denial.** The reason so many accounts "just go back to report"
+> and seem to stop is that **the reports changed nothing**. Through the night the control room heard
+> the same message from man after man — **Perevozchenko**, the trainees **Proskuryakov and
+> Kudryavtsev**, and **Yuvchenko and Tregub** all came back saying the reactor hall was gone and the
+> core lay open — and **each was refused.** Akimov held that the reactor was intact; **Dyatlov
+> insisted the wreckage and the blue glow were an exploded emergency feed-water tank**, and the
+> standing order — *keep feeding water to the core* — never changed. So "after they reported" the men
+> were sent back into the radiation (the trainees to keep lowering rods, Tregub and Yuvchenko to the
+> coolant valves, Perevozchenko to search for Khodemchuk), while the water kept pouring into a reactor
+> that no longer existed. The denial outlived the night: at ~10:00 the deputy chief engineer
+> **Sitnikov** climbed the block roof, saw the open core with his own (fatal) eyes and reported it to
+> **Fomin and Bryukhanov** — and was *still* only partly believed.
 
 ## The turbine (machine) hall
 
