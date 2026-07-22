@@ -206,7 +206,10 @@ below would hand it instead to the night shift.
 *Times marked ~ are approximate: the sequence is firmly documented, but the interior rescue and
 firefighting minutes were reconstructed from survivor accounts, not a clock. Where the record is
 silent on a person's exact movements, they are not invented. **Path-crossings are flagged — "met"
-where people run into each other or join up, "split" where they part.***
+where people run into each other or join up, "split" where they part.** The people named in each
+beat are the "cast" present; their roles are in the **Terms** key, the accounts (Part II), and the
+roster (Appendix A) — in the interactive artifact each beat carries a "who's here" list with roles
+beside its timestamp.*
 
 **~01:24**
 - **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4, then, told by radio to bring stretchers, **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs **between +12.5 and +10**, before he reaches the control room, a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; beyond a pile of wreckage a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
