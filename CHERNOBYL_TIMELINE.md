@@ -106,12 +106,11 @@ the plant's own shorthand.
 # CHAIN OF COMMAND — who was in charge of whom (rank & authority)
 
 Ranks and reporting lines, so it is clear who outranked whom and who each person commanded — **every
-named person in this account has a place here**, from the console operators to the guards at the fence
-to the ministers in Moscow. The plant ran on **two parallel chains** — an **administrative line**
-(director → chief engineer → deputies → shops) and an **operational shift** (station shift supervisor →
-unit shift chief → console operators → field foremen). On the night of the test the two collided (see
-the note). People who were *present but outside* the plant's command line (the external test crew, the
-commissioning group, contractors) are listed under the note that follows.
+named person in this account has a place here**. It is split into **three separate organisations**:
+**① the plant** — one chain with the **director at the top** and every worker in levels below him;
+**② the firefighters** — their own military-style command; and **③ everything beyond the plant** — the
+government commission (Shcherbina, Legasov), the doctors, and the town. Within the plant each person
+shows their **position** and, if they were on shift, **which shift**.
 
 **How to read this:** work top-down — each person **answered to the one directly above them**; the
 label in *italics* after a name is their **job or rank**; and the names branching underneath are **the
@@ -122,22 +121,33 @@ people they were in charge of**.
 > young operator at the console — is the command chain that matters most on the night; everything else
 > below is the fuller structure around it.
 
-## The plant, that night · operations
+## 1 · The plant
 
-- **Viktor Bryukhanov** — *Plant Director* — top of the plant; the whole station answered to him *(off-site during the test)*
-  - **Nikolai Fomin** — *Chief Engineer* — technical head of the plant; approved the test *(off-site)*
-    - **Anatoly Dyatlov** — *Dep. Chief Engineer, Operations* — the senior man in the control room; directed the test and outranked **everyone present** *(de-facto command, by seniority)*
-      - **Boris Rogozhkin** — *Station Shift Supervisor (NSS)* — by the book the senior on-duty officer for the *whole station*, formally above Akimov; **sidelined on Unit 4** once Dyatlov took charge
-        - **Aleksandr Akimov** — *Unit 4 Shift Chief (NSB)* — formally ran Unit 4's crew; deferred to Dyatlov
-          - **Leonid Toptunov** — *SIUR* (senior reactor-control engineer) — worked the rods at the console (BShchU‑4)
-          - **Boris Stolyarchuk** — *SIUB* (senior unit-control engineer) — feedwater & unit systems
-          - **Igor Kirschenbaum** — *SIUT* (senior turbine-control engineer) — the turbine console
-          - **Yuri Tregub** — *Outgoing shift foreman* — ran the *previous* shift; stayed on to watch the unfamiliar test, then was sent to the ECCS valves and went out with Yuvchenko
-          - **Valery Perevozchenko** — *Reactor-shop shift foreman* — over the reactor-hall, central-hall & pump operators: **Khodemchuk** (main pumps), **Kurguz** & **Genrikh** (central hall +36), **Degtyarenko** (pumps), **Simonenko/Simeonov** (gas circuit), and trainees **Proskuryakov** & **Kudryavtsev**
-          - **Alexander Yuvchenko** — *Sr. mechanical engineer, reactor shop* — the shift's reactor-section mechanic; not over a crew, but the man who carried the injured and held the reactor-hall door — this account's central witness
-          - **Razim Davletbayev** — *Dep. turbine-shop chief (shift)* — over the turbine machinists: **Brazhnik**, **Perchuk**, **Vershinin**, **Korneyev**, **Busygin**, **Uskov**
-          - **Aleksandr Lelechenko** — *Dep. electrical-shop chief* — over the on-shift electricians: **Lopatyuk**, **Novik**, and duty electrical engineer **Baranov**
-          - **Nikolai Gorbachenko** — *Shift dosimetrist* — the unit's radiation monitor on shift (instruments off-scale); worked with the crew but answered to the plant civil-defense service, not to Akimov
+Everyone employed at or stationed at Chernobyl that night, in **one chain — the director at the very
+top**, each level answering to the one above. Each name carries its **position** and, where the person
+was on shift, **which shift**: *night shift* ran the test; *day shift* came on from ~06:00 as the relief.
+
+- **Viktor Bryukhanov** — *Plant Director* · *off-site* — the whole station answered to him
+  - **Nikolai Fomin** — *Chief Engineer* · *off-site* — technical head of the plant; approved the test, and from ~dawn ran the response from the bunker *(standing order: keep pumping water into Unit 4)*
+    - **Anatoly Dyatlov** — *Dep. Chief Engineer, Operations* · **night shift** — the senior man in the control room; took **de-facto command** of the test and outranked everyone present *(this branch is the night operating line)*
+      - **Boris Rogozhkin** — *Station Shift Supervisor (NSS)* · **night shift** — by the book the senior on-duty officer for the *whole station*, formally above Akimov; sidelined on Unit 4 once Dyatlov took charge
+        - **Aleksandr Akimov** — *Unit 4 Shift Chief (NSB)* · **night shift** — formally ran Unit 4's crew; deferred to Dyatlov
+          - **Leonid Toptunov** — *SIUR* (senior reactor-control engineer) · **night** — worked the rods at the console (BShchU‑4)
+          - **Boris Stolyarchuk** — *SIUB* (senior unit-control engineer) · **night** — feedwater & unit systems
+          - **Igor Kirschenbaum** — *SIUT* (senior turbine-control engineer) · **night** — the turbine console
+          - **Yuri Tregub** — *Outgoing shift foreman* · *prev. shift* — ran the *previous* shift; stayed on to watch the unfamiliar test, then was sent to the ECCS valves and went out with Yuvchenko
+          - **Valery Perevozchenko** — *Reactor-shop shift foreman* · **night** — over the reactor-hall, central-hall & pump operators: **Khodemchuk** (main pumps), **Kurguz** & **Genrikh** (central hall +36), **Degtyarenko** (pumps), **Simonenko/Simeonov** (gas circuit), and trainees **Proskuryakov** & **Kudryavtsev** — all night shift
+          - **Alexander Yuvchenko** — *Sr. mechanical engineer, reactor shop* · **night** — the shift's reactor-section mechanic; not over a crew, but the man who carried the injured and held the reactor-hall door — this account's central witness
+          - **Razim Davletbayev** — *Dep. turbine-shop chief (shift)* · **night** — over the turbine machinists: **Brazhnik**, **Perchuk**, **Vershinin**, **Korneyev**, **Busygin**, **Uskov** — all night shift
+          - **Aleksandr Lelechenko** — *Dep. electrical-shop chief* · **night** — over the on-shift electricians: **Lopatyuk**, **Novik**, and duty electrical engineer **Baranov** — all night shift
+    - **Anatoly Sitnikov** — *Dep. Chief Engineer, Units 1–2* · **day shift** — brought in by Fomin to take the incapacitated Dyatlov's place on Unit 4 *(this branch is the day relief)*; sent up to confirm the core was destroyed — and disbelieved *(fatal dose)*
+      - **Vladimir Babichev** — *Unit 4 Shift Chief (NSB)* · **day shift** — relieved the stricken Akimov (~06:00); with day-shift engineers **Orlov**, **Uskov**, **Nekhaev**, who kept feeding water into Unit 4 on the bunker's orders, some joining the fatal valve effort
+      - **Viktor Smagin** — *Unit-4 morning foreman* · **day shift** — took over the unit and went to the feedwater valves (~280 rad); found Akimov & Toptunov already dying
+  - **Serafim Vorobyov** — *Plant civil-defense chief* — the plant's radiation-emergency service, a separate branch reporting to the director; measured ~200 R/h and urged a public warning — overruled by management
+    - **Nikolai Gorbachenko** — *Shift dosimetrist* · **night shift** — the on-shift radiation monitor (instruments off-scale); sat with the operating crew but answered to this service, not to Akimov
+  - **Sergei Parashyn** — *Plant Party (CPSU) secretary* — head of the plant's Party organisation; a parallel political authority *beside* the director
+  - **Plant paramilitary guard (VOKhR)** — the armed guard force under plant security held the perimeter posts through the night: **Yekaterina Ivanenko** (a perimeter post) and **Klavdia Luzganova** (near the spent-fuel store) — exposed in the open all night; both died of ARS
+  - **Yuri Laushkin** — *Resident state safety inspector* — the on-site regulator (USSR atomic-power inspectorate, Gosatomenergonadzor); posted at the plant but answered to *Moscow, not the director*; later convicted for lax oversight
 
 > **Alongside the shift — present, but not in the plant's command line.** **Gennady Metlenko**
 > (Dontekhenergo, external test director) ran the experiment itself with two assistants and gave the
@@ -145,29 +155,16 @@ people they were in charge of**.
 > through Dyatlov and Akimov. The **commissioning / start-up group** was also on the unit: **Pyotr
 > Palamarchuk** (group head) and adjuster **Vladimir Shashenok**, stationed in room 604 phoning
 > pressure readings — where the blast crushed and scalded him (the second man to die). External
-> specialist **Vladimir Savenkov** (Kharkiv Turboatom vibration lab) was at turbine No. 8 when it happened.
+> specialist **Vladimir Savenkov** (Kharkiv Turboatom vibration lab) was at turbine No. 8 when it
+> happened. Off to the side of the live shift: **Kovalenko** (head of Reactor Shop No. 2) and **Lyutov**
+> (deputy chief engineer for science) — senior, but not on shift.
 
 > **The command knot — formal vs de-facto.** By the book, station shift supervisor **Boris Rogozhkin**
 > (NSS — senior on-duty officer for the *whole plant*) sat above unit shift chief Akimov, and Unit 4
 > was Akimov's to run. But **Dyatlov, a deputy chief engineer, outranked them both and was in the room
 > directing the test**, so real command ran **Dyatlov → Akimov → Toptunov**, with Rogozhkin sidelined;
 > the test program never cleanly named one accountable director (at trial Dyatlov even tried to pin
-> the power reduction on Rogozhkin's orders). Off to the side of the live shift: **Kovalenko** (head of
-> Reactor Shop No. 2) and **Lyutov** (deputy chief engineer for science) — senior, but not on shift.
-
-## Plant security, Party & the on-site regulator · that night
-
-- **Sergei Parashyn** — *Plant Party (CPSU) secretary* — head of the plant's Communist Party organisation; a parallel political authority beside the director, and among the senior management as the response formed
-- **Yuri Laushkin** — *Resident state nuclear-safety inspector* — the on-site regulator (USSR atomic-power inspectorate, Gosatomenergonadzor); later convicted for lax oversight
-- **Paramilitary guard (VOKhR)** — the plant's armed guard force held the perimeter posts through the night: **Yekaterina Ivanenko** (a perimeter post) and **Klavdia Luzganova** (near the spent-fuel store) — exposed in the open all night; both died of ARS
-
-## The day shift · from ~06:00–08:00, 26 April
-
-- **Viktor Bryukhanov** & **Nikolai Fomin** — *Director & Chief Engineer* — now running the response from the bunker; their standing order — *keep pumping water into Unit 4* — governs the day shift
-  - **Anatoly Sitnikov** — *Dep. Chief Engineer, Units 1–2* — brought over by Fomin to take the incapacitated Dyatlov's place on Unit 4; sent up to confirm the core was destroyed — and disbelieved *(fatal dose)*
-  - **Vladimir Babichev** — *Incoming shift chief* — relieved the stricken Akimov (~06:00)
-  - **Viktor Smagin** — *Incoming Unit-4 morning foreman* — took over the unit and went to the feedwater valves (~280 rad); found Akimov & Toptunov already dying
-  - Day-shift operating engineers — **Orlov**, **Uskov**, **Nekhaev** — kept feeding water into Unit 4 on the bunker's orders, some joining the fatal valve effort
+> the power reduction on Rogozhkin's orders).
 
 > **Why the day shift matters here.** The night crew were being carried out by dawn, so from ~06:00–08:00
 > the plant was run by **replacements sent into a reactor no one in charge would admit was destroyed**.
@@ -175,32 +172,23 @@ people they were in charge of**.
 > own (fatal) eyes and was still overruled — the same denial that had governed the night, now killing the
 > men brought in to relieve it.
 
-## Firefighting (Major > Lieutenant)
+## 2 · The firefighters
+
+A separate, military-style command that arrived from outside — **rank decides who is in charge**
+(Major over Lieutenant), not the plant's hierarchy.
 
 - **Maj. Leonid Telyatnikov** — *Garrison fire chief* — took overall command on arrival, over all crews on scene
   - **Lt. Vladimir Pravik** — *Guard cmdr, VPCh-2 (plant unit)* — first on scene; held command until Telyatnikov came
   - **Lt. Viktor Kibenok** — *Guard cmdr, SVPCh-6 (Pripyat unit)* — led the Pripyat crew: **Ignatenko**, **Vashchuk**, **Tytenok**, **Tishura** (on the roof the two lieutenants' crews merged)
   - **Also on the crews/roofs that night:** the **Shavrey** brothers (Leonid, Ivan, Petr), Lt. **Piotr Khmel** (off-duty) with his father, driver **Grigori Khmel**, and **Zakharov**, **Petrovsky** & **Ivanchenko** — plant & Pripyat firefighters who fought on knowing the danger; all of these survived
 
-## Radiation & medical
+## 3 · Beyond the plant — the state, science & medicine
 
-- **Serafim Vorobyov** — *Plant civil-defense chief* — responsible for the radiation-emergency response; measured ~200 R/h and urged a public warning — overruled by management (his shift dosimetrist Gorbachenko's instruments were off-scale)
-- **At the scene · Pripyat ambulances**
-  - **Dr. Valentin Belokon** — *Pripyat ambulance doctor* — treated the stricken at the plant and recognised radiation sickness, then fell ill himself
-  - **Dr. Skachek** — *Ambulance physician* — on the first vehicle out, in no protective clothing
-- **Dr. Vitaly Leonenko** — *Chief physician, MSCh-126 (Pripyat)* — ran the plant hospital that took the first casualties (Shashenok died there)
-- **Dr. Angelina Guskova** — *Clinical head, Hospital No. 6 (Moscow)* — led the acute-radiation treatment of the airlifted worst cases
-  - **Dr. Alexander Baranov** — *Hematologist, Hospital No. 6* — ran the bone-marrow work
-  - **Dr. Robert Gale** — *Bone-marrow specialist, USA (visiting)* — assisted with the transplants (most failed)
-- **Dr. Leonid Ilyin** — *Director, Institute of Biophysics* — shaped the national dose-limit and evacuation policy above the hospitals
+The response that came from **outside and above** the plant — the government commission (Shcherbina,
+Legasov and the ministers), the doctors who treated the casualties, and the town government that ran
+the evacuation.
 
-## Pripyat · the town
-
-- **Vladimir Voloshko** — *Chairman, Pripyat city executive committee* — head of the town government
-  - **Alexander Esaulov** — *Deputy chairman, city executive* — ran the city side of the evacuation
-  - **Maria Protsenko** — *Chief city architect* — drew the maps and organised the evacuation district by district
-
-## Above the plant · the state response
+### The state & scientific response
 
 - **Mikhail Gorbachev** — *General Secretary, CPSU* — ultimate political authority
   - **Nikolai Ryzhkov** — *Premier (Chairman, Council of Ministers)* — headed the Politburo operations group; the "evacuate tomorrow" decision
@@ -219,6 +207,23 @@ people they were in charge of**.
 > Institute. Minenergo **ran** the reactor; Minsredmash **owned the design and its hidden flaws** —
 > which is why responsibility was fought over between operators and designers, and why INSAG-7 (1992)
 > shifted the primary blame onto the design.
+
+### The medical response
+
+- **At the scene · Pripyat ambulances**
+  - **Dr. Valentin Belokon** — *Pripyat ambulance doctor* — treated the stricken at the plant and recognised radiation sickness, then fell ill himself
+  - **Dr. Skachek** — *Ambulance physician* — on the first vehicle out, in no protective clothing
+- **Dr. Vitaly Leonenko** — *Chief physician, MSCh-126 (Pripyat)* — ran the local hospital that took the first casualties (Shashenok died there)
+- **Dr. Angelina Guskova** — *Clinical head, Hospital No. 6 (Moscow)* — led the acute-radiation treatment of the airlifted worst cases
+  - **Dr. Alexander Baranov** — *Hematologist, Hospital No. 6* — ran the bone-marrow work
+  - **Dr. Robert Gale** — *Bone-marrow specialist, USA (visiting)* — assisted with the transplants (most failed)
+- **Dr. Leonid Ilyin** — *Director, Institute of Biophysics* — shaped the national dose-limit and evacuation policy above the hospitals
+
+### Pripyat · the town government
+
+- **Vladimir Voloshko** — *Chairman, Pripyat city executive committee* — head of the town government
+  - **Alexander Esaulov** — *Deputy chairman, city executive* — ran the city side of the evacuation
+  - **Maria Protsenko** — *Chief city architect* — drew the maps and organised the evacuation district by district
 
 ---
 
