@@ -197,8 +197,8 @@ the evacuation.
       - **Anatoly Maiorets** — *USSR Energy Minister* — head of the plant's own ministry (Minenergo)
       - **Aleksandr Meshkov** — *1st Dep. Minister, Minsredmash* — the reactor *designers'* ministry; led the cause inquiry
       - **Gennady Shasharin** (Dep. Energy Minister), **Armen Abagyan** (VNIIAES Director), **Boris Prushinsky** (Soyuzatomenergo chief engineer) — technical experts to the commission
-      - **Col.-Gen. Vladimir Pikalov** — *Chemical Troops commander* — radiation reconnaissance **(outranks the air-ops general)**
-      - **Maj.-Gen. Nikolai Antoshkin** — *Air operations* — directed the helicopter drops onto the reactor
+      - **Col.-Gen. Vladimir Pikalov** — *Chemical Troops commander* — radiation reconnaissance; **drove the recon vehicle to the reactor himself** *(a three-star general — outranks the air-operations commander)*
+      - **Col. Nikolai Antoshkin** — *Air operations* — directed the helicopter drops onto the reactor *(promoted Maj.-Gen. and Hero of the Soviet Union for it)*
       - **Gen. Gennadi Berdov** — *Dep. Interior Minister, Ukraine* — police & troops for the evacuation and cordon
 
 > **The operator-vs-designer split.** The plant *reported to* the **Ministry of Energy (Minenergo)**
@@ -873,7 +873,7 @@ no reliable source records his death; he may still be living. Corrected from an 
 up in the city executive-committee (ispolkom) building: chairman **Boris Shcherbina** (Deputy
 Chairman of the USSR Council of Ministers), scientist **Valery Legasov**, Energy Minister **Anatoly
 Maiorets**, deputy minister **Gennady Shasharin**, Minsredmash deputy **Aleksandr Meshkov**, and
-VNIIAES director **Armen Abagyan**. General **Nikolai Antoshkin** is on hand to organise the
+VNIIAES director **Armen Abagyan**. Col. **Nikolai Antoshkin** is on hand to organise the
 helicopters. On the approach **Legasov saw a crimson glow over roughly half the sky**; scattered
 graphite en route confirms the core is breached. *(Individual members had arrived at different,
 earlier hours — "20:00" is the main party.)*
@@ -936,9 +936,36 @@ one of mass response rather than individual minutes.
 |---|---|
 | **27 Apr, ~13:10** | A radio announcement tells residents to prepare for a temporary evacuation "for three days." |
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
-| **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Major-General Nikolai Antoshkin** (pilots) and **Legasov** (materials). Over the following days roughly 5,000 tonnes are dropped. Chemical-troops commander **Colonel-General Vladimir Pikalov** personally drives into the high-radiation zone to take measurements. |
-| **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6**, under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with bone-marrow transplants (most fail). The deaths chronicled in Part V follow over the next three months. |
+| **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Col. Nikolai Antoshkin** *(promoted Maj.-Gen. for the operation)* and **Legasov** (materials). Over 27 Apr → ~2 May roughly **5,000 tonnes** are dropped (see note). Chemical-troops commander **Col.-Gen. Vladimir Pikalov** personally drives the recon vehicle into the high-radiation zone to take the measurements himself (see note). |
+| **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Gy), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
+
+> **The general who drove in himself.** With the plant's own dosimeters dead or floored, the first
+> authoritative radiation picture came from the military. **Col.-Gen. Vladimir Pikalov**, commander of
+> the Chemical Troops, **drove the radiation-reconnaissance vehicle right up to the wrecked Unit 4
+> himself rather than order a soldier to make the lethal run** (26–27 April) — confirming the graphite
+> was burning and the fields were far above the plant's figures, and absorbing about **1.37 Sv
+> (~137 rem)** doing it. He was made **Hero of the Soviet Union**. *[documented]* *(The vivid touches —
+> ramming the closed gate, telling his young driver "stay here, son, you've still to become a father" —
+> are reported/dramatized flourishes; the documented core is that a three-star general personally ran
+> the recon and took a serious dose.)*
+
+> **The airdrops — heroic, but they mostly missed.** From **27 April to ~2 May**, Mi-8, Mi-6 and Mi-26
+> helicopters flew ~**1,800 sorties** over the open core and dumped ~**5,000 tonnes** into the crater —
+> roughly **2,400 t lead, 1,800 t sand & clay, 800 t dolomite and 40 t boron carbide** — crews hovering
+> in fields of thousands of R/h, laying sheets of the dropped lead on their cabin floors for shielding,
+> under a 25-roentgen dose limit. But the post-accident Kurchatov/Borovoi survey of the ruins **found
+> little trace of the dropped material where the fuel actually was** — most of it missed, and the
+> blanket may have **trapped heat**, feeding the temperature rise around 1–2 May that revived melt
+> fears. The drops helped smother the graphite fire and the airborne release, but did **not** "seal"
+> the core. *[reported/disputed]*
+
+> **The helicopter crash — the real one was in October.** On **2 October 1986**, an **Mi-8** flying a
+> decontaminant run struck the **cable of a construction crane** raised over the reactor for the
+> sarcophagus; its rotor shattered and it fell beside Unit 4, **killing all four crew** (Capt. Vladimir
+> Vorobyov and his men). It was **caught on film** — which is why it is so widely remembered, and why
+> the 2019 series folds a crash into the *April* firefight (Appendix C). The real crash came **five
+> months after** the accident, during the sarcophagus build — not during the fire. *[documented]*
 
 ## The "Chernobyl divers" — the bubbler-pool valve drain (6 May), step by step
 
@@ -1194,7 +1221,7 @@ had handed over and the **day shift** that relieved them follow.
 - **Aleksandr Meshkov** — first deputy minister (Medium Machine Building); led the "cause" group.
 - **Armen Abagyan** — VNIIAES director; led the dosimetry / evacuation prognosis.
 - **Nikolai Ryzhkov** — USSR Premier; answered Shcherbina "evacuation tomorrow".
-- **Maj.-Gen. Nikolai Antoshkin** (43) — organised and directed the helicopter drops; d. 2021.
+- **Col. Nikolai Antoshkin** (43) — organised and directed the helicopter drops; made **Maj.-Gen. and Hero of the Soviet Union** for it; d. 2021.
 - **Col.-Gen. Vladimir Pikalov** — chemical-troops commander; personally drove into the high-radiation zone to measure it; d. 2003.
 
 ### Pripyat city
@@ -1252,7 +1279,9 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
 - **Legasov's "What is the cost of lies?"** — a screenwriter's line, not from his tapes (though his
   disillusionment and 1988 suicide are real).
 - **The composite scientist "Ulana Khomyuk"** and the helicopter crash *during the initial fire* are
-  inventions; the real Mi‑8 crash occurred on **2 October 1986**, striking a crane cable.
+  inventions. The **real Mi‑8 crash was 2 October 1986** — a crane-cable strike during the sarcophagus
+  build that killed all four crew (documented as real in **Part IV**), five months *after* the fire,
+  not during it.
 
 ---
 
