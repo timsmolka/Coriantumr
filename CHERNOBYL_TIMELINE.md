@@ -131,6 +131,20 @@ shops) and an **operational shift** (station shift supervisor → unit shift chi
 > the power reduction on Rogozhkin's orders). Off to the side of the live shift: **Kovalenko** (head of
 > Reactor Shop No. 2) and **Lyutov** (deputy chief engineer for science) — senior, but not on shift.
 
+## The day shift · from ~06:00–08:00, 26 April
+
+- **Viktor Bryukhanov** & **Nikolai Fomin** — *Director & Chief Engineer* — now running the response from the bunker; their standing order — *keep pumping water into Unit 4* — governs the day shift
+  - **Anatoly Sitnikov** — *Dep. Chief Engineer, Units 1–2* — brought over by Fomin to take the incapacitated Dyatlov's place on Unit 4; sent up to confirm the core was destroyed — and disbelieved *(fatal dose)*
+  - **Vladimir Babichev** — *Incoming shift chief* — relieved the stricken Akimov (~06:00)
+  - **Viktor Smagin** — *Incoming Unit-4 morning foreman* — took over the unit and went to the feedwater valves (~280 rad); found Akimov & Toptunov already dying
+  - Day-shift operating engineers — **Orlov**, **Uskov**, **Nekhaev** — kept feeding water into Unit 4 on the bunker's orders, some joining the fatal valve effort
+
+> **Why the day shift matters here.** The night crew were being carried out by dawn, so from ~06:00–08:00
+> the plant was run by **replacements sent into a reactor no one in charge would admit was destroyed**.
+> Sitnikov, ordered up to look and then disbelieved, is the clearest case: he confirmed the truth with his
+> own (fatal) eyes and was still overruled — the same denial that had governed the night, now killing the
+> men brought in to relieve it.
+
 ## Firefighting (Major > Lieutenant)
 
 - **Maj. Leonid Telyatnikov** — *Garrison fire chief* — took overall command on arrival, over all crews on scene
