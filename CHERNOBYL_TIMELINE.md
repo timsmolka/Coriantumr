@@ -93,7 +93,7 @@ the plant's own shorthand.
 - **VPCh-2 / SVPCh-6** — the two **paramilitary fire brigades**: VPCh-2 based at the plant (Pravik), SVPCh-6 in Pripyat town (Kibenok).
 - **VSRO / vent block** — the **ventilation-stack structure between Units 3 and 4**, whose roof the firefighters climbed.
 - **DP-5** — the **military radiometer** (200 R/h ceiling) that Vorobyov used off-site.
-- **SKALA / DREG** — the plant's **central process computer** (SKALA) and its **event logger** (DREG), which fixed the AZ-5 press at ~01:23:39.
+- **SKALA / DREG** — the plant's **central process computer** (SKALA) and its **event logger** (DREG), which recorded the AZ-5 press (commonly cited at 01:23:40; some reconstructions ~01:23:39).
 - **Deaerator** — kit that strips dissolved gas from feed-water; its long "**Golden Corridor**" gallery is the plant's +10 spine.
 - **Bubbler pool** — the **pressure-suppression water pool beneath the reactor** (the "divers" drained it).
 - **"Elena" (the *pyatak*)** — the ~1,000-tonne **upper biological-shield disc** over the core, blown up and left tilted.
@@ -138,7 +138,7 @@ was on shift, **which shift**: *night shift* ran the test; *day shift* came on f
           - **Yuri Tregub** — *Evening-shift foreman* · *prev. shift* — **not Akimov's subordinate by rank**: he had run the *previous (evening) shift* as its chief — the same job Akimov now held — and handed over at 00:00, then stayed on *voluntarily*. Through the night he held no formal command and took direction from Akimov/Dyatlov — Dyatlov even used him as leverage, threatening to "give the shift to Tregub" to pressure Akimov & Toptunov into raising power; after the blast he ran back with Yuvchenko to report the core was gone
           - **Alexander Yuvchenko** — *Sr. mechanical engineer, reactor shop* · **night** — the shift's reactor-section mechanic; **worked alone — no crew under him**, but the man who carried the injured and held the reactor-hall door (this account's central witness)
           - **Valery Perevozchenko** — *Reactor-shop shift foreman* · **night** — in charge of the reactor-hall, central-hall & pump operators: **Khodemchuk** (main pumps), **Kurguz** & **Genrikh** (central hall +36), **Degtyarenko** (pumps), **Simonenko/Simeonov** (gas circuit), and trainees **Proskuryakov** & **Kudryavtsev** — all night shift
-          - **Razim Davletbayev** — *Dep. turbine-shop chief (shift)* · **night** — in charge of the turbine-hall machinists: **Brazhnik**, **Perchuk**, **Vershinin**, **Korneyev**, **Busygin**, **Uskov** — all night shift
+          - **Razim Davletbayev** — *Dep. turbine-shop chief (shift)* · **night** — in charge of the turbine-hall machinists: **Brazhnik**, **Perchuk**, **Vershinin**, **Korneyev**, **Busygin** — all night shift (the engineers **Uskov, Orlov & Nekhaev** were day-relief, phoned in before dawn)
           - **Aleksandr Lelechenko** — *Dep. electrical-shop chief* · **night** — in charge of the on-shift electricians: **Lopatyuk**, **Novik**, and duty electrical engineer **Baranov** — all night shift
     - **Anatoly Sitnikov** — *Dep. Chief Engineer, Units 1–2* · **day shift** — brought in by Fomin to take the incapacitated Dyatlov's place on Unit 4 *(this branch is the day relief)*; sent up to confirm the core was destroyed — and disbelieved *(fatal dose)*
       - **Vladimir Babichev** — *Unit 4 Shift Chief (NSB)* · **day shift** — relieved the stricken Akimov (~06:00); with day-shift engineers **Orlov**, **Uskov**, **Nekhaev**, who kept feeding water into Unit 4 on the bunker's orders, some joining the fatal valve effort
@@ -281,9 +281,11 @@ below would hand it instead to the night shift.
 | **01:22:30** | Recorded parameters show the **operating reactivity margin at only ~6–8 equivalent control rods**, far below the ~15-rod minimum that mandates immediate shutdown. The core is in a highly unstable state. | |
 
 > **The ~00:28 power drop — corrected.** For years this was blamed on operator error by Toptunov.
-> **INSAG‑7 (1992) explicitly retracted that**, stating *"there was no operator error as such"* and
-> citing an unknown cause. Toptunov was at the console during the control transfer, but the drop is
-> **not** attributed to his fault.
+> **INSAG‑7 (1992) substantially walked that back**, attributing the accident primarily to the
+> reactor's design rather than the operators; later summaries — the **World Nuclear Association**,
+> following the Soviet **SCSSINP** commission and Dyatlov — put it more bluntly as *"no operator error
+> as such"* and an unknown cause. *(The blunt phrasing is WNA's, not a verbatim INSAG‑7 line.)* Toptunov
+> was at the console during the control transfer, but the drop is **not** attributed to his fault.
 >
 > **The 01:22:30 "printout" — disputed.** The traditional account has the crew receiving a SKALA
 > computer printout warning of the low margin. The World Nuclear Association disputes this: SKALA
@@ -310,9 +312,9 @@ below would hand it instead to the night shift.
 > second blast (hydrogen from zirconium-steam reaction, and/or a further nuclear excursion) remains
 > debated.
 >
-> **AZ‑5 — who and why.** The physical press was **~01:23:39** (per the DREG data logger);
-> **01:23:40** is the moment the SKALA system *registered* the command. **Toptunov pressed it on
-> Akimov's order** — Akimov ordered, Toptunov pressed. **Why** it was pressed has never been
+> **AZ‑5 — who and why.** The press is **commonly cited at 01:23:40**; some DREG-based reconstructions
+> read **~01:23:39** *(both are logger-derived — DREG runs on SKALA — so a clean "DREG vs SKALA" split
+> isn't firmly supported)*. **Toptunov pressed it on Akimov's order** — Akimov ordered, Toptunov pressed. **Why** it was pressed has never been
 > established (INSAG‑7): whether as a routine end-of-test shutdown or in response to rising power.
 > Both men who knew died within weeks.
 
@@ -504,7 +506,7 @@ Pripyat kindergarten); one of their sons had **died of leukaemia in childhood** 
 **Died 1995** of heart failure linked to his radiation exposure.
 
 **Aleksandr Fyodorovich Akimov** — *Shift supervisor of the Unit 4 night shift; in charge of the
-crew during the test.* Aged 32 (he turned 33 on 10 May, the day he died). His demeanor moved from
+crew during the test.* Aged 32 — he had just turned 33 on **6 May**, four days before his death on 10 May. His demeanor moved from
 **disbelief to anguished, self-sacrificing duty**. He first refused to accept the core was destroyed
 and reported upward that the reactor was intact — then stayed and, with Toptunov, Nekhaev, Orlov and
 Uskov, went up from the control room (+10) into the wrecked **feedwater room at +24**, opened the
@@ -696,7 +698,7 @@ cataracts ended his nuclear career.
 Also in or around the turbine hall: **Arkady Uskov**, **Nekhaev** and **Orlov** (turbine
 operators who, with Akimov and Toptunov, waded knee-deep into the flooded +27 level to open
 feedwater valves — Uskov and Nekhaev **survived** and left written recollections); and **Busygin**
-and **Vershinin** among the crew (fates less firmly documented — see *Appendix B*).
+and **Yuri Vershinin** among the crew (a turbine-shop machine operator who fought the machine-hall fire; **died 21 July 1986** per liquidator records).
 
 ## The electrical shop
 
@@ -861,7 +863,9 @@ under my feet. But I still did not think that the reactor was destroyed." **Surv
 **Nikolai Maksimovich Fomin** — *Chief engineer.* Bore management responsibility for approving the
 test. **Shaken and disoriented that night**, then, under prosecution, a catastrophic collapse:
 before trial he attempted suicide in his cell, and later suffered a nervous breakdown and
-psychiatric confinement. **Survived**; convicted; later returned to nuclear work; died 2011.
+psychiatric confinement. **Survived**; convicted; released early and later returned to nuclear work
+at the **Kalinin** plant, retiring to Udomlya. *(A widely-copied "died 2011" appears unsupported —
+no reliable source records his death; he may still be living. Corrected from an earlier draft.)*
 
 ## Evening, and into the small hours (18:00 → ~01:23 on 27 April)
 
@@ -1001,6 +1005,7 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 | **11 May** | Viktor Kibenok | Fire lieutenant (SVPCh‑6) | Led the Pripyat crew into the **most dangerous zone — the reactor / vent-block roof**, closest to the open core. |
 | **12 May** | Anatoly Kurguz | Central-hall operator (+35.5) | Scalded **head-to-foot by radioactive steam** at the central-hall airlock as he forced the door shut to shield Genrikh. |
 | **13 May** | Vasily Ignatenko | Firefighter (SVPCh‑6) | On the **reactor-block roof among graphite**, "in shirt sleeves," kicking burning debris — no protection. |
+| **13 May** | Ivan Orlov | Unit-4 operator | Ivan Lukych Orlov (b. 1945) — a fatal dose in the effort to **restore feedwater** to the wrecked unit. *(A **different man** from the survivor **Viacheslav Orlov**, who was called in to open the +27 valves.)* |
 | **14 May** | Leonid Toptunov | Senior reactor control engineer | With Akimov at the **feedwater valves in radioactive water** — the same futile effort (~13 Gy). |
 | **14 May** | Nikolai Vashchuk | Firefighter (SVPCh‑6) | On the reactor-block / vent-block roof among graphite, no protection. |
 | **14 May** | Aleksandr Kudryavtsev | Control engineer/trainee | **Looked directly into the open core** from the +35.5 ledge, sent to hand-lower the (non-existent) rods. |
@@ -1009,30 +1014,31 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 | **17 May** | Viktor Lopatyuk | Electrician | Worked to **localise the fire to Unit 4** and isolate electrics (with Lelechenko) in high fields. |
 | **17 May** | Viktor Proskuryakov | Engineer/trainee | **Looked into the open core** from the +35.5 ledge and shone a torch around the corner (severe burns to that hand). |
 | **19 May** | Viktor Degtyarenko | Reactor / coolant-pump operator | **Scalded by steam near his pump station** at the moment of the blast (the bloodied man Yuvchenko met). |
-| **19 May** | Anatoly Shapovalov | Plant worker *(role disputed)* | At the plant during the response — *exposure specifics thinly recorded.* |
+| **19 May** | Anatoly Shapovalov | Electrician | Anatoly Ivanovich Shapovalov (b. 1941) — on the plant electrical staff during the response; fatal dose in the high fields. |
 | **20 May** | Anatoly Baranov | Electrical duty engineer | Purged turbogenerators 3 & 4 with nitrogen to **avert a hydrogen explosion** in the burning machine hall. |
 | **20 May** | Kostyantyn Perchuk | Senior turbine machinist | Fought the turbine-oil fires and **cut the pumps off from fractured pipes** to stop radioactive water flooding in. |
 | **21 May** | Vladimir Savenkov | Vibration-lab specialist (Kharkiv) | At **turbogenerator No. 8** recording vibrations at the blast — took a lethal dose before he could be warned off. |
 | **26 May** | Yekaterina Ivanenko | Security guard (one of the few women) | **At her perimeter post** through the night, unprotected, in the open near the block. |
-| **28 May** | Yuriy Konoval | Plant operator | On the plant staff during the response — *exposure specifics thinly recorded.* |
+| **28 May** | Yuriy Konoval | Unit-4 machinery operator | Yuriy Ivanovych Konoval (b. 1942) — on the Block-4 machinery staff during the response; fatal dose. |
 | **30 May** *(some 31 May)* | Anatoly Sitnikov | Deputy chief engineer, Units 1–2 | Sent up to a **high vantage to look down into the reactor**, confirming the core destroyed (heavy dose to the head, ~1,500 rad). |
 | **13 June** | Valery Perevozchenko | Reactor-shop shift foreman | Searched the **>10,000 R/hr pump-hall rubble for Khodemchuk** and looked into the open core — a very high, drawn-out dose. |
+| **21 July** | Yuri Vershinin | Turbine-shop machine operator | On the turbine-hall crew that fought the machine-hall fires; a fatal dose. *(Long carried as "fate uncertain"; Soviet liquidator records give 21 July 1986.)* |
 | **26 July** | Oleksandr Novik | Electrician / turbine machinist | Worked to localise the fire and isolate electrics (with Lelechenko) in high fields. |
 | **31 July** | Klavdia Luzganova | Security guard | **At a perimeter guard post** (near the spent-fuel store), unprotected, through the night. |
-| **May 1986** *(date uncertain)* | Ivan Orlov | Plant worker | On the plant staff during the response — *date and exposure specifics uncertain.* |
 
-> **Reading the date footnotes.** *"(some 11 May)"* / *"(some 31 May)"* / *"(date uncertain)"* mean the
-> **death date differs between sources** (Akimov 10 vs 11 May; Sitnikov 30 vs 31 May; Orlov's is only
-> "May"). *"(role disputed)"* and *"thinly recorded"* mark the tail of turbine-hall and plant names
-> whose exact role, date, or exposure varies source to source — the **total (28 ARS deaths) is firmer
-> than any single line in that tail**. Full disagreements are in *Appendix B*.
+> **Reading the date footnotes.** *"(some 11 May)"* / *"(some 31 May)"* mean the **death date differs
+> between sources** (Akimov 10 vs 11 May; Sitnikov 30 vs 31 May). The **tail names** — Ivan Orlov
+> (13 May), Shapovalov (19 May), Konoval (28 May), Vershinin (21 July), Novik (26 July) — are dated
+> from **Soviet-era liquidator / memorial records** (consistent across them) rather than IAEA, which
+> publishes the *count* but **no official name list**; treat their exact roles and dates as
+> well-supported but a tier below the IAEA-corroborated core. Full disagreements are in *Appendix B*.
 
 > **On the "28 vs 31" figures.** These are **not competing counts**. **28** ARS deaths + the **2**
 > immediate deaths (Khodemchuk, Shashenok) = **30** early acute-phase deaths; the older Soviet total
 > of **31** adds a death attributed to coronary thrombosis (disputed as accident-caused). A further
-> 19 of the 134 ARS survivors died over 1987–2004 of various causes. The list above names ~26 of
-> the 28 ARS dead; a few turbine-hall names and dates (Vershinin, Savenkov, Novik, Orlov, Shapovalov)
-> **vary between sources** — see *Appendix B*.
+> 19 of the 134 ARS survivors died over 1987–2004 of various causes. The list above now names **27 of
+> the 28 ARS dead** (one remains unnamed in accessible sources) — the tail resting on the
+> liquidator-list sourcing noted above.
 
 ---
 
@@ -1080,7 +1086,7 @@ Ages on the accident date — birthdays falling later in the year make some a ye
 "age at death" that obituaries print. **[documented]** unless marked **[reported]**; those with no
 reliable birth record are listed as not recorded rather than guessed.
 
-- **Control room:** Dyatlov **55** · Akimov **32** (turned 33 on 10 May — the day he died) · Toptunov **25** · Stolyarchuk **~26** [reported]
+- **Control room:** Dyatlov **55** · Akimov **32** (turned 33 on 6 May, four days before he died) · Toptunov **25** · Stolyarchuk **~26** [reported]
 - **Reactor & halls:** Khodemchuk **35** · Yuvchenko **24** · Perevozchenko **38** · Proskuryakov **31** · Kudryavtsev **28** · Kurguz **28** · Degtyarenko **31**
 - **Turbine & electrical:** Brazhnik **28** · Anatoly Baranov (electrician) **32** · Perchuk **33** · Lelechenko **47** · Korneyev **~28** [reported]
 - **Room 604 & medical:** Shashenok **35** · Palamarchuk **~30** [reported]
@@ -1127,7 +1133,8 @@ had handed over and the **day shift** that relieved them follow.
 - **Anatoly Baranov** (32) — electrical duty engineer; purged turbogenerators 3 & 4 with nitrogen, averting a hydrogen blast. ✝ 20 May 1986.
 - **Vladimir Savenkov** — Kharkiv vibration-lab specialist; at turbine 8 at the moment of the blast, lethally dosed before he could be warned off. ✝ 21 May 1986.
 - **Yuri Korneyev** — turbine operator; came through as the last living member of the turbine night shift; survived.
-- **Busygin** (switched on the emergency pumps), **Vershinin** — turbine-hall crew (fates less certain — *Appendix B*).
+- **Busygin** — turbine-hall crew; switched on the emergency pumps (fate less firmly recorded — *Appendix B*).
+- **Yuri Vershinin** — turbine-shop machine operator; on the machine-hall fire crew. ✝ **21 July 1986** *(liquidator records)*.
 
 ### Electrical shop · *night shift*
 - **Aleksandr Lelechenko** (47) — deputy chief; sent his younger men away and waded three times through radioactive water to cut the hydrogen and avert a second explosion. ✝ 7 May 1986 · Hero of Ukraine (2006).
@@ -1170,7 +1177,7 @@ had handed over and the **day shift** that relieved them follow.
 
 ### Plant management, officials, and scientists
 - **Viktor Bryukhanov** (50) — plant director; could not accept the reactor had exploded, dismissed the high readings, and passed "under control" up to Moscow. Convicted (10 yrs); d. 2021.
-- **Nikolai Fomin** — chief engineer; approved the test, ordered the water pumped in, later collapsed under prosecution (suicide attempt, breakdown). Convicted; d. 2011.
+- **Nikolai Fomin** — chief engineer; approved the test, ordered the water pumped in, later collapsed under prosecution (suicide attempt, breakdown). Convicted; released early, later worked at the Kalinin plant; **death not reliably recorded** (the common "2011" is unsupported).
 - **Boris Rogozhkin** — night station shift supervisor (NSS) for the whole plant; convicted (5 years).
 - **Aleksandr Kovalenko** — head of Reactor Shop No. 2; convicted (3 years).
 - **Sergei Parashyn** — plant Party secretary; survived.
@@ -1207,14 +1214,17 @@ Kept explicit so the record is honest rather than falsely precise:
 
 - **Exact explosion time:** best-supported **01:23:45** for the first blast, second blast ~01:23:47–48;
   other sources give :44/:47/:48. All are reconstructions — instruments were destroyed.
-- **Why AZ‑5 was pressed:** unresolved (INSAG‑7). Physical press ~01:23:39; logged 01:23:40.
+- **Why AZ‑5 was pressed:** unresolved (INSAG‑7). Press commonly cited 01:23:40; some DREG-based reconstructions ~01:23:39.
 - **Cause of the ~00:28 power drop:** INSAG‑7 retracted the "operator error" attribution; cause unknown.
 - **Akimov's death:** 10 May (majority) vs 11 May (Higginbotham).
 - **Sitnikov's death:** 30 May (majority) vs 31 May.
 - **Ignatenko's death:** 13 May (better-supported) vs a minority 14 May (not to be confused with Vashchuk, 14 May).
-- **Turbine-hall dead:** the names/dates **Vershinin, Savenkov, Novik, Orlov, Shapovalov** appear
-  inconsistently across sources; the canonical *count* (28 ARS deaths) is firmer than every individual
-  name-and-date in the tail of the list.
+- **The "tail" dead (Vershinin, Novik, Ivan Orlov, Shapovalov, Konoval):** now dated from **Soviet-era
+  liquidator / memorial records** (Ivan Orlov 13 May, Shapovalov 19 May, Konoval 28 May, Vershinin
+  21 July, Novik 26 July), consistent across those compilations. Because the IAEA publishes the
+  **count** but no official **name list**, these rest a tier below the IAEA-corroborated core — the
+  canonical total (28 ARS deaths) remains firmer than any single tail name-and-date. *(Note two men
+  named Orlov: **Ivan** Orlov died 13 May; **Viacheslav** Orlov, the called-in valve engineer, survived.)*
 - **Bryukhanov's arrival:** "not yet 2 a.m." vs ~02:30 — rendered here as ~02:30.
 - **Commission arrival:** ~20:00 (common) vs 20:20 (Legasov's precise figure).
 - **ORM printout at 01:22:30:** whether the crew actually received a live reading is disputed.
@@ -1265,9 +1275,9 @@ posting** and from standard plant procedure. **None of it is documented.** Each 
 - **Vladimir Babichev** (incoming shift chief) — *ASSUMED:* in/around the Unit 4 control room **preparing to take over** between the ~03:00 relief order and his ~06:00 takeover. *Basis: documented relief order and takeover; the hours between not detailed. Survived.*
 
 **Turbine hall:**
-- **Yuri Vershinin & Alexander Novik** (roundsmen) — *ASSUMED:* on their machine-hall rounds at the blast, then **fought the engine-room fire** with the crew until overcome. *Basis: documented they fought the engine-room fire; exact positions unrecorded (Vershinin's death itself disputed).*
+- **Yuri Vershinin & Oleksandr Novik** (roundsmen) — *ASSUMED (positions):* on their machine-hall rounds at the blast, then **fought the engine-room fire** with the crew until overcome. *Basis: documented they fought the engine-room fire; exact positions unrecorded. Both died of ARS (Vershinin 21 July, Novik 26 July).*
 - **Busygin** (turbinist) — *ASSUMED:* at his post; **started the emergency feed-water pumps** on Akimov's order and worked the turbine-hall response. *Basis: documented feed-pump order; nothing else recorded. Presumed survived.*
-- **Nekhaev & Orlov** — *ASSUMED:* at their posts through the first hours before **joining the +27 feed-water valve effort** at ~06:00. *Basis: documented at +27; earlier whereabouts unrecorded. Both survived the acute phase.*
+- **Nekhaev & Viacheslav Orlov** — *ASSUMED:* **off-shift at home until called in (~04:00)**, then joined the **+27 feed-water valve effort**. *Basis: documented they were phoned in before dawn and worked the +27 valves; their earlier whereabouts are simply off-site. Both survived the acute phase.*
 
 **Firefighters (positions on the roof):**
 - **Vashchuk, Tytenok, Tishura** — *ASSUMED (positions):* on the **Unit 3 / ventilation-block roof** with Kibenok's squad, working the bitumen fires. *Basis: documented the squad was there and that Tishura, then Titenok, collapsed after ~20 min; who stood exactly where is not separately recorded.*
