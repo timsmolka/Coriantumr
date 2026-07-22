@@ -288,6 +288,19 @@ English wording varies book to book.
 > strange has happened"* was popularised by the miniseries writer but can't be tied to a surviving
 > witness — treat as weakly sourced.
 
+## The divers · draining the bubbler pool, ~5–6 May
+
+The documented record here is almost entirely **Ananenko's** — Bespalov and Baranov left essentially
+no verbatim words (Baranov's documented role was holding the underwater lamp). They were **on shift
+and tasked by the commission**, not called for in a dramatic volunteer scene, and **no reward was
+offered on the spot** (the miniseries' "400 rubles" is invented).
+
+- **"They only sent me because I knew how to do it… in that position, I could hardly have said No."** — **Ananenko**, on why he was the one chosen (he knew where the valves were). *[documented — 2019 interview]*
+- **"I asked for one more person to come with us, because we needed to open two valves."** — **Ananenko**, bringing Bespalov. *[documented]*
+- **"When the searchlight beam fell on a pipe, we were joyous: the pipe led to the valves. We heard the rush of water out of the tank. And in a few more minutes we were being embraced by the guys."** — **Ananenko**, contemporaneous account — the mission's most-quoted words. Note the searchlight **worked** (the "groped in the dark" version is a myth). *[documented]*
+- **"We walked quicker… because if you went slowly, the dose would be higher."** — **Ananenko**, 2019. *[documented]*
+- **"I never felt like a hero. I was doing my job."** — **Ananenko**, 2019 (often misattributed to Bespalov — it is Ananenko's). *[documented]*
+
 ---
 
 # PART II — THE ACCOUNTS OF THE PEOPLE
