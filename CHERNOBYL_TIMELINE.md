@@ -1422,7 +1422,9 @@ edge, whether or not anyone had a live reading of just how far gone it was.
 
 At **01:23:04** the test began: **Kirschenbaum closed the No. 8 turbine's steam-stop valves** on
 Akimov's order, Metlenko called *"Oscillograph — on!"*, and the four pumps on the coasting turbine
-started to slow. Coolant flow fell, boiling rose, reactivity climbed. Thirty-six seconds later, at
+started to slow — and the reactor did **not** trip here, because the automatic shutdown on loss of
+both turbines had been **deliberately disabled earlier in the night** so the test could be retried if
+it failed. Coolant flow fell, boiling rose, reactivity climbed. Thirty-six seconds later, at
 **01:23:40**, Akimov ordered *"AZ‑5!"* and **Toptunov pressed the emergency-shutdown button.** The rods
 began to descend — and their **graphite tips reached the bottom of the core first**, driving out the
 absorbing water and spiking reactivity at the base exactly where it must not. Power tore upward — past
@@ -1435,7 +1437,8 @@ heaved the **~1,000-tonne upper shield "Elena"** off its seat. **Valery Khodemch
 **second, larger explosion** ejected fuel and burning graphite, tore off the reactor-hall roof, and lit
 the graphite fire. Superheated radioactive steam burst into the central hall, scalding **Kurguz**, who
 **forced the heavy door shut to shield others** and took the worst of it himself; **Genrikh**, in an
-adjacent room, was less burned. In room 604, **Shashenok** was crushed under a fallen beam and scalded
+adjacent room, was less burned — and, clear-headed, **showered and changed before evacuating**,
+cutting his dose enough to live. In room 604, **Shashenok** was crushed under a fallen beam and scalded
 — mortally hurt. *(The exact second is a reconstruction — the instruments were destroyed; 01:23:45 is
 the best-supported value, and seismic records show two shocks ~2.7 seconds apart.)*
 
@@ -1465,7 +1468,11 @@ Perevozchenko, Proskuryakov and Kudryavtsev looked into the glowing core for und
 taking fatal doses. When Yuvchenko moved to look himself, **Perevozchenko — a nuclear-submarine veteran
 who understood exactly what lay open — shoved him back** and the door slammed: *"There's nothing to see
 here."* That shove, and the shielding of the wall and door, almost certainly saved his life; his burns
-would map to his **left shoulder, hip and calf**, the side turned to the hall.
+would map to his **left shoulder, hip and calf**, the side turned to the hall. He began vomiting
+within hours and was flown to Moscow that evening, where he spent about **a year in Hospital No. 6**,
+kept alive by constant transfusions — *"I lived on other people's blood"* — through graft after graft
+as the radiation ulcers opened; almost alone among the reactor-building men of that night, he lived.
+Married, with a small son, **Kirill**, he **died of leukaemia in 2008, aged 47.**
 
 And here the tragedy of the night set: **the reports changed nothing.** Tregub told Akimov and Dyatlov
 what he and Yuvchenko had seen; **Dyatlov held that an emergency feed-water tank had burst and the
@@ -1479,7 +1486,9 @@ and **Palamarchuk** fought oil and hydrogen fires that could have spread to the 
 in the electrical shop **Lelechenko waded three times through radioactive water** to cut the hydrogen
 and purge the generators with nitrogen, sparing his younger electricians and averting a second
 explosion. **Palamarchuk** and dosimetrist **Gorbachenko** carried the dying **Shashenok** out of room
-604, Gorbachenko burned where the dying man's hand rested on his back.
+604, Gorbachenko burned where the dying man's hand rested on his back. Out on the wrecked exterior,
+amid scattered graphite, **Tregub said to Dyatlov, *"This is Hiroshima"*** — and Dyatlov, still unable
+to accept the core was gone, said nothing.
 
 ## The firefighters on the roof
 
@@ -1494,8 +1503,14 @@ they succeeded: the last surface fires were out by about **06:35**, roughly four
 the blast, the response having peaked near **37 crews, ~186 firefighters and ~81 engines.** The
 graphite fire in the crater would burn for days. Dr. **Valentin Belokon**, the Pripyat ambulance
 physician, recognised he was seeing **radiation sickness, not burns**, and worked the casualties until
-he himself began vomiting. The roof men — Pravik, Kibenok, Ignatenko and the rest — had taken the doses
-that would kill them within weeks.
+he himself began vomiting. **Telyatnikov** survived — made Hero of the Soviet Union, he died of cancer
+in 2004 — but the roof men had taken the doses that would kill them within weeks. **Kibenok** told the
+ambulance doctor there were no burn casualties, then dropped to his knees vomiting at his feet; in
+hospital, in the deceptive calm before the collapse, **Pravik** wrote his wife **Nadezhda** an
+optimistic letter, sure he would recover. **Vasily Ignatenko**, so radioactive he would be buried in a
+soldered zinc coffin set in concrete, was the husband of **Lyudmila Ignatenko**, whose account of
+watching him disintegrate — *"every day I met a brand-new person"* — became, through Alexievich, the
+single most-cited human testimony of the disaster.
 
 ## The long denial — dawn and the day shift (06:00–20:00)
 
@@ -1509,12 +1524,20 @@ the town be warned to close its windows and stay inside; **Bryukhanov stalled**,
 opinion," and kept the reading out of the reports. From ~06:00, as the night crew were carried out,
 their replacements were fed into a reactor no one in charge would admit was destroyed: **Akimov** and
 **Toptunov**, though relieved, waded back into the flooded feed-water gallery and **cranked the valves
-by hand for about half an hour** — futile, because the lines were severed, and fatal for both.
-**Shashenok** died about 06:00 at MSCh‑126 — the second death.
+by hand for about half an hour** — futile, because the lines were severed, and fatal for both. Akimov,
+dying in Moscow weeks later, swollen and turned deep reddish-brown, would insist to the end that the
+crew had done nothing wrong — *"we did everything correctly… Why?"* — a cry INSAG‑7 would later
+half-vindicate. **Shashenok** died about 06:00 at MSCh‑126 — the second death.
 
+As the **day shift** arrived and took in the graphite strewn on the ground, two engineers, **Orlov and
+Smagin**, traded the grim joke that fixed the moment the truth became undeniable — *"Did these graphite
+blocks lie here before the accident?" "Not really; we'd cleaned up for the 1st of May."* Meanwhile
 Pripyat woke to a warm, sunny Saturday, unwarned: children at open-air school exercises, mothers with
-strollers, anglers at the warm outflow channel, several weddings, the amusement park being readied for
-May Day. Around **09:00**, on Fomin's order, deputy chief engineer **Anatoly Sitnikov** — a reactor
+strollers, anglers at the warm outflow channel (among them **Pustovoit and Protasov**, who took very
+high doses), several weddings, the amusement park being readied for May Day. As invisible fallout
+settled through the day, some residents gathered on balconies to watch the coloured glow over the plant
+— one, Alexievich records, lifting his children to see it, standing in black dust. Around **09:00**, on
+Fomin's order, deputy chief engineer **Anatoly Sitnikov** — a reactor
 physicist senior enough that his word could not be waved away — climbed to a high vantage and **looked
 down into the wrecked hall and the open crater**, confirming with his own eyes that the core was
 destroyed. He absorbed a massive dose (some accounts ~15 Sv to the head), came down visibly burned,
@@ -1587,7 +1610,10 @@ soldiers, the "bio-robots,"** cleared it by hand in shifts of **40–90 seconds*
 **Tarakanov**, and a red flag was raised on the vent stack. And from June to **30 November 1986** a
 concrete-and-steel **"Shelter Object" — the sarcophagus** — was thrown up over the ruin in a ~206-day
 build, over **400,000 m³ of concrete** placed largely by remote control because no one could stand near
-the walls: a hasty, temporary tomb that would itself have to be re-covered decades later.
+the walls: a hasty, temporary tomb that would itself have to be re-covered decades later. That
+December, deep in a corridor beneath the reactor, searchers found the **"Elephant's Foot"** — a
+solidified flow of corium reading about **10,000 R/h**, fatal in roughly five minutes; the inspector
+who later took its famous photograph, **Artur Korneyev**, lived on for decades (Appendix C).
 
 ## The dead, and the doses
 
@@ -1598,7 +1624,8 @@ his pumps; **Shashenok** died of blast trauma, burns and radiation at 06:00. The
 deaths came in sequence — **Lelechenko** (7 May, ~25 Sv, from wading the water); firefighters **Tishura**
 (10 May, the first), **Pravik** and **Kibenok** (11 May), **Ignatenko** (13 May), **Vashchuk, Tytenok**;
 the operators **Akimov** (10 May, ~15–20 Sv) and **Toptunov** (14 May, ~13 Sv) from the valves; **Kurguz**
-(12 May) from the steam; the trainees **Kudryavtsev** (14 May) and **Proskuryakov** (17 May) from looking
+(12 May) from the steam; **Degtyarenko** (19 May), the bloodied man Yuvchenko had met on the stairs,
+scalded at his pumps; the trainees **Kudryavtsev** (14 May) and **Proskuryakov** (17 May) from looking
 into the core; turbine and electrical men **Brazhnik, Baranov, Perchuk, Lopatyuk, Novik**; the Kharkiv
 specialist **Savenkov** (21 May); the guards **Ivanenko** (26 May) and **Luzganova** (31 July) from
 standing their posts in the open; **Sitnikov** (30 May); and **Perevozchenko** (13 June) from the search
@@ -1682,9 +1709,13 @@ and it is worth laying the range out honestly rather than picking a number:
 
 The split is real: official bodies count firmly only the high-dose cohorts and refuse to state low-dose
 collective-dose projections as "deaths," while NGO estimates apply linear-no-threshold modelling to the
-far larger, lightly-exposed population. Among the **~600,000 liquidators**, no clear leukaemia excess
-was proven at first, with some later evidence among higher-dose workers and a definite rise in cataracts.
-And the **Chernobyl Forum's own conclusion** was that the **largest lasting harm was psychological and
+far larger, lightly-exposed population. Among the **~600,000 liquidators** — soldiers, reservists,
+miners, pilots and volunteers, not the doomed convicts of legend — no clear leukaemia excess was proven
+at first, with some later evidence among higher-dose workers and a definite rise in cataracts; two of
+their fates became well known, helicopter pilot **Anatoly Grishchenko**, who flew the drops and died in
+1990 of radiation-linked leukaemia after a bone-marrow transplant in Seattle, and cameraman **Vladimir
+Shevchenko**, whose film of the reactor is speckled where the radiation struck the emulsion and who died
+in 1987. And the **Chernobyl Forum's own conclusion** was that the **largest lasting harm was psychological and
 socioeconomic** — anxiety, fatalism, stigma and shattered livelihoods among the displaced — a wound the
 dose figures never capture.
 
