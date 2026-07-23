@@ -435,6 +435,7 @@ English wording varies book to book.
 - **"Attention. Oscillograph — on!"** — test engineer **Metlenko** → the operators; the signal that began the turbine run-down, ~01:23:04. *[documented]* (Higginbotham: "Oscilloscope, on!" — no Hollywood countdown is recorded.)
 - **"AZ‑5!"** — **Akimov** → Toptunov; the order to drop all the rods, ~01:23:40. *[documented]* (The press is not disputed; why it was pressed is.)
 - **"The walls began to shake and the concrete itself made a kind of creaking noise."** — **Stolyarchuk**, recalling the blast in a later interview. *[documented]*
+- **"Bring stretchers — immediately."** — an operator in **Control Room 3 (Unit 3)** → **Yuvchenko**, by telephone moments after the blast. His own **Unit-4 control-room line was dead** (blast-severed), but **Unit 3's phones still worked** — and it was this call that sent him down toward the wounded with a stretcher. *[documented — Higginbotham]*
 - **"Lads, we've got to get water into the reactor."** — **Dyatlov** → Akimov and the operators, minutes after the blast — the fatal misjudgment. *[documented]*
 - **"Help Khodemchuk. He's in the pump room."** — a steam-scalded operator → **Yuvchenko**, ~01:30 (Khodemchuk was already dead). *[documented]* (The scalded man is not reliably named.)
 - **"This is Hiroshima." / "Not even in my nightmares had I imagined anything like this."** — **Tregub** → **Dyatlov**, and Dyatlov back, walking the wreck. *[documented]*
@@ -923,11 +924,22 @@ inclined to downplay, then hardened into a **decisive coordinator** once the des
 accepted, driving the evacuation and the dumping campaign. Absorbed heavy radiation; **died 1990.**
 
 **Valery Alekseyevich Legasov** — *First Deputy Director of the Kurchatov Institute; chief scientist
-of the Commission.* **Driven and physically committed** on site; afterward **increasingly
-despairing and disillusioned** at the refusal to confront the RBMK's flaws. He dictated ~five
-cassette tapes of memoirs. *Documented (his tapes):* "It didn't even occur to me … that we were
-moving towards an event on a planetary scale." He **took his own life on 27 April 1988** — two
-years and one day after the accident.
+of the Commission.* **Driven and physically committed.** As Shcherbina's lead scientist he **shaped the
+technical response**: he pressed hard — and successfully — for the **immediate evacuation of Pripyat**;
+he chose the **materials dropped on the open core** (boron carbide as a neutron absorber to smother any
+chain reaction, lead to shield and absorb heat, sand, clay and dolomite to blanket the fire); and he
+was central to the alarm over the **bubbler pool** and to the **foundation-cooling** effort — the
+divers who drained the pool and the miners who tunnelled beneath the core. He spent much of the next
+**four months on or near the site**, taking a heavy cumulative dose. In **August 1986** he led the
+Soviet delegation to the **IAEA in Vienna** and delivered a marathon **~5-hour report** — unusually
+candid about the accident's sequence and scale, which **calmed the international community** but,
+because it still pinned the cause on **operator error** and spared the RBMK's designers, left him
+exposed and resented at home. Passed over for honours and **increasingly despairing at the refusal to
+confront the reactor's flaws**, he dictated **~five cassette tapes** of memoirs. *Documented (his
+tapes):* "It didn't even occur to me … that we were moving towards an event on a planetary scale." He
+**took his own life on 27 April 1988** — two years and one day after the accident. The RBMK design
+fixes he had urged were quietly made across the fleet, and in **1996** he was named **Hero of the
+Russian Federation**, posthumously.
 
 ## Meanwhile, in Pripyat (26 April)
 
@@ -995,12 +1007,16 @@ one of mass response rather than individual minutes.
 > fears. The drops helped smother the graphite fire and the airborne release, but did **not** "seal"
 > the core. *[reported/disputed]*
 
-> **The helicopter crash — the real one was in October.** On **2 October 1986**, an **Mi-8** flying a
-> decontaminant run struck the **cable of a construction crane** raised over the reactor for the
-> sarcophagus; its rotor shattered and it fell beside Unit 4, **killing all four crew** (Capt. Vladimir
-> Vorobyov and his men). It was **caught on film** — which is why it is so widely remembered, and why
-> the 2019 series folds a crash into the *April* firefight (Appendix C). The real crash came **five
-> months after** the accident, during the sarcophagus build — not during the fire. *[documented]*
+> **The helicopter crash — the real one was in October.** On **2 October 1986**, an **Mi-8** (call sign
+> "Cup-2") dropping **polyvinyl-acetate decontaminant glue** to trap radioactive dust passed over the
+> reactor and its **rotor blades struck the cable of a tall construction crane** raised for the
+> sarcophagus; the blades shattered and it fell just outside the reactor building, **killing all four
+> crew — Capt. Vladimir Vorobyov, Sr. Lt. Alexander Yungkind, Sr. Lt. Leonid Khristich, and Ensign
+> Nikolai Ganzhuk.** *(A KGB report suggested the pilot had been blinded by low sun; note this Capt.
+> Vladimir Vorobyov is a different man from the plant's civil-defense chief Serafim Vorobyov.)* It was
+> **caught on film**, which is why it is so widely remembered — and why the 2019 series folds a crash
+> into the *April* firefight (Appendix C). The real crash came **five months after** the accident,
+> during the sarcophagus build, not during the fire. *[documented]*
 
 ## The cover-up, and the wider harm
 
@@ -1019,6 +1035,14 @@ when **Mikhail Gorbachev** finally addressed the nation on television — callin
 unprecedented, insisting "the worst is behind us," and devoting much of the speech to attacking Western
 reporting as "a mountain of lies." The delay itself became part of the scandal, and a test glasnost
 plainly failed. *[documented]*
+
+**The phone lines cut.** The information clampdown was physical, too: the **KGB cut Pripyat's telephone
+communications** — the city's **long-distance lines by daybreak on the 26th, the local lines dead by
+nightfall** — to stop residents spreading word or calling out. A first KGB directive restricted
+subscribers' access to international lines "to prevent the leak of information." *(This deliberate,
+day-long severing of the town's lines is the real thing — not to be confused with the plant's own
+Unit-4 control-room phone, which the explosion itself had already killed in the first minute; see Part
+I.)* *[documented]*
 
 **The milk, and the iodine that was not given.** The children's thyroid cancers trace above all to one
 pathway: **iodine‑131 fell on the pasture, cows ate the grass, and children drank the fresh local milk**
@@ -2171,13 +2195,20 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
   meeting in Vienna in August 1986** — but there he stressed operator error and **downplayed** the
   design flaws. His later private notes and his **1988 suicide** (on the second anniversary) fed the
   "truth-teller" narrative the show compresses into a trial speech. *(documented)*
-- **"Radiation is contagious — being near a dying ARS patient poisons you."** **False, and a
-  genuinely harmful myth.** Once decontaminated (clothing removed, washed), an irradiated patient is
-  **not a radioactive source**; ARS is not transmissible. The "she's killing her baby by sitting with
-  him" premise is medically wrong — and the real-world version of this fear did lasting damage: an
-  estimated **100,000–200,000 unnecessary abortions** across Europe after 1986, driven by radiation
-  panic rather than by the low doses actually involved. *(documented; see also the "baby absorbed the
-  radiation" entry)*
+- **"Radiation is contagious — being near a dying ARS patient poisons you."** **Contaminated, yes;
+  irradiated-into-a-source, no.** Being *struck* by gamma or beta radiation does **not** turn a
+  person's body into a radioactive source — so once a patient is **decontaminated** (clothing stripped,
+  washed down), they are **not dangerous to be near**, and ARS is not transmissible. The HBO premise
+  that dying Vasily Ignatenko lethally irradiated his wife and unborn child by proximity is **medically
+  wrong**. **But** the responders genuinely *carried* radioactivity: their **clothing, skin and hair
+  were coated in radioactive dust** (fuel, fission products, graphite), and some had **inhaled or
+  swallowed** particles — and that **contamination is real and transferable** until it is removed. It
+  is why the **firefighters' uniforms still lie in the Pripyat hospital basement, hazardous to this
+  day**, and why the most contaminated bodies (Ignatenko) were sealed in **soldered zinc coffins under
+  concrete**. So a *washed* patient was not a walking reactor — but the fear-driven version of this
+  myth did real harm: an estimated **100,000–200,000 unnecessary abortions** across Europe after 1986,
+  driven by panic rather than by the low doses actually involved. *(documented; see also the "baby
+  absorbed the radiation" entry)*
 - **"Chernobyl bred a generation of mutant children."** **Not borne out.** The clearest verified
   hereditary-vs-somatic distinction: the real, documented effect is a wave of **thyroid cancer** from
   iodine‑131 in milk — UNSCEAR counts **~6,000+ cases** among those exposed as children/adolescents,
