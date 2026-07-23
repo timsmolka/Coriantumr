@@ -851,7 +851,9 @@ roof, looking down into the wrecked central hall and the crater** — and confir
 that **the core was destroyed and open**. *Why him:* he was a physicist and deputy chief engineer,
 senior enough that his word could not be waved away. He absorbed a massive dose (some accounts
 ~15 Sv, heavy to the head), came down visibly burned, delivered the truth — and was **still
-partly disbelieved. Died of ARS, 30 May 1986.**
+partly disbelieved. Died of ARS, 30 May 1986.** *(The 2019 series folds his disbelieved report
+together with Vorobyov's dismissed ~200 R/h reading into a single "Sitnikov with dosimeters" scene,
+and adds an armed-guard march to the roof that did not happen — see Appendix C.)*
 
 **Viktor Petrovich Bryukhanov** — *Plant director.* **Calm denial verging on psychological
 shock.** He could not accept the reactor had exploded; when Vorobyov's meter pegged at 200 R/h he
@@ -1413,6 +1415,101 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
   megaton figure traces to physicist **Vassili Nesterenko** and is **disputed** — a *steam* explosion
   (or renewed core damage) was a genuine fear and the reason the bubbler pool was drained, but a
   multi-megaton *nuclear* yield was not physically on the table.
+- **"You didn't see graphite, because it's not there!"** — Dyatlov's screamed denial is a
+  **dramatized composite**. The *denial itself is real*: plant management refused to accept the core
+  had exploded and kept reporting the reactor intact even with graphite on the ground (graphite
+  *outside* the core is unambiguous proof of its destruction). But the specific shouted line, and the
+  framing of Dyatlov as a lone cartoon villain, are inventions — the series concentrates a whole
+  institution's denial into one man. INSAG‑7 (1992) later shifted the blame heavily *off* the
+  operators. *(the denial is documented; the line and the one-man framing are dramatized)*
+- **The dosimeter scene — Sitnikov, the safe, and the "200-roentgen" meter.** The Episode‑1 beat in
+  which **Sitnikov produces dosimeters** — a high-range one that burns out the moment it is switched
+  on, then another that **pegs at 200 roentgen**, all waved away by Bryukhanov and Fomin as faulty
+  equipment — is a **compression of two real threads.** (1) The small dosimeters on hand pegged at
+  their low ceilings, and the one higher-range military instrument that could read further — the
+  **DP‑5 (200 R/h ceiling)** — was itself pegged; that reading belonged chiefly to civil-defense chief
+  **Serafim Vorobyov**, whose ~200 R/h figure management **stalled on and kept out of the reports**.
+  (2) **Sitnikov's** actual documented role was the **rooftop visual confirmation** of the open core,
+  which was **disbelieved**. The show fuses Vorobyov's dismissed reading and Sitnikov's disbelieved
+  report into a single Sitnikov-with-dosimeters scene. The specific "**Sitnikov unlocks a safe** to
+  reach a better dosimeter" beat is **not corroborated** in the documented record, and the later
+  "**marched onto the roof at gunpoint**" image is an **HBO invention** — Sitnikov went up as the
+  senior physicist whose word could not be waved away, not under armed guard. *(the pegged meters,
+  the 200 R/h DP‑5, Vorobyov's stalled reading, and Sitnikov's disbelieved report are documented; the
+  safe and the gunpoint are not)*
+- **"It was operator error — the operators were reckless idiots."** **Oversimplified, and
+  substantially reversed by later findings.** The 1986 Soviet account (and INSAG‑1) blamed the
+  operators. The 1992 **INSAG‑7** revision moved the major blame onto the **RBMK design**: the large
+  positive void coefficient and — decisively — the **graphite-tipped control rods**, whose insertion
+  on a full AZ‑5 scram *briefly increased* reactivity before shutting the reactor down (the "positive
+  scram effect"). This flaw was known from a **1975 Leningrad RBMK** incident but was **concealed from
+  the operators**, who believed AZ‑5 was a pure emergency stop. The crews did break procedures — but
+  they were set up to fail by defects hidden from them. *(INSAG‑7, documented)*
+- **"They ran a routine test and switched off all the safety systems."** **Oversimplified.** It was a
+  specific **turbine-coastdown (rundown) test**. Power fell far below the target — partly from
+  **xenon‑135 poisoning** — and to recover it the operators withdrew too many rods, leaving a
+  dangerously low reactivity margin; the AZ‑5 scram into that unstable, high-void state triggered the
+  rod-tip power spike. Certain trips *were* blocked to run the test (the turbine-trip scram, some ECCS
+  interlocks), but "**turned off all the safety systems**" is a caricature — the fatal ingredient was
+  the hidden rod-design flaw meeting an unstable configuration. *(World Nuclear / INSAG‑7, documented)*
+- **"The helicopters dropped sand and boron into the open core and smothered it."** **Largely a
+  myth.** Helicopters did drop ~5,000 tons of sand, clay, boron, dolomite and lead from hover, at real
+  risk to the crews — but post-hoc analysis indicates **almost none of it reached the core**: there
+  were no bombsights and the target was a small opening under the tilted lid, so most of the load
+  **missed**. It may have helped smother the graphite fire, but the melted core cooled largely on its
+  own; the drops were **not** the decisive fix. *(documented; consistent with the "airdrops mostly
+  missed" note in Part IV)*
+- **"The liquidators were prisoners / conscript suicide squads."** **Misleading.** The
+  ~600,000–700,000 liquidators were **conscripted army reservists plus professionals and genuine
+  volunteers** — not prisoners, and not men knowingly sent to die. Conditions were harsh and safety
+  information poor, but the "doomed convict squad" image is exaggerated (the three bubbler-pool
+  "divers," for instance, all survived the mission). Long-term health effects are debated; a mass
+  *immediate* death of liquidators did not happen. *(documented)*
+- **"The USSR hid the disaster for weeks before evacuating."** **Conflates two different timelines.**
+  **Pripyat (~49,000 people) was evacuated ~36 hours** after the blast, on the afternoon of
+  **27 April** — not weeks. What *did* drag on was **disclosure**: the KGB restricted communications,
+  and Moscow only admitted the accident on **28 April, after Swedish monitoring stations detected the
+  plume**. A ~36-hour information blackout for residents is real; "hidden for weeks before the town
+  was evacuated" is not. *(documented)*
+- **"Only 31 people died" vs. "millions died."** **Both extremes mislead.** The confirmed
+  **immediate** toll is ~**31** (2 killed at the scene, ~28 from acute radiation syndrome, 1 heart
+  attack). Projected **long-term** excess cancer deaths are model-dependent: **WHO/IAEA ~4,000** among
+  the most-exposed groups, with wider estimates into the tens of thousands; the ~90,000+
+  Greenpeace-type figures are contested, and "millions" is unsupported. The honest answer is a
+  **bounded but uncertain range**, not a single headline number. *(WHO / IAEA / UNSCEAR)*
+- **"Vodka (or red wine) protects against radiation."** **False** — a widespread 1986 belief with no
+  basis; alcohol does not shield against ionizing radiation and can worsen outcomes. The one genuinely
+  useful chemical countermeasure was **potassium iodide**, to block radioactive iodine‑131 from the
+  thyroid — not vodka. *(documented)*
+- **"Legasov stood up at the operators' trial and exposed the reactor's design flaw."** **Invented
+  scene.** **Legasov was not at the trial**; the courtroom reveal is fictional (creator Craig Mazin
+  calls it "inspired by factual circumstances"). Legasov *did* deliver a long report at the **IAEA
+  meeting in Vienna in August 1986** — but there he stressed operator error and **downplayed** the
+  design flaws. His later private notes and his **1988 suicide** (on the second anniversary) fed the
+  "truth-teller" narrative the show compresses into a trial speech. *(documented)*
+- **"Radiation is contagious — being near a dying ARS patient poisons you."** **False, and a
+  genuinely harmful myth.** Once decontaminated (clothing removed, washed), an irradiated patient is
+  **not a radioactive source**; ARS is not transmissible. The "she's killing her baby by sitting with
+  him" premise is medically wrong — and the real-world version of this fear did lasting damage: an
+  estimated **100,000–200,000 unnecessary abortions** across Europe after 1986, driven by radiation
+  panic rather than by the low doses actually involved. *(documented; see also the "baby absorbed the
+  radiation" entry)*
+- **"Chernobyl bred a generation of mutant children."** **Not borne out.** The clearest verified
+  hereditary-vs-somatic distinction: the real, documented effect is a wave of **thyroid cancer** from
+  iodine‑131 in milk — UNSCEAR counts **~6,000+ cases** among those exposed as children/adolescents,
+  but with very high survival (**~15 deaths**). By contrast, **2021 NIH/NCI whole-genome studies found
+  no excess new (heritable) mutations** in children conceived *after* their parents' exposure —
+  directly contradicting the "mutant next generation" fear. *(WHO / NIH, documented)*
+- **"The zone will be uninhabitable for 20,000 years."** **Oversimplified.** The ~20,000-year figure
+  applies to the **most contaminated ground at the reactor site**, not the whole Exclusion Zone.
+  Contamination is very uneven; long-lived **caesium‑137 and strontium‑90 (~30-year half-lives)**
+  dominate the near-term dose, and parts of the zone are already lightly inhabited by returnee
+  "self-settlers." A blanket "20,000 years for the whole area" is misleading. *(documented)*
+- **"The reactor could still explode again"** (the 2021 neutron rise). **Overstated.** Sensors did
+  detect **rising neutron counts in a sub-reactor room (305/2)** in 2021, showing slow fission
+  continuing in the fuel-containing masses — but the material sits well below the threshold for a
+  runaway chain reaction, and the New Safe Confinement would contain any small event. A **real
+  phenomenon with an alarmist conclusion**, not a second 1986 in waiting. *(documented)*
 
 ---
 
