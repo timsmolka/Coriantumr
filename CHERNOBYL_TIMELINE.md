@@ -324,8 +324,12 @@ below would hand it instead to the night shift.
 > displacer below its boron absorber**. With the rods almost fully withdrawn (the near-zero reactivity
 > margin), pressing AZ‑5 drove the **graphite tips into the bottom of the core first**, expelling the
 > absorbing water and putting non-absorbing, moderating graphite in its place — a burst of positive
-> reactivity at the base of the core **before the boron could reach it**. The flaw was corrected on
-> all RBMKs afterward.
+> reactivity at the base of the core **before the boron could reach it**. **This was not new:** a
+> similar graphite-tip scram effect had already shown up at the **Leningrad‑1 RBMK in 1975**, and
+> design reviews had flagged the danger — but it was **never passed on to the operators**, who
+> believed AZ‑5 was a pure fail-safe. The flaw was corrected on all RBMKs afterward. *(That the defect
+> was known and concealed is a large part of why INSAG‑7 shifted the blame off the operators — see
+> Appendix C.)*
 
 ## The first hours — position by position (01:24–06:35)
 
@@ -726,6 +730,19 @@ released later in 1986.
 went to find Gorbachenko; together they **carried the mortally injured Shashenok out** of the
 wrecked instrument room. Heavily irradiated; **survived** the acute phase.
 
+**Serafim Vorobyov** — *Chief of the plant's civil-defense staff — the man who tried to raise the
+alarm.* With the operators' own dosimeters dead or floored — Gorbachenko's high-range meter burned
+out when switched on, the portable ones pegged at ~4 R/h — the one instrument that could actually
+read the disaster was the military **DP‑5 radiometer** (ceiling **200 R/h**). Vorobyov took it
+through the plant grounds and the approaches to Pripyat and found the needle **slamming to the top of
+the scale — off the 200 R/h ceiling** — near the wrecked block. He carried the figure to
+**Bryukhanov** and urged that the town be warned to close its windows and stay inside; the director
+**stalled, waited for a "second opinion," and treated the reading as a broken instrument**. By his
+own later account Vorobyov was pushed out for insisting — but he had the fields essentially right,
+hours before anyone acted. **Survived.** *(This documented thread — the burned-out high-range meter,
+the DP‑5 pegged at 200 R/h, and the dismissal — is what the 2019 series compresses into the single
+"Sitnikov with dosimeters" scene; see Appendix C.)*
+
 **Vladimir Nikolaevich Shashenok** — *Automation/commissioning adjuster (Atomenergonaladka), in
 room 604.* He was **at his post relaying instrument readings by telephone** at the instant of the
 explosion. The blast crushed him under a fallen beam and scalded him with radioactive steam — a
@@ -833,7 +850,7 @@ wears on; where a time is a range or a fact is contested, it is marked. Path-cro
 **~09:00** — **Block roof:** on Fomin's order (with Bryukhanov's backing), **Sitnikov** climbs high — accounts place him on the **Unit 3 / block roof, looking down into the wrecked central hall (+35.5) and the crater** — to **see the reactor's state for himself**. *Why him:* he is a reactor physicist and deputy chief engineer, and management will accept it from no one else. He sees the core is **destroyed and open**, and absorbs a massive dose (some accounts ~15 Sv, heavy to the head). *(The vivid "gazed into the glowing core" phrasing traces to Medvedev — reported.)*
 
 **~10:00–11:00**
-- **Bunker:** **Sitnikov** returns and **reports the reactor destroyed** to **Fomin** and **Bryukhanov** *(met)* — and, despite his visible burns, is **still partly disbelieved**; the order to pump water stands. **Vorobyov's** ~200 R/h reading is still dismissed as a "broken instrument."
+- **Bunker:** **Sitnikov** returns and **reports the reactor destroyed** to **Fomin** and **Bryukhanov** *(met)* — and, despite his visible burns, is **still partly disbelieved**; the order to pump water stands. **Vorobyov's** DP‑5 reading — the needle pegged at its **200 R/h ceiling** — is still dismissed as a "broken instrument."
 - **Moscow:** the **State Commission** is formed under **Shcherbina**, with **Legasov** as scientific lead; advance groups (**Prushinsky's** OPAS emergency team, deputy minister **Shasharin**) begin moving south ahead of the main party.
 
 ## Midday & afternoon (12:00–18:00)
@@ -939,6 +956,7 @@ one of mass response rather than individual minutes.
 | **27 Apr, ~13:10** | A radio announcement tells residents to prepare for a temporary evacuation "for three days." |
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
 | **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Col. Nikolai Antoshkin** *(promoted Maj.-Gen. for the operation)* and **Legasov** (materials). Over 27 Apr → ~2 May roughly **5,000 tonnes** are dropped (see note). Chemical-troops commander **Col.-Gen. Vladimir Pikalov** personally drives the recon vehicle into the high-radiation zone to take the measurements himself (see note). |
+| **28 Apr, morning** | **The world finds out — from Sweden, not Moscow.** Workers arriving at the **Forsmark** nuclear plant (~1,100 km away) trip contamination alarms; when the fallout is traced back across the Baltic, the USSR is forced to break its silence. That evening a **terse ~20-second TASS bulletin** — *"An accident has occurred at the Chernobyl power station…"* — is the **first public admission**, ~2½ days after the blast. The **~36-hour blackout for Pripyat's own residents** and this delayed international disclosure are two different failures often blurred into "hidden for weeks" (see Appendix C). |
 | **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Sv), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
 
@@ -1047,6 +1065,18 @@ who flew drops onto the reactor, later developed radiation-linked leukaemia, rec
 transplant in **Seattle**, and **died in July 1990**; and documentary cameraman **Vladimir Shevchenko**,
 whose film of the reactor is **speckled where radiation struck the emulsion directly**, and who **died
 of radiation illness on 30 March 1987**. *[documented / reported]*
+
+**The years after — what the health record actually shows.** Beyond the ~31 immediate deaths (Part V),
+the one clearly-measured population effect is a wave of **thyroid cancer** in people exposed as
+children — from **iodine‑131 in milk**, which the missing stable-iodine prophylaxis (Part III) let
+into their thyroids. UNSCEAR counts **~6,000+ cases**, but with very high survival (**~15 deaths**).
+Against that, the feared **hereditary catastrophe did not materialise**: **2021 NIH/NCI whole-genome
+studies found no excess new (heritable) mutations** in children conceived *after* their parents'
+exposure — there was no "generation of mutants." The cruellest twist is that a good deal of the human
+cost came from **fear rather than dose**: radiation panic drove an estimated **100,000–200,000
+unnecessary abortions** across Europe. Broader long-term excess-cancer projections are model-dependent
+and genuinely uncertain (WHO/IAEA **~4,000** among the most-exposed groups, wider estimates into the
+tens of thousands); the honest figure is a **range, not a headline** (see Appendix C). *[documented]*
 
 ---
 
