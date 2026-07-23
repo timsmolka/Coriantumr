@@ -327,9 +327,10 @@ below would hand it instead to the night shift.
 > reactivity at the base of the core **before the boron could reach it**. **This was not new:** a
 > similar graphite-tip scram effect had already shown up at the **Leningrad‑1 RBMK in 1975**, and
 > design reviews had flagged the danger — but it was **never passed on to the operators**, who
-> believed AZ‑5 was a pure fail-safe. The flaw was corrected on all RBMKs afterward. *(That the defect
-> was known and concealed is a large part of why INSAG‑7 shifted the blame off the operators — see
-> Appendix C.)*
+> believed AZ‑5 was a pure fail-safe. The flaw was corrected on all RBMKs afterward. *(The reactor
+> type's fragility had also been shown at Chernobyl itself — a **covered-up partial fuel-channel
+> meltdown of Unit 1 on 9 September 1982**, told in full in "The full story." That the defect was known
+> and concealed is a large part of why INSAG‑7 shifted the blame off the operators — see Appendix C.)*
 
 ## The first hours — position by position (01:24–06:35)
 
@@ -1365,15 +1366,27 @@ spike at the very start of an emergency scram**. Safe operation also depended on
 in the core (the **operating reactivity margin**); the true steady-state floor was around **26–30**
 equivalent rods, but operators were taught to treat **15** as the limit.
 
-None of this reached the men at the controls. The positive-scram effect had already shown itself at
-the **Leningrad‑1 RBMK on 28 November 1975**, when a fuel-channel accident driven by a **positive
-reactivity surge** damaged around **32 fuel assemblies** and released contamination over the Gulf of
-Finland; it appeared again in **1982, when Chernobyl's own Unit 1** suffered a partial fuel-channel
-meltdown that was **kept secret until about 1985**. Reports on the rod flaw circulated among senior
-managers and designers from at least 1975 and again in 1983 — but they were **classified, never passed
-to reactor operators, and the design fixes were not made before 26 April 1986.** The crews believed the
-emergency-shutdown button was a pure fail-safe. It was not. *(This is the core of why INSAG‑7 later
-shifted the blame off the operators — see Appendix C.)*
+None of this reached the men at the controls. The **positive-scram effect** — the graphite-tip flaw
+that would trigger the 1986 explosion — had already shown itself at the **Leningrad‑1 RBMK on 28
+November 1975**, when a fuel-channel accident driven by a **positive reactivity surge** damaged around
+**32 fuel assemblies** and released contamination over the Gulf of Finland.
+
+And the reactor type's fragility had been demonstrated **at Chernobyl itself**, four years before the
+disaster. On **9 September 1982**, during a restart after a planned overhaul, as **Unit 1** was being
+brought back up and power reached about **20%**, a **central fuel channel ruptured** — blamed on
+operator error and disrupted coolant flow. The fuel assembly was **destroyed, roughly 3.5% of the core
+was damaged, and the graphite stack was partly wetted**; a **release of radioactive material spread
+over the plant's own grounds and into Pripyat**, and the crews who cleaned it up **took heavy doses**.
+The reactor was out of action for about **eight months**. And, as with everything else, the accident
+was **classified and kept from the public** — so the town living beside the plant, and the very
+operators who would run the test in 1986, were **never told that their own reactor had already melted a
+channel once.**
+
+Reports on the rod flaw, meanwhile, circulated among senior managers and designers from at least 1975
+and again in 1983 — but they too were **classified, never passed to reactor operators, and the design
+fixes were not made before 26 April 1986.** The crews believed the emergency-shutdown button was a pure
+fail-safe. It was not. *(This is the core of why INSAG‑7 later shifted the blame off the operators —
+see Appendix C.)*
 
 The two managers who would preside over the test embodied the plant's culture. **Nikolai Fomin**, the
 **chief engineer** (born 1937, an **electrician by training** who joined Chernobyl in 1972 and rose to
