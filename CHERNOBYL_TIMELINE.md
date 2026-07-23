@@ -1130,20 +1130,25 @@ cells collapsed), *skin burns*, and later *chromosome-aberration* and tooth-enam
 **not instrument readings.** Precise per-person numbers exist only for the minority hospitalised in
 Moscow; for everyone else there is a band, or nothing.
 
+**Units.** All doses here are given in **sieverts (Sv)**. Because this was **external gamma/beta**
+radiation, the sievert value equals the **gray (Gy)** figure the clinical literature usually quotes
+(1 Sv = 1 Gy for this exposure); and **1 Sv = 100 rem = 100 rad**. Fatal whole-body ARS begins around
+**~4–6 Sv**.
+
 ## The individual doses on record *(all clinical estimates, not measurements)*
 
 | Person | Estimated dose | Outcome |
 |---|---|---|
-| **Aleksandr Lelechenko** | **~25 Gy (2,500 rem)** | ✝ 7 May |
-| **Aleksandr Akimov** | **~15–20 Gy** | ✝ 10 May |
-| **Anatoly Sitnikov** | **~6 Sv whole-body; ~15 Sv (1,500 rad) to the head** | ✝ 30 May |
-| **Vasily Ignatenko** | **~14 Gy** *(reported)* | ✝ 13 May |
-| **Leonid Toptunov** | **~13 Gy (1,300 rem)** | ✝ 14 May |
-| **Alexander Yuvchenko** | **~4.1 Sv (410 rem)** | survived (d. 2008) |
-| **Leonid Telyatnikov** | **~4 Gy** *(reported)* | survived (d. 2004) |
-| **Anatoly Dyatlov** | **~3.9 Sv (390 rem)** | survived (d. 1995) |
-| **Viktor Smagin** | **~2.8 Sv (280 rad)** | survived |
-| **Col.-Gen. Vladimir Pikalov** | **~1.37 Sv (137 rem)** | survived (d. 2003) |
+| **Aleksandr Lelechenko** | **~25 Sv** | ✝ 7 May |
+| **Aleksandr Akimov** | **~15–20 Sv** | ✝ 10 May |
+| **Anatoly Sitnikov** | **~6 Sv whole-body; ~15 Sv to the head** | ✝ 30 May |
+| **Vasily Ignatenko** | **~14 Sv** *(reported)* | ✝ 13 May |
+| **Leonid Toptunov** | **~13 Sv** | ✝ 14 May |
+| **Alexander Yuvchenko** | **~4.1 Sv** | survived (d. 2008) |
+| **Leonid Telyatnikov** | **~4 Sv** *(reported)* | survived (d. 2004) |
+| **Anatoly Dyatlov** | **~3.9 Sv** | survived (d. 1995) |
+| **Viktor Smagin** | **~2.8 Sv** | survived |
+| **Col.-Gen. Vladimir Pikalov** | **~1.37 Sv** | survived (d. 2003) |
 
 ## The ARS dose-band distribution — the one documented "dose for everyone"
 
@@ -1153,21 +1158,20 @@ is how "everyone's dose" is actually known — as a **distribution**, not 134 in
 
 | ARS grade | Dose band | Cases | Died (first ~3 months) |
 |---|---|---|---|
-| **IV — very severe** | 6.5–16 Gy | 21 | **20** |
-| **III — severe** | 4.2–6.4 Gy | 22 | 7 |
-| **II — moderate** | 2.2–4.1 Gy | 50 | 1 |
-| **I — mild** | 0.8–2.1 Gy | 41 | 0 |
-| **Total** | 0.8–16 Gy | **134** | **28** |
+| **IV — very severe** | 6.5–16 Sv | 21 | **20** |
+| **III — severe** | 4.2–6.4 Sv | 22 | 7 |
+| **II — moderate** | 2.2–4.1 Sv | 50 | 1 |
+| **I — mild** | 0.8–2.1 Sv | 41 | 0 |
+| **Total** | 0.8–16 Sv | **134** | **28** |
 
-*(External gamma/beta, so Gy ≈ Sv here.)* Those **28 ARS deaths** plus the **2 immediate** deaths
-(Khodemchuk, Shashenok) make the canonical **30**.
+Those **28 ARS deaths** plus the **2 immediate** deaths (Khodemchuk, Shashenok) make the canonical **30**.
 
 ## Where no number exists at all
 - **The roof firefighters** (Pravik, Kibenok, Ignatenko, Vashchuk, Tytenok, Tishura) wore **no working
-  dosimeters**; all six died of **Grade IV** ARS, so their doses are known only as the **6.5–16 Gy band**
+  dosimeters**; all six died of **Grade IV** ARS, so their doses are known only as the **6.5–16 Sv band**
   — not as individual measurements. The specific per-man figures that circulate online (e.g. "Pravik
-  1,370 rem," "Tishura 800 rad") trace to **fan sources, not the clinical record**, and are treated here
-  as unverified. Roof fields ran **~3,000 to >8,000 R/h** — context, not a personal dose.
+  ~13.7 Sv," "Tishura ~8 Sv") trace to **fan sources, not the clinical record**, and are treated here
+  as unverified. Roof fields ran **~3,000 to >8,000 R/h** *(a dose rate, not a dose)* — context only.
 - **Valery Khodemchuk** — killed in the blast, body never recovered: **no dose exists or is possible**.
 - **Vladimir Shashenok** — died within hours of blast trauma, burns and radiation, before any clinical
   reconstruction: **no individual figure**.
