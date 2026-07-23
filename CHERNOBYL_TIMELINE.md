@@ -996,6 +996,56 @@ Courage," 3rd class** (Poroshenko, 26 April 2018) and the title **"Hero of Ukrai
 Decree 468/2019, 27 June 2019) — Baranov posthumously in each. *(Boris Baranov the diver is a
 different man from electrician Anatoly Baranov, ✝ 20 May 1986.)*
 
+## The cleanup, and the months after — the famous episodes
+
+Beyond the ~24-hour window this account focuses on, the response ran on for years and produced its own
+famous stories. In brief, and dated — with the popular exaggerations corrected:
+
+**The miners · mid-May → late June 1986.** Fearing the molten **corium** would melt through the
+foundation slab into the water table, the commission had coal miners tunnel in **from beneath Unit 3**
+— a ~**136 m** gallery — to dig a chamber under Unit 4 for a cooling **heat-exchanger**. About **400**
+of them (388 — **154 from the Moscow/Tula basin, 234 from the Donbas**) worked round-the-clock for
+roughly six weeks in **stifling underground heat** (they could not run forced ventilation for fear of
+drawing in contamination), stripped down to very little. **The heat-exchanger was never needed** — the
+corium cooled and solidified without breaching the slab, and the chamber was ultimately just filled.
+*[documented]* *(The famous line that "a quarter of the miners died" / "100 died before 40" is the
+**HBO series' caption**, unsupported by any study — none of the miners even developed ARS. See Appendix C.)*
+
+**The robots that failed, and the "bio-robots" · Sept–Oct 1986.** To clear the highly radioactive
+graphite and fuel off the Unit-3 roof before the sarcophagus could rise, dozens of **remote machines**
+were tried — the Soviet **STR-1** (built on the **Lunokhod** moon-rover lineage) and a West German
+police robot (the **MF-2**, popularly the "Joker") — but fields of **10,000–15,000+ R/h** killed their
+electronics within minutes (the German machine reportedly failed after being given a falsely low
+~2,000 R/h figure against a true ~12,000). So the last of the work was done by hand: **3,828** soldiers
+and reservists — the "**bio-robots**" — ran onto the roof in shifts of **~40–90 seconds**, shovelled a
+few pieces, and were then **finished with radiation work for life** under the **25-rem** cap. The
+operation was commanded by **Maj.-Gen. Nikolai Tarakanov**, who named the roof zones after women (Katya,
+Natasha, and **Masha** — the worst, ~12,000 R/h). They cleared ~90% of the debris; afterward a **red
+flag was raised on the ~78 m vent stack** (Oct 1986) — and had to be **replaced more than once** as the
+radiation shredded it. *[documented / reported]*
+
+**The sarcophagus · June → 30 Nov 1986.** A concrete-and-steel **"Shelter Object"** was thrown up over
+the ruined Unit 4 in a **~206-day** build — over **400,000 m³ of concrete** and ~7,300 t of steel, with
+some **90,000 workers** and much remote placement because no one could stand near the walls. Always a
+hasty, temporary structure, it decayed over the decades — which is why the **New Safe Confinement**
+arch was slid over it in **2016**. *[documented]*
+
+**The Elephant's Foot · found Dec 1986.** Deep under the reactor, in the steam-distribution corridor,
+searchers found a solidified flow of **corium** — the lava-like fuel melt — shaped like a wrinkled
+foot. On discovery it read about **10,000 R/h**, enough to be **fatal in roughly five minutes**. The
+famous photograph of a man standing beside it is nuclear inspector **Artur Korneyev**; it dates to
+**~1996**, and — contrary to the legend that "everyone who photographed it died" — **Korneyev lived on
+for decades** (interviewed in 2014). *[documented]* *(Because the mass was too hard to drill, a
+sample was reportedly knocked off by **firing a rifle at it**.)*
+
+**The liquidators.** In all, some **~600,000** people were granted "liquidator" status for the 1986–90
+cleanup, working under an emergency dose limit of **25 rem (250 mSv)** in 1986 (recorded average
+~120 mSv). Two individual fates became well known: heavy-lift helicopter pilot **Anatoly Grishchenko**,
+who flew drops onto the reactor, later developed radiation-linked leukaemia, received a bone-marrow
+transplant in **Seattle**, and **died in July 1990**; and documentary cameraman **Vladimir Shevchenko**,
+whose film of the reactor is **speckled where radiation struck the emulsion directly**, and who **died
+of radiation illness on 30 March 1987**. *[documented / reported]*
+
 ---
 
 # PART V — THE DEAD
@@ -1066,6 +1116,67 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 > 19 of the 134 ARS survivors died over 1987–2004 of various causes. The list above now names **27 of
 > the 28 ARS dead** (one remains unnamed in accessible sources) — the tail resting on the
 > liquidator-list sourcing noted above.
+
+---
+
+# RADIATION DOSES — WHAT IS ACTUALLY KNOWN (AND WHY MOST ISN'T)
+
+**Why there is no dose for everyone.** During the acute phase almost **no one wore a working dosimeter
+that could read the true fields.** The plant's high-range instruments were destroyed or buried, the
+military DP-5 sets capped at 200 R/h, and personal dosimeters simply **saturated** in fields of
+thousands of R/h. So the individual figures below are **clinical reconstructions** — estimated at
+Moscow's **Hospital No. 6** from *symptoms* (how fast a man vomited), *blood counts* (how fast his white
+cells collapsed), *skin burns*, and later *chromosome-aberration* and tooth-enamel (EPR) analysis —
+**not instrument readings.** Precise per-person numbers exist only for the minority hospitalised in
+Moscow; for everyone else there is a band, or nothing.
+
+## The individual doses on record *(all clinical estimates, not measurements)*
+
+| Person | Estimated dose | Outcome |
+|---|---|---|
+| **Aleksandr Lelechenko** | **~25 Gy (2,500 rem)** | ✝ 7 May |
+| **Aleksandr Akimov** | **~15–20 Gy** | ✝ 10 May |
+| **Anatoly Sitnikov** | **~6 Sv whole-body; ~15 Sv (1,500 rad) to the head** | ✝ 30 May |
+| **Vasily Ignatenko** | **~14 Gy** *(reported)* | ✝ 13 May |
+| **Leonid Toptunov** | **~13 Gy (1,300 rem)** | ✝ 14 May |
+| **Alexander Yuvchenko** | **~4.1 Sv (410 rem)** | survived (d. 2008) |
+| **Leonid Telyatnikov** | **~4 Gy** *(reported)* | survived (d. 2004) |
+| **Anatoly Dyatlov** | **~3.9 Sv (390 rem)** | survived (d. 1995) |
+| **Viktor Smagin** | **~2.8 Sv (280 rad)** | survived |
+| **Col.-Gen. Vladimir Pikalov** | **~1.37 Sv (137 rem)** | survived (d. 2003) |
+
+## The ARS dose-band distribution — the one documented "dose for everyone"
+
+The only *complete* dose picture is the **clinical grouping of the 134 confirmed acute-radiation-syndrome
+cases** by reconstructed whole-body dose (Hospital No. 6 → UNSCEAR / IAEA / the 1989 *NEJM* paper). This
+is how "everyone's dose" is actually known — as a **distribution**, not 134 individual numbers:
+
+| ARS grade | Dose band | Cases | Died (first ~3 months) |
+|---|---|---|---|
+| **IV — very severe** | 6.5–16 Gy | 21 | **20** |
+| **III — severe** | 4.2–6.4 Gy | 22 | 7 |
+| **II — moderate** | 2.2–4.1 Gy | 50 | 1 |
+| **I — mild** | 0.8–2.1 Gy | 41 | 0 |
+| **Total** | 0.8–16 Gy | **134** | **28** |
+
+*(External gamma/beta, so Gy ≈ Sv here.)* Those **28 ARS deaths** plus the **2 immediate** deaths
+(Khodemchuk, Shashenok) make the canonical **30**.
+
+## Where no number exists at all
+- **The roof firefighters** (Pravik, Kibenok, Ignatenko, Vashchuk, Tytenok, Tishura) wore **no working
+  dosimeters**; all six died of **Grade IV** ARS, so their doses are known only as the **6.5–16 Gy band**
+  — not as individual measurements. The specific per-man figures that circulate online (e.g. "Pravik
+  1,370 rem," "Tishura 800 rad") trace to **fan sources, not the clinical record**, and are treated here
+  as unverified. Roof fields ran **~3,000 to >8,000 R/h** — context, not a personal dose.
+- **Valery Khodemchuk** — killed in the blast, body never recovered: **no dose exists or is possible**.
+- **Vladimir Shashenok** — died within hours of blast trauma, burns and radiation, before any clinical
+  reconstruction: **no individual figure**.
+
+## The liquidators (1986–90)
+Of the **~600,000** who received "liquidator" status, the recorded **average dose was ~120 mSv** (the
+1986 cohort ~170 mSv), under an emergency annual limit of **25 rem (250 mSv)** in 1986 — cut to 100 mSv
+in 1987 and 50 mSv in 1988. Individual records ran from **<10 mSv to >1 Sv**, but many were assigned by
+area/group averaging rather than measured, so they carry large uncertainty.
 
 ---
 
@@ -1282,6 +1393,22 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
   inventions. The **real Mi‑8 crash was 2 October 1986** — a crane-cable strike during the sarcophagus
   build that killed all four crew (documented as real in **Part IV**), five months *after* the fire,
   not during it.
+- **"A quarter of the miners died" / "100 died before they were 40."** This is the **HBO series'
+  closing caption** ("it is said…"), **not** a measured statistic — no epidemiological study supports
+  it, and none of the miners is recorded as having developed acute radiation syndrome. Their work was
+  brutal and dangerous; the fixed "one-in-four died young" figure is unverified folklore. The miners'
+  cooling heat-exchanger was, in the end, **never even needed** (Part IV).
+- **"Everyone who photographed the Elephant's Foot died."** **False.** Inspector **Artur Korneyev**,
+  who spent more time near it than almost anyone and took the famous photo, **lived on for decades**
+  (interviewed in person in 2014).
+- **Three-eyed fish, giant mutant animals.** Folklore. Real sub-lethal effects exist (cataracts,
+  some tumours and sterility, localised wildlife changes), but there are **no monster fauna**; the
+  viral "giant catfish" in the cooling pond are ordinary, old, well-fed **wels catfish**, not mutants.
+  The zone is now, in effect, a wildlife refuge.
+- **"A second explosion would have been 3–5 megatons and made half of Europe uninhabitable."** The
+  megaton figure traces to physicist **Vassili Nesterenko** and is **disputed** — a *steam* explosion
+  (or renewed core damage) was a genuine fear and the reason the bubbler pool was drained, but a
+  multi-megaton *nuclear* yield was not physically on the table.
 
 ---
 
