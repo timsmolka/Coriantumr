@@ -960,15 +960,25 @@ one of mass response rather than individual minutes.
 | **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Sv), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
 
-> **The general who drove in himself.** With the plant's own dosimeters dead or floored, the first
-> authoritative radiation picture came from the military. **Col.-Gen. Vladimir Pikalov**, commander of
-> the Chemical Troops, **drove the radiation-reconnaissance vehicle right up to the wrecked Unit 4
-> himself rather than order a soldier to make the lethal run** (26–27 April) — confirming the graphite
-> was burning and the fields were far above the plant's figures, and absorbing about **1.37 Sv**
-> doing it. He was made **Hero of the Soviet Union**. *[documented]* *(The vivid touches —
-> ramming the closed gate, telling his young driver "stay here, son, you've still to become a father" —
-> are reported/dramatized flourishes; the documented core is that a three-star general personally ran
-> the recon and took a serious dose.)*
+> **The general who drove in himself — Col.-Gen. Vladimir Pikalov.** *Commander of the Soviet Chemical
+> Troops (Chemical Defence Forces); a three-star general.* **Cool, decisive, and unwilling to spend a
+> subordinate's life on a run he would not make himself.** **Vladimir Karpovich Pikalov** (b. 15
+> September 1924, Armavir) was a decorated artilleryman of the Second World War — he had fought at
+> **Moscow, Stalingrad and Kursk** and been wounded more than once — who retrained afterward as a
+> **military chemist** and had led the Chemical Troops for nearly two decades. He reached Chernobyl on
+> the **afternoon of 26 April** and took charge of the military radiation-reconnaissance and
+> decontamination effort. With the plant's own dosimeters dead or floored and its reported figures
+> wildly low, the commission had **no reliable picture of the fields** around the open reactor — so
+> Pikalov **rode the reconnaissance vehicle right up to the wrecked Unit 4 himself, rather than order a
+> young soldier to make the lethal run**, and brought back the first authoritative readings: the
+> graphite was burning, and the radiation was **far above anything management had admitted**. He
+> absorbed about **1.37 Sv** (reported at the time as ~150 roentgen) doing it — a dose that damaged his
+> health for the rest of his life. He directed the chemical troops through the containment, was made
+> **Hero of the Soviet Union in December 1986**, and **died on 29 March 2003, aged 78.** *[documented]*
+> *(The vivid touches often attached to the drive — ramming a closed gate, telling his young driver
+> "stay here, son, you've still to become a father" — are reported/dramatized flourishes; the
+> documented core is that the three-star commander of the Chemical Troops personally ran the recon and
+> took a serious dose.)*
 
 > **The airdrops — heroic, but they mostly missed.** From **27 April to ~2 May**, Mi-8, Mi-6 and Mi-26
 > helicopters flew ~**1,800 sorties** over the open core and dumped ~**5,000 tonnes** into the crater —
@@ -1265,7 +1275,7 @@ reliable birth record are listed as not recorded rather than guessed.
 - **Turbine & electrical:** Brazhnik **28** · Anatoly Baranov (electrician) **32** · Perchuk **33** · Lelechenko **47** · Korneyev **~28** [reported]
 - **Room 604 & medical:** Shashenok **35** · Palamarchuk **~30** [reported]
 - **Firefighters:** Pravik **23** · Kibenok **23** · Ignatenko **25** · Tytenok **23** · Tishura **26** · Vashchuk **27** [reported] · Telyatnikov **35** · Leonid Shavrey **~36** [reported]
-- **Management & commission:** Bryukhanov **50** · Fomin **~49** · Sitnikov **46** · Legasov **49** · Shcherbina **66** · Antoshkin **43**
+- **Management & commission:** Bryukhanov **50** · Fomin **~49** · Sitnikov **46** · Legasov **49** · Shcherbina **66** · Antoshkin **43** · Pikalov **61**
 - **Divers & later:** Ananenko **26** · Bespalov **28** · Boris Baranov **45** · Protsenko **40**
 
 **Age not recorded** (no reliable birth record — not a guess): Kirschenbaum, Tregub, Metlenko,
@@ -1587,8 +1597,11 @@ shielding, directed by **Col. Nikolai Antoshkin**. It was heroic and largely **m
 post-accident survey found little of the material where the fuel actually was, and the blanket may have
 **trapped heat**, feeding a temperature rise around 1–2 May that revived fears of a melt. The first
 authoritative radiation picture had come not from the plant but from the military — **Col.-Gen.
-Vladimir Pikalov**, commander of the Chemical Troops, who **drove the reconnaissance vehicle up to the
-wrecked unit himself** rather than send a soldier, taking about 1.37 Sv.
+Vladimir Pikalov**, the commander of the Chemical Troops and a decorated veteran of Stalingrad and
+Kursk, who reached the site on **26 April** and **drove the reconnaissance vehicle right up to the
+wrecked unit himself** rather than send a young soldier to make the lethal run, bringing back the first
+honest readings — the graphite burning, the fields far above the plant's figures — and taking about
+**1.37 Sv** doing it. He was made Hero of the Soviet Union, and died in 2003.
 
 As the corium burned downward, scientists **Velikhov** and **Legasov** feared it would reach the water
 pooled in the **bubbler pool** beneath the reactor and flash it to steam. On **6 May**, after Captain
@@ -1879,7 +1892,7 @@ had handed over and the **day shift** that relieved them follow.
 - **Armen Abagyan** — VNIIAES director; led the dosimetry / evacuation prognosis.
 - **Nikolai Ryzhkov** — USSR Premier; answered Shcherbina "evacuation tomorrow".
 - **Col. Nikolai Antoshkin** (43) — organised and directed the helicopter drops; made **Maj.-Gen. and Hero of the Soviet Union** for it; d. 2021.
-- **Col.-Gen. Vladimir Pikalov** — chemical-troops commander; personally drove into the high-radiation zone to measure it; d. 2003.
+- **Col.-Gen. Vladimir Pikalov** (61) — commander of the Soviet Chemical Troops; WWII veteran of Moscow/Stalingrad/Kursk turned military chemist; reached the site 26 Apr and personally drove the recon vehicle into the high-radiation zone to measure it (~1.37 Sv). Hero of the Soviet Union (Dec 1986); d. 29 March 2003.
 
 ### Pripyat city
 - **Maria Protsenko** (40) — chief city architect; drew the maps and organised the evacuation district by district; survived.
