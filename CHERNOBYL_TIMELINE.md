@@ -1274,6 +1274,485 @@ Genrikh, Davletbayev, Vershinin, Novik, Gorbachenko, Belokon, Skachek, Ivan & Pe
 
 ---
 
+# THE FULL STORY — ONE CONTINUOUS NARRATIVE, FROM THE FIRST FOUNDATIONS TO THE LASTING SCARS
+
+*Everything above, told once more as a single unbroken thread — from the decision to build a power
+station on the Pripyat River, through the night the reactor tore itself apart and the people who
+lived and died in it, to the decades of consequence that followed. It repeats the parts rather than
+replacing them: the same facts, the same grading, nothing invented. Where the disaster core is
+retold, it is the same record as Parts I–V; where the story reaches before and after them, the new
+material is graded like the rest — and, as flagged below, much of the fine-grained pre-1986 town
+detail rests on enthusiast local histories rather than primary archives, so it is offered as
+well-corroborated but a tier softer than the reactor physics and the casualty record.*
+
+## Before the accident — building the plant and the town (1966–1983)
+
+The station began as a line on a Soviet planning map. In **1966** a USSR Council of Ministers decree
+approved a national build-out of nuclear plants, one of them to feed the "Central" energy region of
+the Ukrainian SSR. Surveyors weighed **sixteen** candidate sites across the Kyiv, Vinnytsia and
+Zhytomyr regions; the two finalists were near **Ladyzhyn** on the Southern Buh and a stretch of the
+**Pripyat River's right bank near the village of Kopachi**, about **15 km from the old town of
+Chornobyl** and **~130 km north of Kyiv**. In **1967** the Pripyat site — by the **Yanov (Yaniv)
+railway station** — was chosen: close to the Kyiv grid, with abundant river cooling water, rail
+access for heavy construction freight, and low-value farmland to build on. *[reported — the
+site-selection detail rests on local histories and OECD-NEA's site description.]* The plant was named
+the **V. I. Lenin Nuclear Power Station**, a Lenin statue at its gate.
+
+To run it, Moscow appointed a young thermal-power engineer, **Viktor Bryukhanov** — born **1 December
+1935 in Tashkent**, an electrical engineer who had risen to deputy chief engineer at the **Slavyansk
+thermal power plant**. He came to the empty riverside site in **1970, aged 34**, as both construction
+chief and director, a job he would hold until the disaster. He was a capable builder and administrator
+but **not a reactor physicist** — a fact that would matter.
+
+Three kilometres from the reactors, a town rose with them. **Pripyat was founded on 4 February 1970**,
+named for the river, the **ninth "atomgrad"** (purpose-built nuclear city) in the USSR; it was granted
+formal city status in **1979**. It was laid out by Moscow architects on a "**triangle principle**" of
+tower blocks and standard flat-blocks that saved land and left room for greenery — roughly **five
+microdistricts, ~149 apartment buildings and ~13,000 flats**. Designed for perhaps **75,000–85,000**
+people, it held about **49,000** at the end (sources give **49,360**, **49,400**, or "~50,000"),
+and it was strikingly **young — average age about 26**, more than a fifth of residents under eighteen.
+Its **chief city architect from 1979 was Maria Protsenko**, who sixteen years later would draw the map
+for its evacuation. *[the population and youth figures are documented; the ~75–85k design target and
+microdistrict counts rest on local histories — reported.]*
+
+Pripyat was a Soviet showcase, better-stocked and better-appointed than most towns of its size: the
+**Palace of Culture "Energetik"** (cinema, library, gym, pool, a basement shooting range), the
+**"Lazur" (Azure) swimming pool**, the **"Prometheus" cinema**, around **fifteen kindergartens** for
+some **5,000 children** and **five secondary schools** for about **6,700 pupils**, the **Hotel
+Polissya**, a **river port**, roughly **twenty-five shops and twenty-seven cafés**, the **Avanhard
+stadium** and its football club, and — most poignantly — a new **amusement park whose Ferris wheel was
+set to open on May Day, 1 May 1986**, five days after the reactor blew; it never officially opened.
+Medical care ran through **Medical-Sanitary Unit No. 126 (MSCh‑126)**, a ~410-bed hospital that would
+receive the first casualties. The town was served by **Yaniv station**, which closed on 27 April 1986.
+*[amenity detail: reported, from local histories; MSCh‑126 and the amusement-park opening date are
+well-corroborated.]*
+
+The reactors came online one by one. **First concrete was poured on 15 August 1972.** **Unit 1**
+reached the grid on **26 September 1977**; **Unit 2** followed in **December 1978**; **Unit 3** in
+**1981**; and **Unit 4** — the one that would fail — was commissioned in **late December 1983
+(commonly 20 December)**. Together the four **RBMK‑1000** units gave the station about **4,000 MWe**
+(each roughly **3,200 MWt / 1,000 MWe**), cooled by an artificial pond of about **22 km²** drawn from
+the river. Two more units, **5 and 6**, were under construction; **Unit 5 was about 70% complete and
+targeted to start on 7 November 1986** — work that the accident would halt and, by 1989, abandon.
+
+## The reactor that could not be allowed to fail — the RBMK and its hidden flaw
+
+The **RBMK‑1000** (*Reaktor Bolshoy Moshchnosti Kanalny*, "high-power channel reactor") was a Soviet
+original: a **graphite-moderated, water-cooled, channel-type** reactor whose core was finalised in the
+mid-1960s under the scientific direction of **Anatoly Aleksandrov** of the Kurchatov Institute and the
+chief designer **Nikolai Dollezhal** of **NIKIET**. It was favoured because it sidestepped the Soviet
+industry's inability to forge and ship a giant single pressure vessel; it was cheap, ran on
+**low-enriched (~2%) fuel**, could be **refuelled while running**, and descended from the reactors
+that made weapons plutonium. Its Chernobyl-type core held on the order of **1,661 fuel channels**
+(some technical accounts say 1,693).
+
+It also carried two flaws that would kill. First, a large **positive void coefficient**: when the
+cooling water boiled to steam, the reaction *sped up* rather than damping — making the reactor
+**dangerously unstable at low power (below ~20–30%)**. Second, and decisively, its **control rods were
+tipped with graphite**: when they dropped from fully withdrawn, the graphite ends first pushed
+neutron-absorbing water out of the bottom of the core, briefly *adding* reactivity there — a **positive
+spike at the very start of an emergency scram**. Safe operation also depended on keeping enough rods
+in the core (the **operating reactivity margin**); the true steady-state floor was around **26–30**
+equivalent rods, but operators were taught to treat **15** as the limit.
+
+None of this reached the men at the controls. The positive-scram effect had already shown itself at
+the **Leningrad‑1 RBMK on 28 November 1975**, when a fuel-channel accident driven by a **positive
+reactivity surge** damaged around **32 fuel assemblies** and released contamination over the Gulf of
+Finland; it appeared again in **1982, when Chernobyl's own Unit 1** suffered a partial fuel-channel
+meltdown that was **kept secret until about 1985**. Reports on the rod flaw circulated among senior
+managers and designers from at least 1975 and again in 1983 — but they were **classified, never passed
+to reactor operators, and the design fixes were not made before 26 April 1986.** The crews believed the
+emergency-shutdown button was a pure fail-safe. It was not. *(This is the core of why INSAG‑7 later
+shifted the blame off the operators — see Appendix C.)*
+
+The two managers who would preside over the test embodied the plant's culture. **Nikolai Fomin**, the
+**chief engineer** (born 1937, an **electrician by training** who joined Chernobyl in 1972 and rose to
+chief engineer around 1981), like Bryukhanov came from thermal power, not reactor physics. **Anatoly
+Dyatlov**, deputy chief engineer for operations — born 1931, a **Moscow Engineering Physics Institute**
+graduate who had assembled **submarine reactors at Komsomolsk‑on‑Amur** (and taken a serious radiation
+dose in an accident there) before transferring to Chernobyl in 1973 — was the real reactor man of the
+three, strict and formidable. It was Dyatlov who would run the test in the small hours of 26 April.
+
+## The test that waited four years (25 April 1986)
+
+The experiment itself was mundane on paper: if the grid power failed, could a **turbogenerator
+coasting on its own inertia** keep the cooling pumps turning for the ~40–60 seconds until the diesel
+generators came up? It was an **electrical** test, run by a visiting specialist, **Gennady Metlenko**.
+The plant had **tried and failed to complete it three times before — in 1982, 1984 and 1985** — and
+new voltage regulators prompted a fourth attempt during Unit 4's planned annual maintenance shutdown.
+
+Reactor No. 4 had run since December 1983. At **01:06 on 25 April** the operators began deliberately
+lowering its power from full (~3,200 MWt); by **03:47** it sat near half power. At **14:00** the
+**Emergency Core Cooling System was isolated** for the test — and, at almost the same moment, the
+**Kyiv grid dispatcher asked that further power reduction wait** to cover the evening demand peak
+because another station had dropped offline. So the reactor idled at ~1,600 MWt for roughly **nine
+hours**, long enough for the neutron poison **xenon‑135** to build in the core. The real cost of that
+delay was not technical but human: it pushed the test out of the hands of the experienced **day shift**
+that had prepared for it and into those of the **night shift**, who had not. At **23:10** the
+dispatcher released the unit and the power reduction resumed.
+
+## Into the night — the reactor turns unstable (26 April, 00:00–01:23)
+
+At **midnight** the shift changed. **Aleksandr Akimov's** night crew took the Unit 4 control room
+(BShchU‑4) from **Yuri Tregub's** evening shift; Tregub stayed on, off the clock, to watch the
+unfamiliar test. At the panels were **Leonid Toptunov** (25, only months in the senior reactor-control
+seat) on the rods, **Boris Stolyarchuk** on unit systems, and **Igor Kirschenbaum** on the turbine;
+**Dyatlov** stood over them, directing. Elsewhere in the block that night: **Valery Khodemchuk** at the
+main circulation pumps; **Anatoly Kurguz** and **Oleg Genrikh** in the central hall at +36; **Vladimir
+Shashenok** in room 604, phoning pressure readings; **Alexander Yuvchenko**, the shift's mechanical
+engineer, in his windowless room at +12.5; **Razim Davletbayev** with his turbine machinists
+(**Brazhnik, Vershinin, Novik, Korneyev**, mechanic **Perchuk**); **Aleksandr Lelechenko** and
+**Anatoly Baranov** in the electrical shop; reactor-shop foreman **Valery Perevozchenko** watching the
+rod indicators, with trainees **Proskuryakov** and **Kudryavtsev** observing. Bryukhanov and Fomin were
+at home.
+
+Almost at once it went wrong. Around **00:28**, during a transfer of automatic control, **power fell
+away to about 30 MWt** — near shutdown, the core now deeply poisoned by xenon. (For years this was
+blamed on Toptunov; **INSAG‑7 walked that back**, and it is no longer treated as his fault.) To claw
+power back, the operators **withdrew control rods** far beyond prudence, fighting the poison. By
+**01:03** the reactor was stabilised at only **~200 MWt** — far below the test's intended band and
+into the unstable zone — yet the test was allowed to proceed. To feed the coasting-turbine
+experiment, the crew switched on the standby pumps until **all eight main circulation pumps ran**
+(01:07), and **tripled the feed-water flow** (01:19); each step cooled the core, suppressed steam
+voids, and demanded still more rods be pulled out. By **01:22:30** the operating margin had sunk to
+about **6–8 equivalent rods**, less than half the mandated minimum — the core now poised on a knife
+edge, whether or not anyone had a live reading of just how far gone it was.
+
+## 01:23:40 — the scram, and the explosions
+
+At **01:23:04** the test began: **Kirschenbaum closed the No. 8 turbine's steam-stop valves** on
+Akimov's order, Metlenko called *"Oscillograph — on!"*, and the four pumps on the coasting turbine
+started to slow. Coolant flow fell, boiling rose, reactivity climbed. Thirty-six seconds later, at
+**01:23:40**, Akimov ordered *"AZ‑5!"* and **Toptunov pressed the emergency-shutdown button.** The rods
+began to descend — and their **graphite tips reached the bottom of the core first**, driving out the
+absorbing water and spiking reactivity at the base exactly where it must not. Power tore upward — past
+530 MWt at 01:23:43, then a **prompt-critical excursion to something like a hundred times full power in
+about four seconds.**
+
+At roughly **01:23:45** the first explosion — a steam/thermal blast — shattered the core region and
+heaved the **~1,000-tonne upper shield "Elena"** off its seat. **Valery Khodemchuk**, at his pumps, was
+**killed instantly — the first to die; his body was never recovered.** Two or three seconds later a
+**second, larger explosion** ejected fuel and burning graphite, tore off the reactor-hall roof, and lit
+the graphite fire. Superheated radioactive steam burst into the central hall, scalding **Kurguz**, who
+**forced the heavy door shut to shield others** and took the worst of it himself; **Genrikh**, in an
+adjacent room, was less burned. In room 604, **Shashenok** was crushed under a fallen beam and scalded
+— mortally hurt. *(The exact second is a reconstruction — the instruments were destroyed; 01:23:45 is
+the best-supported value, and seismic records show two shocks ~2.7 seconds apart.)*
+
+## The first hour inside the ruin (01:24–02:00)
+
+In his windowless room the concrete walls had **"bent like rubber"**; **Yuvchenko** thought war had
+broken out. Told by radio to bring stretchers, he grabbed one and started down — and on the stairs a
+blackened, bloodied figure stopped him: his friend **Degtyarenko**, recognisable only by his voice,
+who waved him on. A second scalded operator begged him, *"Help Khodemchuk — he's in the pump room,"*
+but the pump side had **collapsed and was impassable.** In the control room the crew sat amid dead
+instruments in disbelief; **Dyatlov** sent the trainees **Proskuryakov and Kudryavtsev** to lower the
+rods by hand, and **Perevozchenko** went to look for Khodemchuk.
+
+Then came the sequence that decided who lived. Back in the +10 corridor Yuvchenko met **Tregub**, sent
+by Akimov to open the emergency-coolant valves by hand; the job needed two, so the powerfully built
+Yuvchenko went with him. Finding the way blocked, they went **down two flights into knee-deep water**
+to a jammed door — through the gap the coolant tanks lay *"torn apart like wet cardboard,"* stars
+showing where the ceiling had been — then out through the ground-level transport corridor into the
+open, ~50 m from the reactor, where they saw a **pillar of ionised blue light rising from the open
+core.** Recognising it for what it was, they pulled back and ran to report. In the corridor
+**Perevozchenko and the two trainees** stopped them, bound for the reactor hall to hand-lower rods;
+**Yuvchenko warned them it was senseless — the rods and the reactor itself were gone** — but
+Perevozchenko insisted they must see it from above. **Tregub carried the word on to the control room**;
+Yuvchenko, the only one with a working torch, climbed with the other three to the reactor-hall airlock.
+There, because he had come up last, he **braced the multi-tonne door with his left shoulder** while
+Perevozchenko, Proskuryakov and Kudryavtsev looked into the glowing core for under a minute — all three
+taking fatal doses. When Yuvchenko moved to look himself, **Perevozchenko — a nuclear-submarine veteran
+who understood exactly what lay open — shoved him back** and the door slammed: *"There's nothing to see
+here."* That shove, and the shielding of the wall and door, almost certainly saved his life; his burns
+would map to his **left shoulder, hip and calf**, the side turned to the hall.
+
+And here the tragedy of the night set: **the reports changed nothing.** Tregub told Akimov and Dyatlov
+what he and Yuvchenko had seen; **Dyatlov held that an emergency feed-water tank had burst and the
+reactor was whole.** The trainees came back saying the core lay open — and were **disbelieved.**
+**Perevozchenko** carried the same word and met the same refusal. Man after man reported the truth and
+was sent back into the radiation: the trainees to keep lowering rods that no longer existed, Tregub and
+Yuvchenko to the coolant valves, **Perevozchenko** on alone through **>10,000 R/hr** rubble toward room
+306 to reach Khodemchuk — who was already dead and entombed. Meanwhile the standing order never
+changed: **keep pumping water into the core.** In the turbine hall, **Davletbayev, Brazhnik, Akimov**
+and **Palamarchuk** fought oil and hydrogen fires that could have spread to the still-running Unit 3;
+in the electrical shop **Lelechenko waded three times through radioactive water** to cut the hydrogen
+and purge the generators with nitrogen, sparing his younger electricians and averting a second
+explosion. **Palamarchuk** and dosimetrist **Gorbachenko** carried the dying **Shashenok** out of room
+604, Gorbachenko burned where the dying man's hand rested on his back.
+
+## The firefighters on the roof
+
+The alarm went out within minutes. **Lt. Vladimir Pravik's** plant brigade (VPCh‑2) reached the north
+side by ~01:28; Pravik raised the highest "No. 3" alarm, mobilising the whole Kyiv oblast, and put men
+onto the roofs. **Lt. Viktor Kibenok's** Pripyat crew — **Vasily Ignatenko, Vashchuk, Tytenok,
+Tishura** — followed, and **Major Leonid Telyatnikov** arrived ~01:40 to take overall command. They
+came in **ordinary gear, with no respirators, no working dosimeters, and no idea the debris was
+intensely radioactive**; some **kicked or handled chunks of graphite** — among the most radioactive
+material on Earth — not knowing what it was. They fought to keep the fire from reaching Unit 3, and
+they succeeded: the last surface fires were out by about **06:35**, roughly four and a half hours after
+the blast, the response having peaked near **37 crews, ~186 firefighters and ~81 engines.** The
+graphite fire in the crater would burn for days. Dr. **Valentin Belokon**, the Pripyat ambulance
+physician, recognised he was seeing **radiation sickness, not burns**, and worked the casualties until
+he himself began vomiting. The roof men — Pravik, Kibenok, Ignatenko and the rest — had taken the doses
+that would kill them within weeks.
+
+## The long denial — dawn and the day shift (06:00–20:00)
+
+Through the pre-dawn hours the plant's leadership relayed reassurance built on a false premise.
+**Bryukhanov** reached the civil-defense bunker ~02:30; ~03:00 he told Moscow the situation was under
+control. The only dosimeters that worked read to about **3.6–4 R/h** — the high-range meter was buried,
+another failed — so that ceiling figure went up the chain while the true fields ran to thousands.
+Civil-defense chief **Serafim Vorobyov**, using the one instrument that could read further — a military
+**DP‑5 (200 R/h ceiling)** — found the needle **slammed off its scale** near the block and urged that
+the town be warned to close its windows and stay inside; **Bryukhanov stalled**, waited for a "second
+opinion," and kept the reading out of the reports. From ~06:00, as the night crew were carried out,
+their replacements were fed into a reactor no one in charge would admit was destroyed: **Akimov** and
+**Toptunov**, though relieved, waded back into the flooded feed-water gallery and **cranked the valves
+by hand for about half an hour** — futile, because the lines were severed, and fatal for both.
+**Shashenok** died about 06:00 at MSCh‑126 — the second death.
+
+Pripyat woke to a warm, sunny Saturday, unwarned: children at open-air school exercises, mothers with
+strollers, anglers at the warm outflow channel, several weddings, the amusement park being readied for
+May Day. Around **09:00**, on Fomin's order, deputy chief engineer **Anatoly Sitnikov** — a reactor
+physicist senior enough that his word could not be waved away — climbed to a high vantage and **looked
+down into the wrecked hall and the open crater**, confirming with his own eyes that the core was
+destroyed. He absorbed a massive dose (some accounts ~15 Sv to the head), came down visibly burned,
+reported the truth to Fomin and Bryukhanov — and was **still only partly believed; the order to pump
+water stood.** He died on 30 May. *(The 2019 series compresses his disbelieved report and Vorobyov's
+dismissed 200 R/h reading into one "Sitnikov with dosimeters" scene and adds a gunpoint march that did
+not happen — Appendix C.)* No stable-iodine prophylaxis was given to the responders or the town — the
+omission that would seed the later thyroid-cancer wave.
+
+## The Commission, and the evacuation (evening 26 Apr → 27 Apr)
+
+The **State Commission** reached Pripyat about **20:00**, some eighteen to nineteen hours after the
+blast: chairman **Boris Shcherbina** (a deputy head of the USSR Council of Ministers), chief scientist
+**Valery Legasov** of the Kurchatov Institute, Energy Minister **Maiorets**, and the reactor-designers'
+deputy minister **Meshkov**, among others; **Legasov saw a crimson glow over half the sky** on the
+approach, and scattered graphite en route confirmed the core was breached. In a first working session
+the leadership **finally accepted the reactor was destroyed** and split into groups for cause,
+dosimetry and evacuation. After the dosimetry prognosis, Shcherbina **decided to evacuate the next day**
+and telephoned Premier **Ryzhkov** — *"Pripyat has to be evacuated… people are living it up full blast,
+weddings are going on"* — who answered *"evacuation tomorrow."* The delay owed to fear of panic and the
+weight of moving a city of 49,000. That night the worst-exposed were driven to a Kyiv airfield and
+**flown to Moscow's Hospital No. 6**, under radiation-medicine chief **Dr. Angelina Guskova**, while
+Pripyat slept a second night in the contaminated town.
+
+At **~13:10 on 27 April** a radio announcement told residents to prepare for a temporary evacuation
+"for three days." At **14:00** it began — about **1,200 buses** cleared some **47,000 people in roughly
+two-and-a-half to three-and-a-half hours**, strikingly calm and orderly, organised district by district
+from **Maria Protsenko's** maps. Told they would return in three days, most left pets and belongings.
+**They never came back.**
+
+## The world finds out — Forsmark, and the silence broken (28 April)
+
+Moscow said nothing publicly. On the morning of **28 April**, workers arriving at the **Forsmark**
+nuclear plant in Sweden — about **1,100 km away** — set off contamination alarms, and when the fallout
+was traced back across the Baltic the USSR was forced to speak. That evening a **terse ~20-second TASS
+bulletin** — *"An accident has occurred at the Chernobyl power station…"* — became the first public
+admission, about two and a half days after the blast. The ~36-hour information blackout for Pripyat's
+own residents and this delayed international disclosure are two different failures, often blurred
+together into the myth that the disaster was "hidden for weeks" (Appendix C).
+
+## The battle to contain it — airdrops, divers, miners, robots, the sarcophagus (May–November 1986)
+
+Now began the mass response. From **27 April to ~2 May**, helicopters flew perhaps **1,800 sorties**
+over the open core and dropped about **5,000 tonnes** of sand, clay, boron, dolomite and lead, the
+crews hovering in fields of thousands of R/h and laying dropped lead on their cabin floors for
+shielding, directed by **Col. Nikolai Antoshkin**. It was heroic and largely **missed**: the
+post-accident survey found little of the material where the fuel actually was, and the blanket may have
+**trapped heat**, feeding a temperature rise around 1–2 May that revived fears of a melt. The first
+authoritative radiation picture had come not from the plant but from the military — **Col.-Gen.
+Vladimir Pikalov**, commander of the Chemical Troops, who **drove the reconnaissance vehicle up to the
+wrecked unit himself** rather than send a soldier, taking about 1.37 Sv.
+
+As the corium burned downward, scientists **Velikhov** and **Legasov** feared it would reach the water
+pooled in the **bubbler pool** beneath the reactor and flash it to steam. On **6 May**, after Captain
+**Zborovsky's** team pumped the corridor down to knee height, three plant workers — **Alexei Ananenko**,
+who knew the valve layout, with **Valeri Bespalov** and shift supervisor **Boris Baranov** on the lamp
+— **waded in and opened the two gate valves**, their searchlight working, and heard the water rush out.
+They were inside about fifteen minutes, took elevated but sub-acute doses, and **all three survived**
+(Baranov died of heart disease in 2005; the others lived on, decorated Heroes of Ukraine in 2019). The
+myth that the "divers" died within days is false.
+
+Through **mid-May to late June**, fearing the melt would burn through the foundation into the water
+table, about **400 coal miners** tunnelled a ~136 m gallery **from beneath Unit 3** to dig a chamber
+for a cooling heat-exchanger, working round-the-clock in stifling heat because they dared not ventilate
+— and **the heat-exchanger was never needed**, the corium having cooled and solidified. (No miner
+developed ARS; the "a quarter of them died" line is an HBO caption, Appendix C.) In **September–October**,
+to clear graphite and fuel from the Unit‑3 roof, remote machines were tried — the Soviet **STR‑1** and a
+West German **"Joker"** — but fields of **10,000–15,000+ R/h** killed their electronics, so **3,828
+soldiers, the "bio-robots,"** cleared it by hand in shifts of **40–90 seconds** under Maj.-Gen.
+**Tarakanov**, and a red flag was raised on the vent stack. And from June to **30 November 1986** a
+concrete-and-steel **"Shelter Object" — the sarcophagus** — was thrown up over the ruin in a ~206-day
+build, over **400,000 m³ of concrete** placed largely by remote control because no one could stand near
+the walls: a hasty, temporary tomb that would itself have to be re-covered decades later.
+
+## The dead, and the doses
+
+The internationally accepted acute toll is **two immediate deaths and 28 from acute radiation syndrome**
+within about three months, out of **134 confirmed ARS cases**. They did not die of a vague "radiation":
+each took his dose in a specific place doing a specific thing. **Khodemchuk** was killed in the blast at
+his pumps; **Shashenok** died of blast trauma, burns and radiation at 06:00. Then, over May, the ARS
+deaths came in sequence — **Lelechenko** (7 May, ~25 Sv, from wading the water); firefighters **Tishura**
+(10 May, the first), **Pravik** and **Kibenok** (11 May), **Ignatenko** (13 May), **Vashchuk, Tytenok**;
+the operators **Akimov** (10 May, ~15–20 Sv) and **Toptunov** (14 May, ~13 Sv) from the valves; **Kurguz**
+(12 May) from the steam; the trainees **Kudryavtsev** (14 May) and **Proskuryakov** (17 May) from looking
+into the core; turbine and electrical men **Brazhnik, Baranov, Perchuk, Lopatyuk, Novik**; the Kharkiv
+specialist **Savenkov** (21 May); the guards **Ivanenko** (26 May) and **Luzganova** (31 July) from
+standing their posts in the open; **Sitnikov** (30 May); and **Perevozchenko** (13 June) from the search
+for Khodemchuk. Because almost no one wore a dosimeter that could read the true fields, the individual
+figures are **clinical reconstructions** from symptoms, blood counts and burns, not readings; the one
+complete picture is the **dose-band distribution of the 134 ARS cases** (Grade IV, 6.5–16 Sv, 21 cases,
+20 dead; III, 4.2–6.4 Sv, 22/7; II, 2.2–4.1 Sv, 50/1; I, 0.8–2.1 Sv, 41/0). Most who died despite
+Hospital No. 6's care — and the 13 bone-marrow transplants — succumbed not to marrow failure but to
+**skin/beta burns, pneumonitis and organ damage.**
+
+## The reckoning — the trial, and Legasov (1987–1988)
+
+Blame came the next summer. From **7 to 30 July 1987**, in the House of Culture in the town of
+Chernobyl, six men stood trial. **Bryukhanov, Fomin and Dyatlov were each sentenced to ten years** in
+a labour camp; station shift director **Rogozhkin** got five, Unit-4 chief **Kovalenko** three, and
+state inspector **Laushkin** two — convicted mainly under the article for **operating a dangerous
+enterprise**, in what are believed to be the first criminal convictions of nuclear-plant officials
+anywhere. The verdict fixed the blame on the operators; **INSAG‑7** would later move much of it onto
+the concealed design flaws they were never told about. Their later lives diverged: **Dyatlov**, freed
+early on health grounds around 1990, wrote a memoir indicting the RBMK and **died in Kyiv on 13
+December 1995**; **Bryukhanov** served about five years and **died in Kyiv on 13 October 2021**, aged
+85; **Fomin** was released in the early 1990s and reportedly returned to nuclear work at the Kalinin
+plant, his death not reliably recorded.
+
+The scientist who became the disaster's public face met a darker end. **Valery Legasov** had led the
+Soviet delegation to the **IAEA in Vienna in August 1986**, where — to preserve the programme — he
+**stressed operator error and played down the design flaws**, a compromise that gnawed at him. He
+dictated **five cassette tapes** on the suppressed causes, and on **27 April 1988 — the day after the
+second anniversary — he hanged himself.** Excerpts of his tapes were published weeks later; in **1996**
+President Yeltsin named him a **Hero of the Russian Federation**, posthumously. His despair, and those
+tapes, are real; the courtroom speech the 2019 series gives him is invented (Appendix C).
+
+## The plant that kept running, and its long closing (1986–2000)
+
+Strange as it sounds now, Chernobyl **kept generating electricity for fourteen more years.** Units 1,
+2 and 3 — Unit 3 sharing walls with the ruined Unit 4 — were decontaminated and restarted; the country
+needed the power. **Unit 2 was shut for good after a turbine-hall fire on 11 October 1991** (a surged
+switch and leaking generator hydrogen collapsed a roof truss, though with no radioactive release);
+**Unit 1 closed in November 1996.** Western governments, alarmed that RBMKs still ran on the accident
+site, pressed for closure: a **memorandum of understanding among the G7, the European Commission and
+Ukraine, signed in Ottawa on 20 December 1995**, committed Ukraine to shut the plant by 2000 in return
+for aid, including money to finish replacement reactors elsewhere. So on **15 December 2000**, President
+**Leonid Kuchma** gave the order by television link from Kyiv, and **Unit 3 — the last — was powered
+down**, closing the station. Decommissioning is a century-long project: the spent fuel is being moved
+from the old wet store into a new Holtec dry store, **ISF‑2**, built for **21,217 RBMK fuel assemblies**
+and a 100-year life (operational since 2021), with **final demolition not planned until around 2064.**
+
+## Sealing the wound again — the New Safe Confinement (1997–2019)
+
+The 1986 sarcophagus was only ever meant to last a few decades, and it was failing — cracking,
+leaking, at risk of collapse over the fuel-containing masses still inside. An international effort took
+over: the **Shelter Implementation Plan** (finalised May 1997) and an **EBRD-managed Chernobyl Shelter
+Fund** (over **€1.6 billion from 45 donors**) financed a permanent solution. Built by the French-led
+**Novarka** consortium, the **New Safe Confinement** is a stainless-steel arch **257 m across, 108 m
+high and about 36,000 tonnes** — the **largest movable land structure ever built.** Assembled to one
+side to keep workers out of the radiation, it was **slid over the reactor across 14–29 November 2016**
+and handed to Ukraine in **July 2019**, designed to stand and allow dismantling for **about a hundred
+years**. (Costs are often muddled: roughly **€1.5 billion for the arch**, ~€2.1 billion for the whole
+programme.)
+
+## The health legacy — what four decades actually show
+
+Forty years on (the anniversary fell in 2026), the measurable health record is narrower, and stranger,
+than either the reassuring or the apocalyptic tellings. The **confirmed death toll is ~31** — two in
+the blast, about 28 from ARS, and a heart-attack case sometimes counted. The **one clear population
+signal is thyroid cancer** in those who were children in 1986 — **over 6,000 cases** from iodine‑131 in
+milk, but with very high survival (**~15 deaths** counted by 2008), the toll the missing iodine
+prophylaxis let happen. The feared genetic catastrophe **did not appear**: in **2021, NIH/NCI
+whole-genome studies (in *Science*) found no excess heritable mutations** in children conceived after
+their parents' exposure. Projected long-term cancer deaths are model-dependent and genuinely disputed —
+and it is worth laying the range out honestly rather than picking a number:
+
+| Estimate | Scope | Source |
+|---|---|---|
+| **~31** | confirmed direct deaths | UNSCEAR / WHO / IAEA |
+| **~4,000** | eventual excess cancer deaths among the ~600,000 most-exposed | Chernobyl Forum (2005/06) |
+| **~9,000** | excess cancer deaths across the three most-affected countries | WHO (2006) |
+| **~16,000** *(CI 6,700–38,000)* | fatal cancers across all Europe to 2065 | IARC / WHO (2006) |
+| **~30,000–93,000** | broader low-dose European populations *(contested)* | Greenpeace / TORCH (2006) |
+| **~985,000** | global, all causes *(outlier, mainstream-rejected)* | Yablokov et al. (2009) |
+
+The split is real: official bodies count firmly only the high-dose cohorts and refuse to state low-dose
+collective-dose projections as "deaths," while NGO estimates apply linear-no-threshold modelling to the
+far larger, lightly-exposed population. Among the **~600,000 liquidators**, no clear leukaemia excess
+was proven at first, with some later evidence among higher-dose workers and a definite rise in cataracts.
+And the **Chernobyl Forum's own conclusion** was that the **largest lasting harm was psychological and
+socioeconomic** — anxiety, fatalism, stigma and shattered livelihoods among the displaced — a wound the
+dose figures never capture.
+
+## The zone — an accidental wilderness
+
+The land bears the deepest mark. A **10 km then 30 km Exclusion Zone** (~2,800 km², later widened) was
+sealed off; **about 116,000 people were evacuated in 1986** — Pripyat, the town of Chernobyl, and more
+than ninety villages — and **another ~220,000 resettled later**, some **335,000 lives uprooted** in all,
+with decontamination attempted across ~1,840 settlements. Downwind of the reactor, ~4 km² of pine turned
+ginger-red and died — the **"Red Forest,"** bulldozed and buried in 1986–87 and still among the most
+radioactive open ground on Earth. The long-lived isotopes that set the century-scale timelines are
+**caesium‑137 and strontium‑90** (~30-year half-lives). The fallout reached far beyond: **Belarus took
+the heaviest share** (~60% of the Soviet deposition, ~23% of its territory contaminated), and
+radiocaesium was measurable across Scandinavia, Germany and Britain — where **restrictions on Welsh and
+Cumbrian sheep farms were not fully lifted until 1 June 2012.**
+
+Yet with the people gone, wildlife returned in force. The zone is now a de facto refuge for **wolves,
+lynx, brown bears, European bison, elk and wild boar**, with **Przewalski's horses reintroduced in
+1998** now numbering over 150, and a stubborn few hundred elderly **"self-settlers" (samosely)** who
+went home and stayed. Scientists genuinely disagree about the fine print — **Møller and Mousseau** report
+biological harm and reduced bird numbers in the hottest patches, while **census studies (Deryabina et
+al., 2015)** find abundant, stable large-mammal populations — but the headline is settled: **it is
+neither a lifeless wasteland nor a pristine paradise**, and the removal of humans has helped the animals
+more than the radiation has hurt them (Appendix C).
+
+## The wider fallout — Europe, glasnost, and the end of an empire
+
+Chernobyl's largest consequence may have been political. The clumsy secrecy — the town left unwarned,
+the world learning from Sweden — collided with **Gorbachev's new policy of glasnost** and helped force
+it into reality; Gorbachev himself wrote in 2006 that the disaster, **"even more than my launch of
+perestroika, was perhaps the main cause of the Soviet Union's collapse."** Out of it came a literature
+of witness — **Svetlana Alexievich's oral history *Voices from Chernobyl*** (1997), which helped win her
+the **2015 Nobel Prize** — and, decades on, a strange second life as a place people visit: **regulated
+tours from around 2011**, and a tourism surge after the **2019 HBO miniseries** that also made
+"disaster-selfie" tourism a controversy, with the zone later put forward for **UNESCO recognition** as a
+site of memory.
+
+## War comes to the ruins — 2022, and a strike in 2025
+
+The story was not over. On **24 February 2022**, the first day of Russia's full-scale invasion, **Russian
+forces seized the Chernobyl plant**, advancing through the zone from Belarus; disturbed topsoil briefly
+raised local readings, though the IAEA judged them within the operational range. Ukrainian staff and
+guards were **held on-site for roughly five weeks**, one group of about fifty working **over 600 hours
+straight** to keep the safety systems running; on **9 March** the site lost external power and ran on
+backup while the **IAEA lost its remote monitoring data.** Ukrainian officials reported that Russian
+troops **dug trenches in the contaminated Red Forest** — and that some fell ill — though the IAEA could
+**not confirm** the radiation-sickness claims. Russia **withdrew around 31 March 2022** and Ukraine
+regained control. Then, on **14 February 2025**, a drone (Ukraine blames Russia; Moscow denies) **struck
+the New Safe Confinement**, starting a fire that smouldered for weeks and damaged the roof cladding; the
+IAEA said the great arch had **"lost its primary safety functions, including confinement capability,"**
+even as radiation levels held normal. The wound built to be sealed for a century had, within a decade,
+been torn at by war.
+
+## What Chernobyl left behind
+
+Set end to end, the story is not the one the popular memory keeps. It was not the recklessness of a few
+operators but a **flawed reactor whose fatal secret was kept from the men who ran it**; not a fire that
+sand from the sky put out, but a graphite core that burned for days and was smothered mostly by luck and
+by men who walked into fields that killed them; not "the divers who died" or "the miners, a quarter of
+them dead," but people who mostly **lived, having done a plain job in an impossible place.** The dead are
+countable and named — a pump operator entombed where he stood, an adjuster crushed at his gauges, the
+firefighters on the roof, the operators back in the water, the engineer who looked into the core, the
+guards who never left their posts. The living carried it in their bodies and their memories. And the
+land keeps the longest record of all: a sealed circle of forest and empty towns, quietly turning back
+into wilderness, that will outlast everyone who remembers why it was closed.
+
+---
+
 # APPENDIX A — Full roster of significant personnel
 
 Everyone of at least modest significance to the events of 25–27 April 1986. **✝ = died of the
