@@ -98,6 +98,7 @@ the plant's own shorthand.
 - **Bubbler pool** — the **pressure-suppression water pool beneath the reactor** (the "divers" drained it).
 - **"Elena" (the *pyatak*)** — the ~1,000-tonne **upper biological-shield disc** over the core, blown up and left tilted.
 - **Corium** — the **lava-like melt** of fuel, cladding, graphite and concrete.
+- **Hydrogen (why it was in the turbine hall)** — the big **turbogenerators were hydrogen-cooled**: hydrogen gas circulates *inside* the sealed generator casing as the coolant (it carries heat well and, being very light, causes little drag on the fast-spinning rotor), and the plant made its own on an **on-site electrolysis station**. Hydrogen is violently explosive mixed with air, so after the blast the electrical and turbine crews raced to **shut off the supply and purge the generators with inert nitrogen** — averting a second blast in a hall already full of burning oil, feet from the still-running Unit 3. *(This is separate from the reactor-side hydrogen made by the zirconium–steam reaction, a debated contributor to the second explosion — that one no one could switch off.)*
 - **Elevation marks (+NN)** — metres above the **+0.0 ground / transport level**; control room +10, core top +35.5, roofs to ~+71.
 - **R/h · rem · Gy · Sv** — radiation units: **R/h** = roentgens per hour (a dose *rate*); **rem** and **Sv** measure absorbed dose to a person (1 Sv = 100 rem); **Gy** (gray) is absorbed energy. Fatal whole-body ARS begins around **~4–6 Gy/Sv**.
 
