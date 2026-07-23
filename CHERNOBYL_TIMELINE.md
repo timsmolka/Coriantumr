@@ -1293,6 +1293,46 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 
 ---
 
+# THE RELEASE — WHAT ACTUALLY CAME OUT
+
+The document above traces the **doses to people** and where the **fallout landed**; this section covers
+the thing in between — **what and how much radioactivity actually escaped the reactor.** The figures
+are from **UNSCEAR (2000)** and the **OECD‑NEA** assessment, the standard source-term references.
+
+**It was not one burst but a ten-day plume.** The release ran from the explosion on **26 April to about
+6 May**. It came in three phases: a **large first-day release** thrown out mechanically by the
+explosion and the burning graphite; a **decline over 27 April–1 May** as the fires were fought and the
+airdrops smothered the crater; then a **second rise around 2–5 May** as the covered, un-cooled fuel
+**heated back up** and drove volatiles out again — until the release **fell away sharply after ~6 May**
+as the core finally cooled. *[documented]*
+
+**How much.** The total is most often given as **~5,300 PBq** (5.3 × 10¹⁸ becquerels) **excluding the
+noble gases**, or about **14 EBq** all told — **more than half of it biologically inert noble gas**
+(mainly xenon‑133). Crucially, only a few percent of the reactor's **fuel by mass** (~3.5%) actually
+escaped — but **near-all of the volatile isotopes** did, which is what mattered for health. *[documented]*
+
+## The isotopes that counted *(approximate released activity, UNSCEAR 2000)*
+
+| Radionuclide | ~Released | Half-life | Why it mattered |
+|---|---|---|---|
+| **Xenon‑133** *(noble gas)* | ~6,500 PBq | ~5 days | ~100% of the core's inventory escaped; biologically **inert** — the plume's bulk, but not its harm. |
+| **Iodine‑131** | ~1,760 PBq | **8 days** | **~50–60% of the core inventory**; concentrates in the **thyroid** (via milk) — the cause of the childhood thyroid-cancer wave. |
+| **Tellurium‑132 / Iodine‑132** | ~1,150 / ~1,040 PBq | hours–days | Short-lived; added to the early **thyroid** and external dose. |
+| **Caesium‑137** | **~85 PBq** | **30 years** | **~20–40%** of inventory; the **long-term ground contamination** that defines the Exclusion Zone. |
+| **Caesium‑134** | ~47 PBq | ~2 years | Short-term partner to Cs‑137 in the early ground dose. |
+| **Strontium‑90** | ~10 PBq | 29 years | A **bone-seeker**; fell mostly nearer the plant. |
+| **Plutonium isotopes** | ~0.03 PBq | up to 24,000 yr | Heavy **fuel particles**; deposited close in, driving the near-site "hot particle" contamination. |
+
+> **How it compares.** Chernobyl is one of only **two events ever rated Level 7** — the top of the
+> International Nuclear Event Scale (INES) — the other being **Fukushima Daiichi (2011)**. Chernobyl
+> released **several times more** than Fukushima (whose atmospheric release was on the order of
+> ~10–20% of Chernobyl's) and, unlike Fukushima, threw out **fuel and graphite directly** from an open,
+> burning core with no containment. The **Three Mile Island** accident (1979, INES **Level 5**) is the
+> contrast that proves the point: its core partly melted, but the **containment held** and the release
+> to the public was negligible. *[documented]*
+
+---
+
 # RADIATION DOSES — WHAT IS ACTUALLY KNOWN (AND WHY MOST ISN'T)
 
 **Why there is no dose for everyone.** During the acute phase almost **no one wore a working dosimeter
