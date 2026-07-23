@@ -958,8 +958,10 @@ one of mass response rather than individual minutes.
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
 | **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Col. Nikolai Antoshkin** *(promoted Maj.-Gen. for the operation)* and **Legasov** (materials). Over 27 Apr → ~2 May roughly **5,000 tonnes** are dropped (see note). Chemical-troops commander **Col.-Gen. Vladimir Pikalov** personally drives the recon vehicle into the high-radiation zone to take the measurements himself (see note). |
 | **28 Apr, morning** | **The world finds out — from Sweden, not Moscow.** Workers arriving at the **Forsmark** nuclear plant (~1,100 km away) trip contamination alarms; when the fallout is traced back across the Baltic, the USSR is forced to break its silence. That evening a **terse ~20-second TASS bulletin** — *"An accident has occurred at the Chernobyl power station…"* — is the **first public admission**, ~2½ days after the blast. The **~36-hour blackout for Pripyat's own residents** and this delayed international disclosure are two different failures often blurred into "hidden for weeks" (see Appendix C). |
+| **1 May 1986** | **Kyiv holds its May Day parade** on the Khreshchatyk as the plume drifts toward the city — hundreds of thousands in the open, children at the front, to project calm (see note). |
 | **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Sv), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
+| **14 May 1986** | **Gorbachev finally speaks.** Eighteen days after the blast, the Soviet leader gives his **first televised address** on Chernobyl — calling it unprecedented, saying "the worst is behind us," and spending much of it attacking Western coverage as "a mountain of lies." |
 
 > **The general who drove in himself — Col.-Gen. Vladimir Pikalov.** *Commander of the Soviet Chemical
 > Troops (Chemical Defence Forces); a three-star general.* **Cool, decisive, and unwilling to spend a
@@ -998,12 +1000,85 @@ one of mass response rather than individual minutes.
 > the 2019 series folds a crash into the *April* firefight (Appendix C). The real crash came **five
 > months after** the accident, during the sarcophagus build — not during the fire. *[documented]*
 
+## The cover-up, and the wider harm
+
+The failure to tell people did not end at Pripyat's edge.
+
+**The May Day parade in Kyiv (1 May 1986).** Five days after the explosion, as the wind swung the plume
+toward Kyiv and the city's radiation levels climbed, the authorities let the annual **May Day parade go
+ahead on the Khreshchatyk** — hundreds of thousands in the open, **children in short sleeves at the
+front**, marching under the fallout to project calm and avert "panic." Ukrainian Party chief **Volodymyr
+Shcherbytsky** led it. *(Whether Moscow explicitly ordered it over his objection, or he went ahead
+himself for fear of Moscow, is genuinely disputed — the parade under rising radiation is documented; the
+exact command chain is not. [documented / disputed])*
+
+**Gorbachev's eighteen-day silence.** The Soviet leader said nothing publicly until **14 May 1986**,
+when **Mikhail Gorbachev** finally addressed the nation on television — calling the accident
+unprecedented, insisting "the worst is behind us," and devoting much of the speech to attacking Western
+reporting as "a mountain of lies." The delay itself became part of the scandal, and a test glasnost
+plainly failed. *[documented]*
+
+**The milk, and the iodine that was not given.** The children's thyroid cancers trace above all to one
+pathway: **iodine‑131 fell on the pasture, cows ate the grass, and children drank the fresh local milk**
+(the leafy-vegetable and inhalation routes were minor by comparison), with some individual thyroid doses
+reaching **tens of grays**. Stable-iodine tablets — which block that uptake if taken in time — were
+**largely not distributed, and dairy not promptly banned**, in the worst-hit Soviet areas. Next door,
+**Poland did the opposite, giving stable iodine to about 10.5 million children**, and cut its
+population's thyroid dose sharply. In that sense the mass thyroid-cancer wave was **preventable**.
+*[documented]*
+
+**The wider evacuation, and the animals.** The clearance ran far beyond Pripyat: the old **town of
+Chernobyl** (~12,000–14,000 people) and **more than ninety villages** were emptied — about **116,000**
+people within the 30 km zone by mid-May. Cleanup squads then went in to **shoot the abandoned pets and
+livestock** and to bury radioactive topsoil, and in places whole villages. *(The free-roaming dogs of
+the zone today descend from the animals left behind.)* *[documented; the animal-squad detail reported]*
+
+**The threat to Kyiv's water.** The plant sits on the **Pripyat River**, which feeds the **Dnieper
+reservoir cascade** — the drinking water for millions, Kyiv's ~2.5 million among them — and the river was
+in spring flood. Fear that caesium and strontium, or a melt-through, would poison the supply drove a
+major but little-remembered engineering effort in early May: manipulating the reservoir gates,
+protecting the intakes, and standing up a Dnieper radiation-monitoring system that runs to this day.
+*[documented]*
+
+## The doctors, and the scientists who went into the ruin
+
+**Dr. Angelina Guskova (1924–2015) — the physician who ran the medical response.** By 1986 Guskova, a
+neurologist and radiation-medicine specialist who had treated radiation casualties since the Soviet bomb
+programme of the late 1940s, was **the most experienced acute-radiation-syndrome clinician in the
+world**, with well over a thousand cases behind her. As clinical head at **Moscow's Hospital No. 6** she
+directed the triage and treatment of the Chernobyl casualties — the first ~**129** flown in within about
+a day — and it was her Soviet ARS classification and protocols that framed their care. *[documented]*
+
+**Robert Gale, Armand Hammer, and the bone-marrow effort.** Through the American industrialist **Armand
+Hammer**, who had a personal line to Gorbachev, the U.S. haematologist **Dr. Robert Gale** was brought to
+Hospital No. 6 — a rare moment of **Cold-War medical cooperation**. Gale assisted with the **13
+bone-marrow transplants**; the results were poor, most recipients dying, and the strategy is now judged
+to have been largely ineffective here — the men were dying of **skin and internal burns**, not marrow
+failure alone. *[documented]*
+
+**Alexander Borovoi and the "Complex Expedition."** From late 1986 the Kurchatov Institute's **Chernobyl
+Complex Expedition**, led scientifically by **Alexander Borovoi** with **Konstantin Checherov**, went
+*into* the ruined building — in coveralls and respirators, with little shielding, like the fictional
+"stalkers" the zone later inspired — to find where the roughly **180-plus tonnes of nuclear fuel** had
+gone. It was they who **mapped the fuel-containing masses** and, in the autumn of 1986, **found the
+Elephant's Foot** in the basement (inspector **Korneyev's** famous photograph came later). Checherov
+later argued from his surveys that far less fuel remained under Unit 4 than the official estimates — **a
+minority view the mainstream corium literature does not accept**, noted here as a live controversy.
+*[documented; Checherov's low-fuel thesis disputed]*
+
 ## The "Chernobyl divers" — the bubbler-pool valve drain (6 May), step by step
 
-Water from the firefighting and cooling had pooled in the **bubbler pool** — the pressure-suppression
-tank beneath the reactor. Scientists (**Yevgeny Velikhov**, **Valery Legasov**) feared the molten core
-could burn down into it and flash the water to steam, setting off a **second, far larger blast** and
-scattering yet more radioactive material. The commission ordered the pool drained.
+Water from the firefighting and the operators' own futile injection had pooled in the **bubbler pool** —
+the two-storey pressure-suppression reservoir directly beneath the reactor, holding on the order of
+**20,000 m³**. The danger was the **corium**: the white-hot melt of fuel, cladding, graphite and
+concrete was **burning downward through the biological shield**, and scientists (**Yevgeny Velikhov**,
+**Valery Legasov**, and the Belarusian physicist **Vasily Nesterenko**) feared that if it reached the
+pooled water, the flash to steam would **rupture what was left of the structure and hurl far more fuel
+and fission products into the air** — a second release potentially **worse than the first** — while also
+threatening the **still-running Units 1–3** and driving contamination into the groundwater and the
+Dnieper. *(The often-repeated "3–5 megaton" figure, from Nesterenko, is disputed: a steam blast is
+violent but is not a multi-megaton nuclear yield — Appendix C.)* The risk was judged grave enough to
+**drain the pool by hand**.
 
 > **No clock for this one.** Unlike the night of the accident, there is **no minute-level record** of
 > the drain — even the time of day on 6 May is unrecorded. The *order* of the steps is documented
@@ -1025,7 +1100,10 @@ scattering yet more radioactive material. The commission ordered the pool draine
 radiation); **Ananenko** and **Bespalov** lived on. Ukraine decorated them twice: the **Order "For
 Courage," 3rd class** (Poroshenko, 26 April 2018) and the title **"Hero of Ukraine"** (Zelensky,
 Decree 468/2019, 27 June 2019) — Baranov posthumously in each. *(Boris Baranov the diver is a
-different man from electrician Anatoly Baranov, ✝ 20 May 1986.)*
+different man from electrician Anatoly Baranov, ✝ 20 May 1986.)* In interviews decades on, Ananenko has
+stayed matter-of-fact: he knew where the valves were, so he was the one who went, and he gently
+corrects the "suicide squad" retellings — they expected to walk back out, and they did. *Documented:*
+*"I never felt like a hero. I was doing my job."*
 
 ## The cleanup, and the months after — the famous episodes
 
@@ -1080,7 +1158,9 @@ of radiation illness on 30 March 1987**. *[documented / reported]*
 **The years after — what the health record actually shows.** Beyond the ~31 immediate deaths (Part V),
 the one clearly-measured population effect is a wave of **thyroid cancer** in people exposed as
 children — from **iodine‑131 in milk**, which the missing stable-iodine prophylaxis (Part III) let
-into their thyroids. UNSCEAR counts **~6,000+ cases**, but with very high survival (**~15 deaths**).
+into their thyroids. UNSCEAR counts **~6,000+ cases**, but with very high survival (**~15 deaths**); the
+survivors carry a visible mark — the horizontal throat scar left by thyroid surgery, common enough to
+earn the folk name the **"Chernobyl necklace."**
 Against that, the feared **hereditary catastrophe did not materialise**: **2021 NIH/NCI whole-genome
 studies found no excess new (heritable) mutations** in children conceived *after* their parents'
 exposure — there was no "generation of mutants." The cruellest twist is that a good deal of the human
@@ -1601,6 +1681,14 @@ admission, about two and a half days after the blast. The ~36-hour information b
 own residents and this delayed international disclosure are two different failures, often blurred
 together into the myth that the disaster was "hidden for weeks" (Appendix C).
 
+And even then the priority was appearances over safety. On **1 May**, as the plume swung toward Kyiv and
+the city's radiation rose, the authorities let the annual **May Day parade go ahead** — hundreds of
+thousands in the open, **children at the front** — to project calm; Ukrainian Party chief **Volodymyr
+Shcherbytsky** led it *(whether ordered from Moscow or done for fear of it is disputed)*. And **Gorbachev
+himself did not speak** until **14 May**, eighteen days on, when he finally went on television to call
+the accident unprecedented, say "the worst is behind us," and spend much of the speech attacking Western
+coverage as "a mountain of lies." (Part IV carries both in full.)
+
 ## The battle to contain it — airdrops, divers, miners, robots, the sarcophagus (May–November 1986)
 
 Now began the mass response. From **27 April to ~2 May**, helicopters flew perhaps **1,800 sorties**
@@ -1717,9 +1805,11 @@ programme.)
 Forty years on (the anniversary fell in 2026), the measurable health record is narrower, and stranger,
 than either the reassuring or the apocalyptic tellings. The **confirmed death toll is ~31** — two in
 the blast, about 28 from ARS, and a heart-attack case sometimes counted. The **one clear population
-signal is thyroid cancer** in those who were children in 1986 — **over 6,000 cases** from iodine‑131 in
-milk, but with very high survival (**~15 deaths** counted by 2008), the toll the missing iodine
-prophylaxis let happen. The feared genetic catastrophe **did not appear**: in **2021, NIH/NCI
+signal is thyroid cancer** in those who were children in 1986 — **over 6,000 cases** from **iodine‑131
+in contaminated cow's milk**, but with very high survival (**~15 deaths** counted by 2008), the toll the
+missing iodine prophylaxis let happen (neighbouring **Poland gave stable iodine to ~10.5 million
+children** and largely spared them; the survivors' throat-surgery scar is nicknamed the **"Chernobyl
+necklace"**). The feared genetic catastrophe **did not appear**: in **2021, NIH/NCI
 whole-genome studies (in *Science*) found no excess heritable mutations** in children conceived after
 their parents' exposure. Projected long-term cancer deaths are model-dependent and genuinely disputed —
 and it is worth laying the range out honestly rather than picking a number:
@@ -1750,13 +1840,17 @@ dose figures never capture.
 The land bears the deepest mark. A **10 km then 30 km Exclusion Zone** (~2,800 km², later widened) was
 sealed off; **about 116,000 people were evacuated in 1986** — Pripyat, the town of Chernobyl, and more
 than ninety villages — and **another ~220,000 resettled later**, some **335,000 lives uprooted** in all,
-with decontamination attempted across ~1,840 settlements. Downwind of the reactor, ~4 km² of pine turned
-ginger-red and died — the **"Red Forest,"** bulldozed and buried in 1986–87 and still among the most
-radioactive open ground on Earth. The long-lived isotopes that set the century-scale timelines are
-**caesium‑137 and strontium‑90** (~30-year half-lives). The fallout reached far beyond: **Belarus took
-the heaviest share** (~60% of the Soviet deposition, ~23% of its territory contaminated), and
-radiocaesium was measurable across Scandinavia, Germany and Britain — where **restrictions on Welsh and
-Cumbrian sheep farms were not fully lifted until 1 June 2012.**
+with decontamination attempted across ~1,840 settlements. The squads that emptied the villages also
+**shot the abandoned pets and livestock** and buried radioactive soil, and in places whole villages —
+the free-roaming **dogs of the zone today** descend from the animals left behind. Downwind of the
+reactor, ~4 km² of pine turned ginger-red and died — the **"Red Forest,"** bulldozed and buried in
+1986–87 and still among the most radioactive open ground on Earth. The long-lived isotopes that set the
+century-scale timelines are **caesium‑137 and strontium‑90** (~30-year half-lives). The fallout reached
+far beyond: **Belarus took the heaviest share** (~60% of the Soviet deposition, ~23% of its territory
+contaminated), and radiocaesium was measurable across Scandinavia, Germany and Britain — where
+**restrictions on Welsh and Cumbrian sheep farms were not fully lifted until 1 June 2012**, and in
+**Lapland the fallout settled into the lichen and then the reindeer, disrupting the Sami herders** for
+years.
 
 Yet with the people gone, wildlife returned in force. The zone is now a de facto refuge for **wolves,
 lynx, brown bears, European bison, elk and wild boar**, with **Przewalski's horses reintroduced in
@@ -1766,6 +1860,13 @@ biological harm and reduced bird numbers in the hottest patches, while **census 
 al., 2015)** find abundant, stable large-mammal populations — but the headline is settled: **it is
 neither a lifeless wasteland nor a pristine paradise**, and the removal of humans has helped the animals
 more than the radiation has hurt them (Appendix C).
+
+Two landmarks bracket the zone's afterlife. To rehouse the plant's workers the USSR built an entirely
+new city, **Slavutych**, about 50 km east — begun in 1986 and the **last city the Soviet Union ever
+founded**. And rusting inside the zone still stands the **Duga over-the-horizon radar** ("Chernobyl‑2"),
+a ~150 m Cold-War early-warning antenna whose pulses were heard around the world in the 1970s–80s as the
+"**Russian Woodpecker**" — a reminder that this was a militarily secret place long before it became a
+byword for disaster.
 
 ## The wider fallout — Europe, glasnost, and the end of an empire
 
@@ -1978,9 +2079,19 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
   viral "giant catfish" in the cooling pond are ordinary, old, well-fed **wels catfish**, not mutants.
   The zone is now, in effect, a wildlife refuge.
 - **"A second explosion would have been 3–5 megatons and made half of Europe uninhabitable."** The
-  megaton figure traces to physicist **Vassili Nesterenko** and is **disputed** — a *steam* explosion
-  (or renewed core damage) was a genuine fear and the reason the bubbler pool was drained, but a
-  multi-megaton *nuclear* yield was not physically on the table.
+  megaton figure traces to Belarusian physicist **Vassili (Vasily) Nesterenko** and is **disputed** — a
+  *steam* explosion (or renewed core damage) was a genuine fear and the reason the bubbler pool was
+  drained, but a multi-megaton *nuclear* yield was not physically on the table. *(Nesterenko himself is
+  real and important beyond the myth: he overflew the reactor, pressed — largely unheeded — for iodine
+  and wider evacuation, was pushed out and harassed by the KGB, and in 1990 founded the independent
+  **BELRAD** institute to monitor radiation in Belarusian children. His disputed megaton estimate should
+  not obscure that.)*
+- **"Chernobyl was the 'Wormwood' foretold in the Book of Revelation."** A real **cultural
+  phenomenon**, not a prophecy. *Chornobyl* is the Ukrainian name for a local **wormwood/mugwort**
+  (*Artemisia*), and Revelation 8:10–11 names a star, **"Wormwood,"** that falls and poisons the waters
+  — a coincidence that fuelled a genuine rumour wave in 1986 (it reportedly reached President Reagan). It
+  is recorded here as **folklore that spread**, explicitly *not* as literal prophecy — and the linguistics
+  are loose (the generic Ukrainian word for wormwood is *polyn*; *chornobyl* is one specific variety).
 - **"You didn't see graphite, because it's not there!"** — Dyatlov's screamed denial is a
   **dramatized composite**. The *denial itself is real*: plant management refused to accept the core
   had exploded and kept reporting the reactor intact even with graphite on the ground (graphite
