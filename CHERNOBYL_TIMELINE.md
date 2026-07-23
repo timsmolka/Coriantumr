@@ -255,6 +255,29 @@ below would hand it instead to the night shift.
 > test itself. Its real effect was to push the experiment from the experienced **day shift** into
 > the hands of the **night shift**, who had not prepared for it.
 
+**The shifts that inherited it.** The experienced **day shift** — the crew who had studied the test
+program and expected to run it in daylight — spent the 25th preparing for an experiment the afternoon
+dispatcher hold then took out of their hands. Through the evening the reactor sat at half power under
+**Yuri Tregub's evening shift**, and it was Tregub's crew that **began the final power reduction the
+moment the dispatcher released the unit at 23:10** — so the run-down was already under way when, at
+midnight, they handed a **descending reactor** to **Aleksandr Akimov's night shift**. Tregub, his own
+shift over, **stayed on voluntarily** to watch the unfamiliar test he had helped prepare. At the reactor
+console sat **Leonid Toptunov** — twenty-five, three years out of the **Obninsk nuclear-engineering
+institute** and barely **two months** in the senior reactor-control seat, working his **first
+shutdown**; **Akimov**, the conscientious shift chief who deferred to Dyatlov, was thirty-two. In the
+plainest terms it was **a young, tired crew running an unfamiliar test in the small hours**, on a
+reactor already sliding toward instability.
+
+**Why the personal record here is the thinnest of the night.** The vivid control-room drama that fills
+popular retellings — Dyatlov screaming, Akimov pleading to abort, Toptunov refusing to raise power —
+comes largely from **Grigori Medvedev's reconstructed dialogue**, which survivors dispute and which
+INSAG‑7's shift onto the reactor's hidden design flaws substantially undercuts. The two men who could
+have told it first-hand, **Akimov and Toptunov, were dead within weeks**, too ill to give structured
+testimony; the survivors who were in the room recall it as far quieter than the screen versions —
+**Stolyarchuk** has said flatly, *"there were no serious discussions between the staff that night."* So
+for these hours the honest record preserves their **movements and their inexperience, not their words**
+— and that restraint is deliberate, not an oversight.
+
 ## Into the night — the reactor becomes unstable (26 April)
 
 **Where everyone was at the 00:00 shift change** — Akimov's night shift relieves Tregub's:
@@ -525,8 +548,9 @@ described him swollen and turned "deep reddish-brown," consumed by bewilderment 
 **Died of ARS, 10 May 1986** (some sources 11 May), Hospital No. 6.
 
 **Leonid Fyodorovich Toptunov** — *Senior Reactor Control Engineer (SIUR); operating the rods at
-the console.* Aged 25, with only a few months' experience as lead operator. Young and visibly
-aware of it, working under Dyatlov's pressure. He was at the controls for the power drop and its
+the console.* Aged 25 — three years out of the **Obninsk nuclear-engineering institute** (joined the
+plant March 1983) and only about **two months** in the senior reactor-control seat, working his
+**first reactor shutdown** at the console. Young and visibly aware of it, under Dyatlov's pressure. He was at the controls for the power drop and its
 recovery, and **physically pressed the AZ‑5 button** on Akimov's order. Afterward he joined
 Akimov's futile valve-opening effort in lethal radiation (~13 Sv). **Died of ARS, 14 May 1986**,
 despite a bone-marrow transplant. Buried at Mitino. *(The often-told story that Toptunov "refused"
@@ -1984,7 +2008,7 @@ had handed over and the **day shift** that relieved them follow.
 - **Oleksandr Novik** — electrician/machinist; worked with Lelechenko to localise the fire. ✝ 26 July 1986.
 
 ### The evening shift · *handed over at 00:00*
-- **Yuri Tregub** — *evening-shift foreman*; ran the shift **before** Akimov's and handed over at 00:00, then stayed on voluntarily — a shift chief off duty, not a subordinate; sent to the ECCS valves, went with Yuvchenko down to the water and out to the blue beam, and ran back after the blast to report the core was gone; survived.
+- **Yuri Tregub** — *evening-shift foreman*; ran the shift **before** Akimov's — holding the reactor at half power through the evening and **beginning the final power reduction at 23:10** when the dispatcher released the unit — then handed over at 00:00 and stayed on voluntarily to watch the test he had helped prepare (a shift chief off duty, not a subordinate); sent to the ECCS valves, went with Yuvchenko down to the water and out to the blue beam, and ran back after the blast to report the core was gone; survived.
 - **Sergei Gazin** — operator who also stayed on from the previous shift; survived (poorly documented).
 
 ### The next day shift · *relief, from the early hours of 26 April*
