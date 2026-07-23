@@ -142,7 +142,7 @@ was on shift, **which shift**: *night shift* ran the test; *day shift* came on f
           - **Aleksandr Lelechenko** — *Dep. electrical-shop chief* · **night** — in charge of the on-shift electricians: **Lopatyuk**, **Novik**, and duty electrical engineer **Baranov** — all night shift
     - **Anatoly Sitnikov** — *Dep. Chief Engineer, Units 1–2* · **day shift** — brought in by Fomin to take the incapacitated Dyatlov's place on Unit 4 *(this branch is the day relief)*; sent up to confirm the core was destroyed — and disbelieved *(fatal dose)*
       - **Vladimir Babichev** — *Unit 4 Shift Chief (NSB)* · **day shift** — relieved the stricken Akimov (~06:00); with day-shift engineers **Orlov**, **Uskov**, **Nekhaev**, who kept feeding water into Unit 4 on the bunker's orders, some joining the fatal valve effort
-      - **Viktor Smagin** — *Unit-4 morning foreman* · **day shift** — took over the unit and went to the feedwater valves (~280 rad); found Akimov & Toptunov already dying
+      - **Viktor Smagin** — *Unit-4 morning foreman* · **day shift** — took over the unit and went to the feedwater valves (~2.8 Sv); found Akimov & Toptunov already dying
   - **Serafim Vorobyov** — *Plant civil-defense chief* — the plant's radiation-emergency service, a separate branch reporting to the director; measured ~200 R/h and urged a public warning — overruled by management
     - **Nikolai Gorbachenko** — *Shift dosimetrist* · **night shift** — the on-shift radiation monitor (instruments off-scale); sat with the operating crew but answered to this service, not to Akimov
   - **Sergei Parashyn** — *Plant Party (CPSU) secretary* — head of the plant's Party organisation; a parallel political authority *beside* the director
@@ -385,7 +385,7 @@ beside its timestamp.*
 - **Civil defense:** **Vorobyov** measures fields pegging his 200 R/h instrument and urges a public warning — *"close the windows and stay inside"*; **Bryukhanov** stalls and waits for a second reading, keeping the figure out of the reports. *(The crisp "your instrument is broken" rebuke is dramatized; the documented behaviour is the stall.)* **Gorbachenko** begins vomiting and is hospitalised; the turbine-hall fires are largely out.
 
 **~06:00**
-- **+27 feedwater room:** **Akimov** (relieved but staying) with **Toptunov, Nekhaev, Orlov, Uskov** wade knee-deep in fuel-and-water and open valves by hand for ~30 minutes — futile, and fatal for Akimov (~15–20 Gy) and Toptunov (~13 Gy).
+- **+27 feedwater room:** **Akimov** (relieved but staying) with **Toptunov, Nekhaev, Orlov, Uskov** wade knee-deep in fuel-and-water and open valves by hand for ~30 minutes — futile, and fatal for Akimov (~15–20 Sv) and Toptunov (~13 Sv).
 - **Medical:** **Shashenok** dies (~06:00) at MSCh‑126 under Dr. **Leonenko** — the second fatality. Over 100 workers and firefighters are hospitalised; the control-room shift is being evacuated. Pripyat is still not warned.
 
 **~06:35** — **Firefighters:** the last surface fires are out (~4.5 h after the blast), leaving the graphite fire burning in the crater. The response peaked at ~37 crews, ~186 firefighters, ~81 engines.
@@ -497,7 +497,7 @@ reactor that no longer existed. In his first fear — scalding water raining fro
 above the control room — he briefly **ordered the crew out to the reserve panel, then rescinded it**
 when no rain came, keeping them at their posts. *Why the denial held:* the dosimeters were dead or
 off-scale, the instruments blank, and total destruction of an RBMK core was, to him, almost
-literally unthinkable. Received ~390 rem; **survived**. Convicted in the July 1987 trial
+literally unthinkable. Received ~3.9 Sv; **survived**. Convicted in the July 1987 trial
 and sentenced to 10 years; released early (1990) on health grounds. In his memoir he blamed the
 **RBMK reactor's design**, not his operators — a position later substantially vindicated by
 INSAG‑7. *Documented (his memoir):* "The time has come to say openly: the design of the RBMK‑1000
@@ -512,7 +512,7 @@ and reported upward that the reactor was intact — then stayed and, with Toptun
 Uskov, went up from the control room (+10) into the wrecked **feedwater room at +24**, opened the
 two feedwater-line valves, then **climbed to the +27 gallery (Room 712)** and cranked the "300 line"
 open by hand, **knee-deep in a fuel-and-water mixture for about half an hour** — trying to cool a
-reactor that no longer existed, taking an estimated 15+ Gy. Colleague V. G. Smagin, who saw him in Moscow Hospital No. 6,
+reactor that no longer existed, taking an estimated 15+ Sv. Colleague V. G. Smagin, who saw him in Moscow Hospital No. 6,
 described him swollen and turned "deep reddish-brown," consumed by bewilderment and guilt.
 *Reported (via Medvedev/Smagin):* to the end he insisted, *"we did everything correctly … Why?"*
 **Died of ARS, 10 May 1986** (some sources 11 May), Hospital No. 6.
@@ -521,7 +521,7 @@ described him swollen and turned "deep reddish-brown," consumed by bewilderment 
 the console.* Aged 25, with only a few months' experience as lead operator. Young and visibly
 aware of it, working under Dyatlov's pressure. He was at the controls for the power drop and its
 recovery, and **physically pressed the AZ‑5 button** on Akimov's order. Afterward he joined
-Akimov's futile valve-opening effort in lethal radiation (~13 Gy). **Died of ARS, 14 May 1986**,
+Akimov's futile valve-opening effort in lethal radiation (~13 Sv). **Died of ARS, 14 May 1986**,
 despite a bone-marrow transplant. Buried at Mitino. *(The often-told story that Toptunov "refused"
 to raise power is **disputed** — no control-room survivor confirms such an argument.)*
 
@@ -770,7 +770,7 @@ to die) — the other three of **Kibenok's SVPCh‑6 squad** who fought the roof
 ~01:40 and took overall command.* **Composed and authoritative.** He directed the fight to stop the
 fire spreading to the still-running Unit 3, ascending the contaminated roof more than once, unaware
 of the radiation. *Documented:* "The most frightening thought we all had was that we wouldn't have
-enough strength to hold out until reserves came." Received ~4 Gy; **survived** the acute phase —
+enough strength to hold out until reserves came." Received ~4 Sv; **survived** the acute phase —
 made Hero of the Soviet Union, and **died of cancer in 2004.** *(He is sometimes wrongly listed
 among the 1986 dead; he was not.)*
 
@@ -830,7 +830,7 @@ wears on; where a time is a range or a fact is contested, it is marked. Path-cro
 
 **~08:00–09:00** — **MSCh‑126:** the Pripyat medical unit **fills** — firemen and operators with vomiting, headache, weakness, reddening skin, the darkening "nuclear tan." The staff (Belokon, Skachek, Dr. Moslencova, nurses) cannot yet grade acute radiation sickness, and — critically — **no systematic stable-iodine prophylaxis** is given to the responders or the town.
 
-**~09:00** — **Block roof:** on Fomin's order (with Bryukhanov's backing), **Sitnikov** climbs high — accounts place him on the **Unit 3 / block roof, looking down into the wrecked central hall (+35.5) and the crater** — to **see the reactor's state for himself**. *Why him:* he is a reactor physicist and deputy chief engineer, and management will accept it from no one else. He sees the core is **destroyed and open**, and absorbs a massive dose (some accounts ~1,500 rad, heavy to the head). *(The vivid "gazed into the glowing core" phrasing traces to Medvedev — reported.)*
+**~09:00** — **Block roof:** on Fomin's order (with Bryukhanov's backing), **Sitnikov** climbs high — accounts place him on the **Unit 3 / block roof, looking down into the wrecked central hall (+35.5) and the crater** — to **see the reactor's state for himself**. *Why him:* he is a reactor physicist and deputy chief engineer, and management will accept it from no one else. He sees the core is **destroyed and open**, and absorbs a massive dose (some accounts ~15 Sv, heavy to the head). *(The vivid "gazed into the glowing core" phrasing traces to Medvedev — reported.)*
 
 **~10:00–11:00**
 - **Bunker:** **Sitnikov** returns and **reports the reactor destroyed** to **Fomin** and **Bryukhanov** *(met)* — and, despite his visible burns, is **still partly disbelieved**; the order to pump water stands. **Vorobyov's** ~200 R/h reading is still dismissed as a "broken instrument."
@@ -850,7 +850,7 @@ argument management refused to accept, he climbed high — accounts place him on
 roof, looking down into the wrecked central hall and the crater** — and confirmed with his own eyes
 that **the core was destroyed and open**. *Why him:* he was a physicist and deputy chief engineer,
 senior enough that his word could not be waved away. He absorbed a massive dose (some accounts
-~1,500 rad, heavy to the head), came down visibly burned, delivered the truth — and was **still
+~15 Sv, heavy to the head), came down visibly burned, delivered the truth — and was **still
 partly disbelieved. Died of ARS, 30 May 1986.**
 
 **Viktor Petrovich Bryukhanov** — *Plant director.* **Calm denial verging on psychological
@@ -937,15 +937,15 @@ one of mass response rather than individual minutes.
 | **27 Apr, ~13:10** | A radio announcement tells residents to prepare for a temporary evacuation "for three days." |
 | **27 Apr, 14:00** | **The evacuation of Pripyat begins** — ~34–36 hours after the blast. Around **1,200 buses** remove the town's ~47,000 residents in roughly **2.5–3.5 hours**. Told they would be back in three days, most left pets and belongings; they never returned. The evacuation was strikingly **calm and orderly**. Chief city architect **Maria Protsenko** drew the maps and organised it district by district; deputy chairman **Alexander Esaulov** and chairman **Vladimir Voloshko** ran the city side. |
 | **27 Apr onward** | The **aerial dumping campaign** begins: helicopters drop sand, boron, clay, dolomite and lead into the crater, directed by **Col. Nikolai Antoshkin** *(promoted Maj.-Gen. for the operation)* and **Legasov** (materials). Over 27 Apr → ~2 May roughly **5,000 tonnes** are dropped (see note). Chemical-troops commander **Col.-Gen. Vladimir Pikalov** personally drives the recon vehicle into the high-radiation zone to take the measurements himself (see note). |
-| **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Gy), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
+| **Late Apr → May** | The most heavily irradiated are flown to **Moscow Clinical Hospital No. 6** (~129 within the first day), under radiation-medicine chief **Dr. Angelina Guskova**; American specialist **Dr. Robert Gale** assists with **bone-marrow transplants — 13 in all (whole-body doses 5.6–13.4 Sv), of whom only 2 lived beyond three years** (1989 *NEJM* report). Most died not of marrow failure but of **skin/beta burns, pneumonitis and organ damage** — which is why the transplant strategy is now judged to have been largely ineffective for this group. The deaths chronicled in Part V follow over the next three months. |
 | **6 May 1986** | The **"Chernobyl divers"** go into the flooded basement to open the valves draining the bubbler pool beneath the core (full account below). |
 
 > **The general who drove in himself.** With the plant's own dosimeters dead or floored, the first
 > authoritative radiation picture came from the military. **Col.-Gen. Vladimir Pikalov**, commander of
 > the Chemical Troops, **drove the radiation-reconnaissance vehicle right up to the wrecked Unit 4
 > himself rather than order a soldier to make the lethal run** (26–27 April) — confirming the graphite
-> was burning and the fields were far above the plant's figures, and absorbing about **1.37 Sv
-> (~137 rem)** doing it. He was made **Hero of the Soviet Union**. *[documented]* *(The vivid touches —
+> was burning and the fields were far above the plant's figures, and absorbing about **1.37 Sv**
+> doing it. He was made **Hero of the Soviet Union**. *[documented]* *(The vivid touches —
 > ramming the closed gate, telling his young driver "stay here, son, you've still to become a father" —
 > are reported/dramatized flourishes; the documented core is that a three-star general personally ran
 > the recon and took a serious dose.)*
@@ -986,7 +986,7 @@ scattering yet more radioactive material. The commission ordered the pool draine
 - **6 May · 3 — the route.** They descend through the underground corridors to the suppression-pool valve gallery; the water is about **knee-deep**, the corridor "stuffed with a myriad of pipes and valves" — "like finding a needle in a haystack."
 - **6 May · 4 — finding them.** Their **searchlight works**: when the beam falls on a pipe Ananenko recognises, they follow it to the valves ("we were joyous; the pipe led to the valves"). *(The "lamp failed, groped in the dark" version is a myth.)*
 - **6 May · 5 — the valves.** Two gate valves. **Ananenko and Bespalov** open them, spanner ready; **Baranov** stands by with the light. They **hear the water rushing out** of the tank.
-- **6 May · 6 — in and out.** Inside roughly **10–20 minutes** (Ananenko: "about 15"). Doses elevated but **below the acute-sickness threshold** — the water shielded them and the exposure was brief. *(The oft-cited "92 rem" was Ananenko's cumulative 3-year dose, not this mission.)*
+- **6 May · 6 — in and out.** Inside roughly **10–20 minutes** (Ananenko: "about 15"). Doses elevated but **below the acute-sickness threshold** — the water shielded them and the exposure was brief. *(The oft-cited "92 rem" — about **0.92 Sv** — was Ananenko's cumulative 3-year dose, not this mission.)*
 - **6 May · 7 — exit.** They walk out. No heroes' welcome, by Ananenko's account — "Nobody applauded… it was a regular job." *(The Soviet-era telling has them embraced.)*
 - **7–8 May — drained.** By the next day ~**20,000 tonnes** of radioactive water have drained; Zborovsky's crews finish the pump-out by ~8 May. The **corium-meets-water risk is removed**.
 
@@ -1077,13 +1077,13 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 |---|---|---|---|
 | **7 May** | Aleksandr Lelechenko | Deputy chief, electrical shop | Waded **three times through radioactive water** to cut the hydrogen and avert a second explosion — to spare his younger men — then went back to work (~2,500 R). |
 | **10 May** | Vladimir Tishura | Firefighter (SVPCh‑6) — first firefighter to die | On the **reactor-block / vent-block roof** among ejected **graphite**, no respirator or working dosimeter. |
-| **10 May** *(some 11 May)* | Aleksandr Akimov | Unit 4 shift supervisor | Opening the **feedwater valves by hand, knee-deep in radioactive fuel-and-water** (+24 → +27, Room 712), ~½ hr — cooling a reactor already gone (~15–20 Gy). |
+| **10 May** *(some 11 May)* | Aleksandr Akimov | Unit 4 shift supervisor | Opening the **feedwater valves by hand, knee-deep in radioactive fuel-and-water** (+24 → +27, Room 712), ~½ hr — cooling a reactor already gone (~15–20 Sv). |
 | **11 May** | Vladimir Pravik | Fire lieutenant (VPCh‑2) | First officer on scene; **directed the roof firefight** on beds of graphite over ~2 hours, no protection. |
 | **11 May** | Viktor Kibenok | Fire lieutenant (SVPCh‑6) | Led the Pripyat crew into the **most dangerous zone — the reactor / vent-block roof**, closest to the open core. |
 | **12 May** | Anatoly Kurguz | Central-hall operator (+35.5) | Scalded **head-to-foot by radioactive steam** at the central-hall airlock as he forced the door shut to shield Genrikh. |
 | **13 May** | Vasily Ignatenko | Firefighter (SVPCh‑6) | On the **reactor-block roof among graphite**, "in shirt sleeves," kicking burning debris — no protection. |
 | **13 May** | Ivan Orlov | Unit-4 operator | Ivan Lukych Orlov (b. 1945) — a fatal dose in the effort to **restore feedwater** to the wrecked unit. *(A **different man** from the survivor **Viacheslav Orlov**, who was called in to open the +27 valves.)* |
-| **14 May** | Leonid Toptunov | Senior reactor control engineer | With Akimov at the **feedwater valves in radioactive water** — the same futile effort (~13 Gy). |
+| **14 May** | Leonid Toptunov | Senior reactor control engineer | With Akimov at the **feedwater valves in radioactive water** — the same futile effort (~13 Sv). |
 | **14 May** | Nikolai Vashchuk | Firefighter (SVPCh‑6) | On the reactor-block / vent-block roof among graphite, no protection. |
 | **14 May** | Aleksandr Kudryavtsev | Control engineer/trainee | **Looked directly into the open core** from the +35.5 ledge, sent to hand-lower the (non-existent) rods. |
 | **14 May** | Vyacheslav Brazhnik | Senior turbine machinist | Fighting the **turbine-hall oil fires** (levels 0/+12); a fuel fragment lodged in a nearby transformer added to his dose. |
@@ -1097,7 +1097,7 @@ radioactive steam**, or **standing guard in the open**. The "how & where" is giv
 | **21 May** | Vladimir Savenkov | Vibration-lab specialist (Kharkiv) | At **turbogenerator No. 8** recording vibrations at the blast — took a lethal dose before he could be warned off. |
 | **26 May** | Yekaterina Ivanenko | Security guard (one of the few women) | **At her perimeter post** through the night, unprotected, in the open near the block. |
 | **28 May** | Yuriy Konoval | Unit-4 machinery operator | Yuriy Ivanovych Konoval (b. 1942) — on the Block-4 machinery staff during the response; fatal dose. |
-| **30 May** *(some 31 May)* | Anatoly Sitnikov | Deputy chief engineer, Units 1–2 | Sent up to a **high vantage to look down into the reactor**, confirming the core destroyed (heavy dose to the head, ~1,500 rad). |
+| **30 May** *(some 31 May)* | Anatoly Sitnikov | Deputy chief engineer, Units 1–2 | Sent up to a **high vantage to look down into the reactor**, confirming the core destroyed (heavy dose to the head, ~15 Sv). |
 | **13 June** | Valery Perevozchenko | Reactor-shop shift foreman | Searched the **>10,000 R/hr pump-hall rubble for Khodemchuk** and looked into the open core — a very high, drawn-out dose. |
 | **21 July** | Yuri Vershinin | Turbine-shop machine operator | On the turbine-hall crew that fought the machine-hall fires; a fatal dose. *(Long carried as "fate uncertain"; Soviet liquidator records give 21 July 1986.)* |
 | **26 July** | Oleksandr Novik | Electrician / turbine machinist | Worked to localise the fire and isolate electrics (with Lelechenko) in high fields. |
@@ -1250,7 +1250,7 @@ room through electrical shop — are the night shift** on duty at the explosion;
 had handed over and the **day shift** that relieved them follow.
 
 ### Control room, Unit 4 · *night shift*
-- **Anatoly Dyatlov** (55) — deputy chief engineer; drove the test forward at the unstable 200 MWt, then denied the core was destroyed and kept ordering water pumped in (~390 rem). Convicted (10 yrs); d. 1995.
+- **Anatoly Dyatlov** (55) — deputy chief engineer; drove the test forward at the unstable 200 MWt, then denied the core was destroyed and kept ordering water pumped in (~3.9 Sv). Convicted (10 yrs); d. 1995.
 - **Aleksandr Akimov** (32) — night-shift supervisor; ordered the scram, insisted the reactor was intact, then died opening the feedwater valves by hand in radioactive water. ✝ 10 May 1986.
 - **Leonid Toptunov** (25) — senior reactor control engineer; let power collapse, physically pressed AZ‑5 on Akimov's order, then joined the fatal valve effort. ✝ 14 May 1986.
 - **Boris Stolyarchuk** (~26) — senior unit control engineer; held the feed-water pumps at his desk for hours, shielded by the deaerator stack — a rare control-room survivor.
@@ -1290,7 +1290,7 @@ had handed over and the **day shift** that relieved them follow.
 ### The next day shift · *relief, from the early hours of 26 April*
 - **Anatoly Sitnikov** (46) — *deputy chief engineer, Units 1–2*; brought in by Fomin to take Dyatlov's place on Unit 4, sent up to look, confirmed the core destroyed — and was disbelieved. ✝ 30 May 1986.
 - **Vladimir Babichev** — *incoming day-shift unit chief (NSB)*; relieved the stricken Akimov ~06:00; survived.
-- **Viktor Smagin** — *incoming Unit-4 morning foreman*; went to the feedwater valves (~280 rad) and found Akimov & Toptunov already dying; survived.
+- **Viktor Smagin** — *incoming Unit-4 morning foreman*; went to the feedwater valves (~2.8 Sv) and found Akimov & Toptunov already dying; survived.
 - **Arkady Uskov**, **Viacheslav Orlov**, **Nekhaev** — *day-shift operating engineers*, called in from home before dawn (~04:00); waded knee-deep at Level +27 to open the feedwater valves; Uskov's diary ("the mind refuses to believe…") is a primary source; survived the acute phase.
 
 ### Dosimetry, rescue, and medical
