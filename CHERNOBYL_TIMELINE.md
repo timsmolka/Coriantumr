@@ -301,7 +301,7 @@ below would hand it instead to the night shift.
 | **01:23:40** | **AZ‑5 emergency shutdown.** Akimov orders *"AZ‑5!"*; **Toptunov presses the button.** The rods begin to insert — but their **graphite displacer tips** reach the bottom of the core first and push out the water there, replacing a column of **neutron‑absorbing water with graphite — a moderator that barely absorbs neutrons**. Reactivity **spikes at the base of the core** ("positive scram") instead of the reaction being killed. | Akimov, Toptunov |
 | **01:23:43** | Power-excursion-rate emergency signals actuate; power exceeds **530 MWt** and climbs uncontrollably. | |
 | **01:23:43–44** | **Prompt-critical power excursion.** Fuel ruptures, steam surges, and the large positive void coefficient drives a runaway — power spikes on the order of **~100× nominal within about four seconds**. | |
-| **01:23:45** | **First explosion** *(best-supported second; disputed — see below)*. A steam/thermal explosion destroys the core region and lifts the **~1000-tonne upper biological shield ("Elena")**. **Valery Khodemchuk**, at his post in the main circulation pump hall, is **killed instantly — the first fatality. His body is never recovered.** | Khodemchuk |
+| **01:23:45** | **First explosion** *(best-supported second; disputed — see below)*. A steam/thermal explosion destroys the core region and lifts the **~1,000-tonne upper biological shield ("Elena")** *(2,000 t by some accounts — see Geography)*. **Valery Khodemchuk**, at his post in the main circulation pump hall, is **killed instantly — the first fatality. His body is never recovered.** | Khodemchuk |
 | **01:23:47–48** | **Second, larger explosion**, 2–3 seconds later: it ejects fuel and burning graphite, destroys the reactor-hall roof, and starts the graphite fire. Superheated steam bursts into the central hall (+36 level), severely scalding operator **Anatoly Kurguz**, who closes the pressurised door to shield others; **Oleg Genrikh**, in an adjacent room, is less burned. In room 604, adjuster **Vladimir Shashenok** is mortally injured. | Kurguz, Genrikh, Shashenok |
 
 > **The exact second — genuinely disputed.** All final-second times are **simulation
@@ -324,10 +324,11 @@ below would hand it instead to the night shift.
 > displacer below its boron absorber**. With the rods almost fully withdrawn (the near-zero reactivity
 > margin), pressing AZ‑5 drove the **graphite tips into the bottom of the core first**, expelling the
 > absorbing water and putting non-absorbing, moderating graphite in its place — a burst of positive
-> reactivity at the base of the core **before the boron could reach it**. **This was not new:** a
-> similar graphite-tip scram effect had already shown up at the **Leningrad‑1 RBMK in 1975**, and
-> design reviews had flagged the danger — but it was **never passed on to the operators**, who
-> believed AZ‑5 was a pure fail-safe. The flaw was corrected on all RBMKs afterward. *(The reactor
+> reactivity at the base of the core **before the boron could reach it**. **This was not new:** the
+> RBMK's positive-feedback instability had shown itself at the **Leningrad‑1 RBMK in 1975**, and the
+> specific **graphite-tip scram effect** was identified in RBMK commissioning tests around **1983** —
+> flagged to the designers but **never passed on to the operators**, who believed AZ‑5 was a pure
+> fail-safe. The flaw was corrected on all RBMKs afterward. *(The reactor
 > type's fragility had also been shown at Chernobyl itself — a **covered-up partial fuel-channel
 > meltdown of Unit 1 on 9 September 1982**, told in full in "The full story." That the defect was known
 > and concealed is a large part of why INSAG‑7 shifted the blame off the operators — see Appendix C.)*
@@ -983,8 +984,9 @@ one of mass response rather than individual minutes.
 > documented core is that the three-star commander of the Chemical Troops personally ran the recon and
 > took a serious dose.)*
 
-> **The airdrops — heroic, but they mostly missed.** From **27 April to ~2 May**, Mi-8, Mi-6 and Mi-26
-> helicopters flew ~**1,800 sorties** over the open core and dumped ~**5,000 tonnes** into the crater —
+> **The airdrops — heroic, but they mostly missed.** From **27 April to ~2 May** (the intensive phase;
+> drops tapered on to ~10 May), Mi-8, Mi-6 and Mi-26 helicopters flew ~**1,800 sorties** over the open
+> core and dumped ~**5,000 tonnes** into the crater —
 > roughly **2,400 t lead, 1,800 t sand & clay, 800 t dolomite and 40 t boron carbide** — crews hovering
 > in fields of thousands of R/h, laying sheets of the dropped lead on their cabin floors for shielding,
 > under a 25-roentgen dose limit. But the post-accident Kurchatov/Borovoi survey of the ruins **found
@@ -1060,8 +1062,8 @@ failure alone. *[documented]*
 Complex Expedition**, led scientifically by **Alexander Borovoi** with **Konstantin Checherov**, went
 *into* the ruined building — in coveralls and respirators, with little shielding, like the fictional
 "stalkers" the zone later inspired — to find where the roughly **180-plus tonnes of nuclear fuel** had
-gone. It was they who **mapped the fuel-containing masses** and, in the autumn of 1986, **found the
-Elephant's Foot** in the basement (inspector **Korneyev's** famous photograph came later). Checherov
+gone. It was they who **mapped the fuel-containing masses** and, in **late 1986**, **found the
+Elephant's Foot** in the basement (inspector **Korneyev's** famous photograph came a decade later, ~1996). Checherov
 later argued from his surveys that far less fuel remained under Unit 4 than the official estimates — **a
 minority view the mainstream corium literature does not accept**, noted here as a live controversy.
 *[documented; Checherov's low-fuel thesis disputed]*
@@ -1081,9 +1083,9 @@ violent but is not a multi-megaton nuclear yield — Appendix C.)* The risk was 
 **drain the pool by hand**.
 
 > **No clock for this one.** Unlike the night of the accident, there is **no minute-level record** of
-> the drain — even the time of day on 6 May is unrecorded. The *order* of the steps is documented
-> (largely from Ananenko's own interviews); the timing is not, so the steps below are sequential,
-> not clocked.
+> the drain — even the **date is given variously as 4–6 May** (6 May, from Ananenko's own account, is
+> the most-cited), and the time of day is unrecorded. The *order* of the steps is documented (largely
+> from Ananenko's interviews); the timing is not, so the steps below are sequential, not clocked.
 
 - **~2–4 May — the alarm.** Corium (molten fuel, graphite, concrete) is burning downward; **Velikhov** and **Legasov** warn that if it reaches the pooled water the steam flash could cause a second explosion and scatter far more fallout. *(The "megatons that would level Europe" figure is exaggeration — a steam blast is not a nuclear yield.)*
 - **5 May — pumping down.** Shift supervisor **Igor Kazachkov** reports the valves cannot be reached until the pipe corridor is pumped out. Captain **Pyotr Zborovsky's** Civil-Defence team pumps water from the basement, lowering the corridor to about **knee height** — so the men will **wade, not dive**.
@@ -1287,7 +1289,10 @@ is how "everyone's dose" is actually known — as a **distribution**, not 134 in
 | **I — mild** | 0.8–2.1 Sv | 41 | 0 |
 | **Total** | 0.8–16 Sv | **134** | **28** |
 
-Those **28 ARS deaths** plus the **2 immediate** deaths (Khodemchuk, Shashenok) make the canonical **30**.
+Those **28 ARS deaths** plus the **2 immediate** deaths (Khodemchuk, Shashenok) make the canonical
+**30** (the commonly quoted headline **31** adds one further coronary-thrombosis death from the
+response). *(The band edges above are the **clinical ARS-grade boundaries**; UNSCEAR rounds the same
+distribution to 1–2 / 2–4 / 4–6 / 6–16 Sv — same 134 cases, same 21/22/50/41 split, same 28 deaths.)*
 
 ## Where no number exists at all
 - **The roof firefighters** (Pravik, Kibenok, Ignatenko, Vashchuk, Tytenok, Tishura) wore **no working
@@ -1446,27 +1451,29 @@ spike at the very start of an emergency scram**. Safe operation also depended on
 in the core (the **operating reactivity margin**); the true steady-state floor was around **26–30**
 equivalent rods, but operators were taught to treat **15** as the limit.
 
-None of this reached the men at the controls. The **positive-scram effect** — the graphite-tip flaw
-that would trigger the 1986 explosion — had already shown itself at the **Leningrad‑1 RBMK on 28
-November 1975**, when a fuel-channel accident driven by a **positive reactivity surge** damaged around
-**32 fuel assemblies** and released contamination over the Gulf of Finland.
+None of this reached the men at the controls. That the RBMK could turn dangerously unstable was **not
+unknown** — at the **Leningrad‑1 RBMK in 1975** a fuel-channel accident driven by a **positive
+reactivity surge** damaged around **32 fuel assemblies** and released contamination over the Gulf of
+Finland, an early warning of the type's positive-feedback behaviour *(the exact 1975 date is given
+variously across sources)*. And the specific **graphite-tip "positive scram" flaw** that would actually
+trigger the 1986 explosion was pinned down later still — around **1983**, in RBMK commissioning tests —
+documented and circulated among senior designers, yet **never passed to the reactor operators**.
 
 And the reactor type's fragility had been demonstrated **at Chernobyl itself**, four years before the
 disaster. On **9 September 1982**, during a restart after a planned overhaul, as **Unit 1** was being
-brought back up and power reached about **20%**, a **central fuel channel ruptured** — blamed on
-operator error and disrupted coolant flow. The fuel assembly was **destroyed, roughly 3.5% of the core
-was damaged, and the graphite stack was partly wetted**; a **release of radioactive material spread
-over the plant's own grounds and into Pripyat**, and the crews who cleaned it up **took heavy doses**.
+brought back up toward power, a **central fuel channel ruptured** — blamed on operator error and
+disrupted coolant flow. The fuel assembly was destroyed and part of the core damaged *(the detailed
+reconstructions that put it at ~20% power, ~3.5% of the core, and a partly-wetted graphite stack rest
+on a single account and are less firmly corroborated)*; a **release of radioactive material spread over
+the plant's own grounds and into Pripyat**, and the crews who cleaned it up **took heavy doses**.
 The reactor was out of action for about **eight months**. And, as with everything else, the accident
 was **classified and kept from the public** — so the town living beside the plant, and the very
 operators who would run the test in 1986, were **never told that their own reactor had already melted a
 channel once.**
 
-Reports on the rod flaw, meanwhile, circulated among senior managers and designers from at least 1975
-and again in 1983 — but they too were **classified, never passed to reactor operators, and the design
-fixes were not made before 26 April 1986.** The crews believed the emergency-shutdown button was a pure
-fail-safe. It was not. *(This is the core of why INSAG‑7 later shifted the blame off the operators —
-see Appendix C.)*
+Those reports stayed **classified**, and the design fixes were **not made before 26 April 1986.** The
+crews believed the emergency-shutdown button was a pure fail-safe. It was not. *(This is the core of why
+INSAG‑7 later shifted the blame off the operators — see Appendix C.)*
 
 The two managers who would preside over the test embodied the plant's culture. **Nikolai Fomin**, the
 **chief engineer** (born 1937, an **electrician by training** who joined Chernobyl in 1972 and rose to
@@ -1846,8 +1853,8 @@ the free-roaming **dogs of the zone today** descend from the animals left behind
 reactor, ~4 km² of pine turned ginger-red and died — the **"Red Forest,"** bulldozed and buried in
 1986–87 and still among the most radioactive open ground on Earth. The long-lived isotopes that set the
 century-scale timelines are **caesium‑137 and strontium‑90** (~30-year half-lives). The fallout reached
-far beyond: **Belarus took the heaviest share** (~60% of the Soviet deposition, ~23% of its territory
-contaminated), and radiocaesium was measurable across Scandinavia, Germany and Britain — where
+far beyond: **Belarus took the heaviest share** (~60–70% of the Soviet deposition, ~23% of its
+territory contaminated), and radiocaesium was measurable across Scandinavia, Germany and Britain — where
 **restrictions on Welsh and Cumbrian sheep farms were not fully lifted until 1 June 2012**, and in
 **Lapland the fallout settled into the lichen and then the reindeer, disrupting the Sami herders** for
 years.
@@ -1873,7 +1880,7 @@ byword for disaster.
 Chernobyl's largest consequence may have been political. The clumsy secrecy — the town left unwarned,
 the world learning from Sweden — collided with **Gorbachev's new policy of glasnost** and helped force
 it into reality; Gorbachev himself wrote in 2006 that the disaster, **"even more than my launch of
-perestroika, was perhaps the main cause of the Soviet Union's collapse."** Out of it came a literature
+perestroika, was perhaps the real cause of the collapse of the Soviet Union."** Out of it came a literature
 of witness — **Svetlana Alexievich's oral history *Voices from Chernobyl*** (1997), which helped win her
 the **2015 Nobel Prize** — and, decades on, a strange second life as a place people visit: **regulated
 tours from around 2011**, and a tourism surge after the **2019 HBO miniseries** that also made
