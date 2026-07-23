@@ -344,7 +344,7 @@ roster (Appendix A) — in the interactive artifact each beat carries a "who's h
 beside its timestamp.*
 
 **~01:24**
-- **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4, then, told by radio to bring stretchers, **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs **between +12.5 and +10**, before he reaches the control room, a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; beyond a pile of wreckage a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
+- **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4; the line is dead, but **Control Room 3 (Unit 3) rings through** with an order to bring stretchers, so he **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs **between +12.5 and +10**, before he reaches the control room, a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; beyond a pile of wreckage a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
 
@@ -582,8 +582,8 @@ the man his colleagues searched for in vain. No testimony of his survives.
 **Alexander Petrovich Yuvchenko** — *Senior mechanical engineer, reactor section.* Aged 24; one of
 the few in the reactor building to survive. At the blast he was in the **windowless senior-engineers'
 room on level +12.5**: *"a wave came through the room; the thick concrete walls bent like rubber. I
-thought war had broken out."* The phone to Control Room 4 was dead. Ordered to **fetch stretchers**, he grabbed one
-and ran down toward +10 to carry out the wounded — and was stopped by a **dazed figure, clothes
+thought war had broken out."* The phone to Control Room 4 was dead — but **Control Room 3 (Unit 3) rang
+through** with an order to **fetch stretchers**, so he grabbed one and ran down toward +10 to carry out the wounded — and was stopped by a **dazed figure, clothes
 blackened and face bloody** — his friend **Degtyarenko**, whom he knew only by his voice. Told there
 were others hurt near the coolant tanks, he took a **torch** and searched the wreckage, finding a
 **second scalded operator** who had crawled clear — soaked, filthy and shaking, but still on his
@@ -1555,7 +1555,7 @@ the best-supported value, and seismic records show two shocks ~2.7 seconds apart
 ## The first hour inside the ruin (01:24–02:00)
 
 In his windowless room the concrete walls had **"bent like rubber"**; **Yuvchenko** thought war had
-broken out. Told by radio to bring stretchers, he grabbed one and started down — and on the stairs a
+broken out. His phone to Control Room 4 was dead, but a call from **Control Room 3** ordered him to bring stretchers; he grabbed one and started down — and on the stairs a
 blackened, bloodied figure stopped him: his friend **Degtyarenko**, recognisable only by his voice,
 who waved him on. A second scalded operator begged him, *"Help Khodemchuk — he's in the pump room,"*
 but the pump side had **collapsed and was impassable.** In the control room the crew sat amid dead
