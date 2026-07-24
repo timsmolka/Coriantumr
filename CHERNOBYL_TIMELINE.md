@@ -1526,8 +1526,8 @@ The **RBMK‑1000** (*Reaktor Bolshoy Moshchnosti Kanalny*, "high-power channel 
 original: a **graphite-moderated, water-cooled, channel-type** reactor whose core was finalised in the
 mid-1960s under the scientific direction of **Anatoly Aleksandrov** of the Kurchatov Institute and the
 chief designer **Nikolai Dollezhal** of **NIKIET**. It was favoured because it sidestepped the Soviet
-industry's inability to forge and ship a giant single pressure vessel; it was cheap, ran on
-**low-enriched (~2%) fuel**, could be **refuelled while running**, and descended from the reactors
+industry's inability to forge and ship a giant single pressure vessel — which also made it
+**correspondingly cheaper** to build; it ran on **low-enriched (~2%) fuel**, could be **refuelled while running**, and descended from the reactors
 that made weapons plutonium. Its Chernobyl-type core held on the order of **1,661 fuel channels**
 (some technical accounts say 1,693).
 
