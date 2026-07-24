@@ -344,11 +344,14 @@ for these hours the honest record preserves their **movements and their inexperi
 
 > **Why a "shutdown" raised power.** The RBMK was **over-moderated** by its graphite stack, so the
 > cooling water in the channels acted mainly as a **neutron absorber** — the same reason the reactor
-> had a **positive void coefficient** (losing water raised power). Each control rod hung a **graphite
-> displacer below its boron absorber**. With the rods almost fully withdrawn (the near-zero reactivity
-> margin), pressing AZ‑5 drove the **graphite tips into the bottom of the core first**, expelling the
-> absorbing water and putting non-absorbing, moderating graphite in its place — a burst of positive
-> reactivity at the base of the core **before the boron could reach it**. **This was not new:** the
+> had a **positive void coefficient** (losing water raised power). The rods were not simply "tipped"
+> with graphite: each carried a separate **graphite displacer** (a "follower") — a graphite column hung
+> below the boron-carbide absorber and *shorter than the channel*, so that with the rod fully withdrawn
+> the **graphite, not water, filled the core region**, with short columns of water above and below it.
+> Pressing AZ‑5 (on the near-zero margin) drove that displacer down, and its lower end **pushed the
+> absorbing water out of the bottom of the channel first**, putting non-absorbing, moderating graphite
+> in its place **before the boron absorber could reach it** — a burst of positive reactivity at the base
+> of the core. *("Graphite-tipped" is the usual shorthand for that displacer design.)* **This was not new:** the
 > RBMK's positive-feedback instability had shown itself at the **Leningrad‑1 RBMK in 1975**, and the
 > specific **graphite-tip scram effect** was identified in RBMK commissioning tests around **1983** —
 > flagged to the designers but **never passed on to the operators**, who believed AZ‑5 was a pure
