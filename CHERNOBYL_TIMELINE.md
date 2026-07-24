@@ -2247,13 +2247,15 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
   rod-tip power spike. Certain trips *were* blocked to run the test (the turbine-trip scram, some ECCS
   interlocks), but "**turned off all the safety systems**" is a caricature — the fatal ingredient was
   the hidden rod-design flaw meeting an unstable configuration. *(World Nuclear / INSAG‑7, documented)*
-- **"The helicopters dropped sand and boron into the open core and smothered it."** **Largely a
-  myth.** Helicopters did drop ~5,000 tons of sand, clay, boron, dolomite and lead from hover, at real
-  risk to the crews — but post-hoc analysis indicates **almost none of it reached the core**: there
-  were no bombsights and the target was a small opening under the tilted lid, so most of the load
-  **missed**. It may have helped smother the graphite fire, but the melted core cooled largely on its
-  own; the drops were **not** the decisive fix. *(documented; consistent with the "airdrops mostly
-  missed" note in Part IV)*
+- **"The helicopters dropped sand and boron into the open core and smothered it."** **Real, but not
+  the fix.** The drops absolutely happened — from 27 April, Mi-6/Mi-8/Mi-26 crews flew ~1,800 sorties
+  and dumped ~5,000 tons of sand, clay, boron, dolomite and lead from hover, at genuine risk in fields
+  of thousands of R/h, one of the bravest efforts of the whole response. What's mythic is only the
+  **outcome**: with no bombsights and only a small opening under the tilted lid to aim at, post-hoc
+  surveys of the ruins found **almost none of it reached the core** — most of the load **missed**. It
+  may have helped smother the graphite fire and cut the airborne release, but the melted core cooled
+  largely on its own; the airdrops were **not** what sealed or "put out" the reactor. *(documented;
+  consistent with the "airdrops mostly missed" note in Part IV)*
 - **"The liquidators were prisoners / conscript suicide squads."** **Misleading.** The
   ~600,000–700,000 liquidators were **conscripted army reservists plus professionals and genuine
   volunteers** — not prisoners, and not men knowingly sent to die. Conditions were harsh and safety
