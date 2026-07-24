@@ -673,10 +673,16 @@ failed and the others peeled away, he **pressed on alone** through graphite- and
 on **level +10 to the ruins of room 306**, close to debris throwing >10,000 R/hr. He found nothing —
 Khodemchuk was already dead and entombed. By the time he reached the dosimetry room his **face was
 already "tanned"** by the radiation. He received a fatal dose. **Died of ARS, 13 June 1986.**
-*(Two soft details, flagged: Medvedev's scene of Perevozchenko watching the fuel-channel caps
-"dancing" before the blast is **disputed** — Yuvchenko stated he could not have been there — and the
-oft-repeated image of him **crawling a plank over a flooded cavity** during the search is **not in
-the source books** — it appears to be a screen (miniseries) device, not a documented route detail.)*
+*(Two soft details, flagged. First, Medvedev's scene of Perevozchenko watching the fuel-channel caps
+"dancing" before the blast is **disputed** — Yuvchenko stated he could not have been there. What it
+would have looked like is not itself in doubt: the reactor's top face at +35.5 is paved with the
+~**350 kg** caps that seal each of the ~1,660 fuel channels, and as those channels overpressured and
+ruptured, the caps would have been heaved and rattled in their sockets in a ripple across the whole
+floor in the final second or two before the shield lifted — but that motion and the explosion were
+essentially **one event**, seconds apart, not a slow "dance" a man could stand in the hall and calmly
+watch, which is the disputed part. Second, the oft-repeated image of him **crawling a plank over a
+flooded cavity** during the search is **not in the source books** — it appears to be a screen
+(miniseries) device, not a documented route detail.)*
 
 **Viktor Vasilyevich Proskuryakov** and **Aleksandr Gennadievich Kudryavtsev** — *reactor control
 engineers/trainees, present to observe the test.* **Dyatlov sent them into the central hall to try
