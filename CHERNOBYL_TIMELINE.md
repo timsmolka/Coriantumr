@@ -367,10 +367,14 @@ beat are the "cast" present; their roles are in the **Terms** key, the accounts 
 roster (Appendix A) — in the interactive artifact each beat carries a "who's here" list with roles
 beside its timestamp.*
 
+> **Assumed · perimeter guards.** VOHR guards **Yekaterina Ivanenko** and **Klavdia Luzganova** are at their posts near Unit 4 — by a guard’s standing duty **staying in the open at their posts** through the night, among the most exposed of anyone outside the building. *Basis: their role and posting; both later died of ARS (Ivanenko 26 May, Luzganova 31 July, ~6 Sv). No minute-level record survives.*
+
 **~01:24**
 - **Reactor (+12.5 → +10):** **Yuvchenko** — whose windowless room's walls "bent like rubber" — gropes for the dead phone to Control Room 4; the line is dead, but **Control Room 3 (Unit 3) rings through** with an order to bring stretchers, so he **grabs one and starts down toward +10.** *Why the stretcher:* as the shift's mechanical engineer he expects wounded among the pump- and feedwater-men below him and means to carry them out. On the stairs **between +12.5 and +10**, before he reaches the control room, a dazed figure — face blackened, clothes bloody — stops him: his friend **Degtyarenko** *(met)*, known only by his voice, who waves him on; beyond a pile of wreckage a second, **steam-scalded operator** begs him, *"Help Khodemchuk — he's in the pump room."* Yuvchenko pushes that way but finds the pump side **collapsed and impassable** — Khodemchuk is beyond reach.
 - **Control room:** the crew sit amid dead instruments in disbelief; operators log the blast at ~01:24. **Dyatlov** sends trainees **Proskuryakov** and **Kudryavtsev** to lower the rods by hand; **Perevozchenko** goes to search for **Khodemchuk**.
 - **Firefighters:** the alarm is raised (~01:24–01:26); **Pravik's** VPCh‑2 guard begins responding.
+
+> **Assumed · the non-essential operators.** Gas-circuit operators **Simonenko** and **Simeonov** make their way out of the reactor block to the Unit 4 control room, and turbine engineer **Kirschenbaum** ends up in the **Unit 3 control room**, where Dyatlov sent the men not needed at the panels — all staying until the shift is evacuated. *Basis: reported that the gas operators reached the control room and documented that Dyatlov cleared non-essential staff to Unit 3; individual moves unrecorded. All survived.*
 
 **~01:26** — **Reactor → outside:** back in the **+10 corridor by the control room**, **Yuvchenko runs into Tregub** *(met)* (emerging from the dark), whom Akimov has sent to open the emergency-coolant (ECCS) valves by hand; the job needs two men, so the strongly-built Yuvchenko goes with him. *Why outside:* the nearest way in is **blocked by rubble**, so they go **down two flights of stairs — and are at once knee-deep in water** at a jammed hall door — through the gap Yuvchenko would recall the tanks *"torn apart like wet cardboard,"* stars showing where the ceiling had been. Driven back, they turn out through the **ground-level (+0.0) transport corridor** into the open, ~50 m from the reactor, where Yuvchenko sees the blue-white pillar of ionised air — until the two, recognising an open, unshielded core, **pull back** around the corner and run back inside to report. *(Which stairwell they took down, the water's exact level, and the door they exited are not in the record — only "two flights down" and "out through the transport corridor.")*
 
@@ -392,19 +396,27 @@ beside its timestamp.*
 - **Turbine hall:** **Brazhnik** runs to the control room to report the fire, then he, **Davletbayev**, **Akimov** and **Palamarchuk** fight oil and hydrogen fires (levels 0 and +12); Brazhnik shuts an oil line; **Vershinin** and **Novik** fight the engine-room fire.
 - **Firefighters:** **Telyatnikov** arrives and takes overall command.
 
+> **Assumed · the rest of the turbine crew.** Test lead **Metlenko**, sent to help open cooling valves, works that effort in the hall before withdrawing as the fields rise; turbinist **Busygin** starts the **emergency feed-water pumps** on Akimov’s order (with Stolyarchuk); and roundsmen **Vershinin** and **Novik**, on their rounds at the moment of the blast, are here in the engine-room firefight. *Basis: each of these tasks is documented; the men’s exact positions and later movements are not. Metlenko and Busygin survived; Vershinin (21 July) and Novik (26 July) died of ARS.*
+
 **~01:45**
 - **Electrical shop:** **Lelechenko** shuts off hydrogen and, with **Baranov**, purges turbogenerators 3 and 4 with nitrogen — averting a hydrogen blast — wading three times through radioactive water alone (~2,500 R).
 - **Firefighters:** **Pravik** leads a four-man team up an external stairway on the north face toward the Block 3 roof (Kibenok climbs the VSRO roof ~01:42 with Ivanchenko and Romashevsky). *(The much-repeated "~70 m northern fire-escape" is not firmly documented as the exact ascent — sources say only "up the ladder / to the roof.")*
 
 **~01:56–02:00** — **Block 3 roof:** Pravik's team fights the bitumen fires threatening the still-running Unit 3, in ordinary gear without respirators; some men handle graphite bare-handed. **Medical:** the first ambulance (Dr. **Skachek**) is on site; Dr. **Belokon** arrives with more and triages, speaking with **Kibenok**.
 
+> **Assumed (positions).** On the **Unit 3 / ventilation-block roof** with Kibenok’s squad, **Vashchuk**, **Tytenok** and **Tishura** work the small bitumen fires. *Basis: the squad’s presence is documented, and that Tishura, then Tytenok, collapsed after ~20 minutes — but who stood exactly where on the roof is not separately recorded. All three died of ARS.*
+
 **~02:00**
 - **Room 604 → out:** **Palamarchuk** (sent by Akimov), after failing to reach Shashenok alone and running around **turbine 8 down to level 0** to warn two Kharkiv vibration-lab men, meets dosimetrist **Gorbachenko** on the **+27 staircase**; together they go to **room 604 (+24)**, find **Shashenok** unconscious and pinned under a beam, and carry him out. Gorbachenko is burned where Shashenok's hand rests.
 - **Control room:** **Tregub** and **Gazin** are sent to open cooling valves but are beaten back by steam; **Stolyarchuk** stays at the unit panel.
 
+> **Assumed.** **Gazin**, driven back from the valves with Tregub, stays in or near the control room and is later evacuated with the shift; at the **Pripyat medical unit (MSCh‑126)** the night staff — Dr. **Moslenkova** and nurses **Kudrina** and **Dedovets** — are receiving and treating the first casualties as the ambulances arrive. *Basis: Gazin was control-room staff with nothing distinct recorded beyond the valve attempt; the clinic’s duty roster that night is documented, its individual actions are not. All survived.*
+
 **~02:30** — **Bunker:** **Bryukhanov** arrives and sets up in the civil-defense bunker; **Akimov** reports the reactor is intact — the false premise that governs management for hours.
 
 **~03:00** — **Bunker:** Bryukhanov phones Moscow that the situation is under control; **Dyatlov** tells **Babichev** to relieve Akimov; water keeps being pumped in. **Yuvchenko** begins vomiting (~4.1 Sv).
+
+> **Assumed.** **Babichev**, the incoming shift chief just told to relieve Akimov, is in and around the Unit 4 control room **preparing to take over** as the irradiated night crew are pulled out — the takeover completing about 06:00. *Basis: Dyatlov’s ~03:00 relief order and Babichev’s ~06:00 takeover are documented; the hours between are not detailed. He survived.*
 
 **~03:30–04:00** — Bryukhanov's report carries the **3.6 R/h** dosimeter-ceiling figure; the high-range meter is buried and a second fails, leaving only ~3.6–4 R/h instruments against true fields of thousands of R/h.
 
@@ -417,6 +429,8 @@ beside its timestamp.*
 **~06:00**
 - **+27 feedwater room:** **Akimov** (relieved but staying) with **Toptunov, Nekhaev, Orlov, Uskov** wade knee-deep in fuel-and-water and open valves by hand for ~30 minutes — futile, and fatal for Akimov (~15–20 Sv) and Toptunov (~13 Sv).
 - **Medical:** **Shashenok** dies (~06:00) at MSCh‑126 under Dr. **Leonenko** — the second fatality. Over 100 workers and firefighters are hospitalised; the control-room shift is being evacuated. Pripyat is still not warned.
+
+> **Assumed.** Two of the men at the +27 valves were not on shift at all: day operators **Nekhaev** and **Orlov** were **off-shift at home until phoned in (~04:00)**, then came to join Akimov and Toptunov at the feed-water valves. *Basis: documented that they were called in before dawn and worked the +27 valves; their earlier whereabouts are simply off-site. Both survived the acute phase.*
 
 **~06:35** — **Firefighters:** the last surface fires are out (~4.5 h after the blast), leaving the graphite fire burning in the crater. The response peaked at ~37 crews, ~186 firefighters, ~81 engines.
 
@@ -1761,6 +1775,8 @@ weight of moving a city of 49,000. That night the worst-exposed were driven to a
 **flown to Moscow's Hospital No. 6**, under radiation-medicine chief **Dr. Angelina Guskova**, while
 Pripyat slept a second night in the contaminated town.
 
+> **Assumed.** Before that evening arrival, Energy Minister **Maiorets**, deputy minister **Shasharin**, Minsredmash deputy **Meshkov** and VNIIAES director **Abagyan** spent the day in Moscow being summoned and **assembling the commission** ahead of the flight south. *Basis: the commission’s travel and evening arrival are documented; each member’s individual movements through the day are not.*
+
 At **~13:10 on 27 April** a radio announcement told residents to prepare for a temporary evacuation
 "for three days." At **14:00** it began — about **1,200 buses** cleared some **47,000 people in roughly
 two-and-a-half to three-and-a-half hours**, strikingly calm and orderly, organised district by district
@@ -2295,33 +2311,20 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
 
 # APPENDIX D — Assumed positions (where the record is silent)
 
-For the people the sources stop tracking through some window of the night, the following is a
-best-guess of where they were and what they were doing — inferred from their **role, shift and
-posting** and from standard plant procedure. **None of it is documented.** Each entry is marked
-**ASSUMED**; the "basis" says what the guess rests on.
+For the people the sources stop tracking through some window of the night, this account still places
+them — a best-guess of where they were and what they were doing, inferred from their **role, shift and
+posting** and from standard plant procedure. **None of it is documented.** Rather than collect these
+guesses in a list far from the events, each now sits **inline at its moment**, marked **ASSUMED** with a
+"basis" line, in the minute-by-minute chronicle (Part I) and the full story:
 
-**Security guards** — the thinnest record of all:
-- **Yekaterina Ivanenko** (VOHR guard) — *ASSUMED:* at her outdoor checkpoint beside Unit 4, **staying at her post in the open** — among the most heavily exposed of anyone outside the building — until overcome. *Basis: her role/posting; died of ARS 26 May. No minute-level record survives.*
-- **Klavdia Luzganova** (VOHR guard) — *ASSUMED:* at her perimeter post near the reactor, **remaining at her post** through the night. *Basis: role/posting; died of ARS 31 July. No first-person account exists.*
-
-**Control-room staff, after the blast:**
-- **Igor Kirschenbaum** — *ASSUMED:* went to and **stayed in the Unit 3 control room** (where Dyatlov sent the non-essential operators) until evacuation. *Basis: Dyatlov's documented order; his own later movements unrecorded. Survived.*
-- **Gennady Metlenko** — *ASSUMED:* after being sent to help open cooling valves, **worked in the turbine hall**, then withdrew as fields rose. *Basis: documented he was sent there; later movements unrecorded. Survived.*
-- **Sergei Gazin** — *ASSUMED:* after being driven back from the valves with Tregub, **stayed in/near the control room** and was evacuated with the shift. *Basis: control-room staff; nothing distinct recorded beyond the valve attempt. Survived.*
-- **Simonenko & Simeonov** (gas-circuit operators) — *ASSUMED:* **made their way to the Unit 4 control room** after the blast, then evacuated. *Basis: reported they reached the control room; individual actions/fates undocumented.*
-- **Vladimir Babichev** (incoming shift chief) — *ASSUMED:* in/around the Unit 4 control room **preparing to take over** between the ~03:00 relief order and his ~06:00 takeover. *Basis: documented relief order and takeover; the hours between not detailed. Survived.*
-
-**Turbine hall:**
-- **Yuri Vershinin & Oleksandr Novik** (roundsmen) — *ASSUMED (positions):* on their machine-hall rounds at the blast, then **fought the engine-room fire** with the crew until overcome. *Basis: documented they fought the engine-room fire; exact positions unrecorded. Both died of ARS (Vershinin 21 July, Novik 26 July).*
-- **Busygin** (turbinist) — *ASSUMED:* at his post; **started the emergency feed-water pumps** on Akimov's order and worked the turbine-hall response. *Basis: documented feed-pump order; nothing else recorded. Presumed survived.*
-- **Nekhaev & Viacheslav Orlov** — *ASSUMED:* **off-shift at home until called in (~04:00)**, then joined the **+27 feed-water valve effort**. *Basis: documented they were phoned in before dawn and worked the +27 valves; their earlier whereabouts are simply off-site. Both survived the acute phase.*
-
-**Firefighters (positions on the roof):**
-- **Vashchuk, Tytenok, Tishura** — *ASSUMED (positions):* on the **Unit 3 / ventilation-block roof** with Kibenok's squad, working the bitumen fires. *Basis: documented the squad was there and that Tishura, then Titenok, collapsed after ~20 min; who stood exactly where is not separately recorded.*
-
-**Medical & officials:**
-- **Dr. Moslenkova, nurses Kudrina & Dedovets** — *ASSUMED:* at Pripyat MSCh‑126 through the night **receiving and treating incoming casualties**. *Basis: documented as the clinic's duty staff that night; individual actions not detailed.*
-- **Maiorets, Shasharin, Meshkov, Abagyan** — *ASSUMED:* in Moscow through the day **assembling the commission**, then flying Vnukovo → Kiev → Pripyat to arrive ~20:00. *Basis: documented commission travel and evening arrival; individual daytime movements unrecorded.*
+- **Perimeter guards** (Ivanenko, Luzganova) — at 00:00 / the first hours.
+- **Non-essential operators** (Simonenko, Simeonov, Kirschenbaum) — ~01:24.
+- **The rest of the turbine crew** (Metlenko, Busygin, and roundsmen Vershinin & Novik) — ~01:40.
+- **The roof squad's exact positions** (Vashchuk, Tytenok, Tishura) — ~01:56.
+- **The clinic night staff** (Dr. Moslenkova, nurses Kudrina & Dedovets) and **Gazin** — ~02:00.
+- **Babichev**, the incoming shift chief — ~03:00.
+- **Nekhaev & Orlov**, phoned in from home — ~06:00.
+- **The commission ministers** (Maiorets, Shasharin, Meshkov, Abagyan) — through the day of the 26th, in the full story.
 
 ---
 
