@@ -2311,20 +2311,34 @@ the 2019 HBO miniseries. They are excluded from the factual narrative above:
 
 # APPENDIX D — Assumed positions (where the record is silent)
 
-For the people the sources stop tracking through some window of the night, this account still places
-them — a best-guess of where they were and what they were doing, inferred from their **role, shift and
-posting** and from standard plant procedure. **None of it is documented.** Rather than collect these
-guesses in a list far from the events, each now sits **inline at its moment**, marked **ASSUMED** with a
-"basis" line, in the minute-by-minute chronicle (Part I) and the full story:
+For the people the sources stop tracking through some window of the night, the following is a
+best-guess of where they were and what they were doing — inferred from their **role, shift and
+posting** and from standard plant procedure. **None of it is documented.** Each entry is marked
+**ASSUMED**; the "basis" says what the guess rests on. Each of these also appears **inline at its
+moment** in the chronicle and the full story; they are compiled together here in one place.
 
-- **Perimeter guards** (Ivanenko, Luzganova) — at 00:00 / the first hours.
-- **Non-essential operators** (Simonenko, Simeonov, Kirschenbaum) — ~01:24.
-- **The rest of the turbine crew** (Metlenko, Busygin, and roundsmen Vershinin & Novik) — ~01:40.
-- **The roof squad's exact positions** (Vashchuk, Tytenok, Tishura) — ~01:56.
-- **The clinic night staff** (Dr. Moslenkova, nurses Kudrina & Dedovets) and **Gazin** — ~02:00.
-- **Babichev**, the incoming shift chief — ~03:00.
-- **Nekhaev & Orlov**, phoned in from home — ~06:00.
-- **The commission ministers** (Maiorets, Shasharin, Meshkov, Abagyan) — through the day of the 26th, in the full story.
+**Security guards** — the thinnest record of all:
+- **Yekaterina Ivanenko** (VOHR guard) — *ASSUMED:* at her outdoor checkpoint beside Unit 4, **staying at her post in the open** — among the most heavily exposed of anyone outside the building — until overcome. *Basis: her role/posting; died of ARS 26 May. No minute-level record survives.*
+- **Klavdia Luzganova** (VOHR guard) — *ASSUMED:* at her perimeter post near the reactor, **remaining at her post** through the night. *Basis: role/posting; died of ARS 31 July. No first-person account exists.*
+
+**Control-room staff, after the blast:**
+- **Igor Kirschenbaum** — *ASSUMED:* went to and **stayed in the Unit 3 control room** (where Dyatlov sent the non-essential operators) until evacuation. *Basis: Dyatlov's documented order; his own later movements unrecorded. Survived.*
+- **Gennady Metlenko** — *ASSUMED:* after being sent to help open cooling valves, **worked in the turbine hall**, then withdrew as fields rose. *Basis: documented he was sent there; later movements unrecorded. Survived.*
+- **Sergei Gazin** — *ASSUMED:* after being driven back from the valves with Tregub, **stayed in/near the control room** and was evacuated with the shift. *Basis: control-room staff; nothing distinct recorded beyond the valve attempt. Survived.*
+- **Simonenko & Simeonov** (gas-circuit operators) — *ASSUMED:* **made their way to the Unit 4 control room** after the blast, then evacuated. *Basis: reported they reached the control room; individual actions/fates undocumented.*
+- **Vladimir Babichev** (incoming shift chief) — *ASSUMED:* in/around the Unit 4 control room **preparing to take over** between the ~03:00 relief order and his ~06:00 takeover. *Basis: documented relief order and takeover; the hours between not detailed. Survived.*
+
+**Turbine hall:**
+- **Yuri Vershinin & Oleksandr Novik** (roundsmen) — *ASSUMED (positions):* on their machine-hall rounds at the blast, then **fought the engine-room fire** with the crew until overcome. *Basis: documented they fought the engine-room fire; exact positions unrecorded. Both died of ARS (Vershinin 21 July, Novik 26 July).*
+- **Busygin** (turbinist) — *ASSUMED:* at his post; **started the emergency feed-water pumps** on Akimov's order and worked the turbine-hall response. *Basis: documented feed-pump order; nothing else recorded. Presumed survived.*
+- **Nekhaev & Viacheslav Orlov** — *ASSUMED:* **off-shift at home until called in (~04:00)**, then joined the **+27 feed-water valve effort**. *Basis: documented they were phoned in before dawn and worked the +27 valves; their earlier whereabouts are simply off-site. Both survived the acute phase.*
+
+**Firefighters (positions on the roof):**
+- **Vashchuk, Tytenok, Tishura** — *ASSUMED (positions):* on the **Unit 3 / ventilation-block roof** with Kibenok's squad, working the bitumen fires. *Basis: documented the squad was there and that Tishura, then Titenok, collapsed after ~20 min; who stood exactly where is not separately recorded.*
+
+**Medical & officials:**
+- **Dr. Moslenkova, nurses Kudrina & Dedovets** — *ASSUMED:* at Pripyat MSCh‑126 through the night **receiving and treating incoming casualties**. *Basis: documented as the clinic's duty staff that night; individual actions not detailed.*
+- **Maiorets, Shasharin, Meshkov, Abagyan** — *ASSUMED:* in Moscow through the day **assembling the commission**, then flying Vnukovo → Kiev → Pripyat to arrive ~20:00. *Basis: documented commission travel and evening arrival; individual daytime movements unrecorded.*
 
 ---
 
