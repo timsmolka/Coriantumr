@@ -25,6 +25,10 @@
     --maxw:44rem;
     --serif:Georgia,"Iowan Old Style","Palatino Linotype","Book Antiqua",serif;
     --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+    /* Height of the iOS status bar / Dynamic Island. Non-zero only when the page
+       runs as a standalone Home Screen app (viewport-fit=cover puts our content
+       edge-to-edge, underneath the clock); 0 in an ordinary browser tab. */
+    --safe-top:env(safe-area-inset-top,0px);
   }
   @media (prefers-color-scheme:light){
     :root{
@@ -46,7 +50,13 @@
 
   *{box-sizing:border-box}
   body{background:var(--bg);color:var(--ink);font-family:var(--serif);line-height:1.62;
-    font-size:18px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;margin:0}
+    font-size:18px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;margin:0;
+    padding-top:var(--safe-top)}
+  /* An opaque strip pinned behind the status bar, so text scrolling up the page
+     passes behind the clock instead of showing through next to it. Above #qbar
+     (z-index 60) so the sticky bars tuck under it too. */
+  body::before{content:"";position:fixed;top:0;left:0;right:0;height:var(--safe-top);
+    background:var(--bg);z-index:100;pointer-events:none}
   .wrap{max-width:var(--maxw);margin:0 auto;padding:0 1.4rem 6rem}
   p{margin:0 0 1.05em}
   a{color:var(--blue);text-underline-offset:2px;text-decoration-thickness:1px}
@@ -226,7 +236,7 @@
   .anote .basis{color:var(--ink-faint);font-style:italic}
 
   /* ---- Follow bar + single-person view ---- */
-  .follow-bar{position:sticky;top:0;z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;
+  .follow-bar{position:sticky;top:var(--safe-top);z-index:30;display:flex;flex-wrap:wrap;align-items:center;gap:.55rem;
     padding:.55rem 1.4rem;background:color-mix(in srgb,var(--bg) 90%,transparent);
     backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
   .follow-bar .fl{font-family:var(--mono);color:var(--accent);text-transform:uppercase;
@@ -340,7 +350,7 @@
   .dagger{color:var(--rust)}
 
   /* ---- In-page search: a sticky bar in its own row, so it never covers the text ---- */
-  #qbar{position:sticky;top:0;z-index:60;display:flex;justify-content:center;
+  #qbar{position:sticky;top:var(--safe-top);z-index:60;display:flex;justify-content:center;
     background:var(--bg);border-bottom:1px solid var(--line);padding:.42rem 1.4rem;
     font-family:var(--mono);font-size:.78rem}
   #qbar .qinner{display:flex;align-items:center;gap:.1rem;width:100%;max-width:var(--maxw)}
