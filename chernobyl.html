@@ -2385,5 +2385,18 @@
   setBtns();
 })();
 </script>
+
+<!-- Offline support. The worker caches this page and its icons so it opens
+     with no connection; see sw.js for why it deliberately ignores every
+     other request. Registration is best-effort — it needs HTTPS, so it is
+     simply skipped when the file is opened straight from disk. -->
+<script>
+(function () {
+  if (!('serviceWorker' in navigator)) return;
+  addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  });
+})();
+</script>
 </body>
 </html>
