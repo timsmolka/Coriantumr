@@ -242,7 +242,7 @@
   .follow-bar .fl{font-family:var(--mono);color:var(--accent);text-transform:uppercase;
     letter-spacing:.14em;font-size:.62rem}
   .follow-bar select{font-family:var(--mono);font-size:.82rem;background:var(--surface);color:var(--ink);
-    border:1px solid var(--line);border-radius:3px;padding:.32rem .5rem;max-width:72vw}
+    border:1px solid var(--line);border-radius:3px;padding:.32rem .5rem;max-width:62vw}
   .follow-bar button{font-family:var(--mono);font-size:.7rem;background:transparent;color:var(--blue);
     border:1px solid var(--blue);border-radius:3px;padding:.3rem .55rem;cursor:pointer}
   .follow-bar button:hover{background:color-mix(in srgb,var(--blue) 14%,transparent)}
@@ -370,19 +370,6 @@
   @media (max-width:560px){
     #qbar{padding:.4rem .9rem;font-size:.74rem}
     #qcount{min-width:2.8rem}
-  }
-
-  /* iOS zooms the whole page in when you focus a field whose text computes to
-     under 16px, and won't zoom back out on blur. Both controls are well under
-     that (the search input inherits .78rem, .74rem on narrow screens; the
-     follow menu is .82rem), so tapping either one jumped the layout.
-
-     16px is the threshold Safari checks, so it is written in px rather than
-     rem — a rem here would track the root size and could fall back under it.
-     Scoped to coarse pointers so the mouse-driven layout keeps its smaller
-     mono type, where focus zoom is not a thing. */
-  @media (pointer:coarse){
-    #qinput,.follow-bar select{font-size:16px}
   }
 
   /* ---- Dose chart ---- */
