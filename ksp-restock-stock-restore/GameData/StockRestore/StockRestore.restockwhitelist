@@ -1,0 +1,65 @@
+// ============================================================================
+//  StockRestore.restockwhitelist
+//  Re-enables the STOCK art assets that Restock disables for the parts we are
+//  restoring in StockRestore.cfg.
+//
+//  IMPORTANT: In this file, comments must be on their OWN line. Do NOT put a
+//  "// comment" after a path on the same line -- Restock's whitelist parser
+//  reads the whole line as the path, so a trailing comment makes the path match
+//  nothing and the part fails to load. Keep paths on their own bare lines.
+//
+//  Each line is a GameData-relative path. A trailing "/" matches every file in
+//  that folder.
+// ============================================================================
+
+
+// --- Command pods / probe cores ---
+Squad/Parts/Command/mk1pod_v2/
+Squad/Parts/Command/probeStackSmall/
+Squad/Parts/Command/probeStackLarge/
+
+// --- Asteroid Day folder (needed for the HG-55 antenna) ---
+// HighGainAntenna (Communotron HG-55) is an old "Asteroid Day" part; its stock
+// model/textures live in this one flat folder, NOT under Utility/. (The HECS2
+// stock assets also live here, but HECS2 is left on Restock in the .cfg, so
+// those just load unused -- harmless.)
+Squad/Parts/Misc/AsteroidDay/
+
+// --- Liquid fuel engines ---
+Squad/Parts/Engine/ionEngine/
+Squad/Parts/Engine/liquidEngineLV-909_v2/
+Squad/Parts/Engine/liquidEngineLV-T30_v2/
+Squad/Parts/Engine/liquidEngineLV-T45_v2/
+Squad/Parts/Engine/liquidEnginePoodle_v2/
+Squad/Parts/Engine/liquidEngineMainsail_v2/
+Squad/Parts/Engine/liquidEngineSkipper_v2/
+Squad/Parts/Engine/Size3AdvancedEngine/
+Squad/Parts/Engine/liquidEngineSSME/
+
+// --- Solid rocket boosters ---
+Squad/Parts/Engine/Size1_SRBs/
+Squad/Parts/Engine/solidBoosterBACC/
+Squad/Parts/Engine/MassiveSRB/
+Squad/Parts/Engine/solidBoosterSep/
+Squad/Parts/Engine/SolidBoostersF/
+Squad/Parts/Engine/solidBoosterS2-17/
+Squad/Parts/Engine/solidBoosterS2-33/
+
+// --- Docking ports ---
+Squad/Parts/Utility/dockingPort/
+Squad/Parts/Utility/dockingPortJr/
+Squad/Parts/Utility/dockingPortSr/
+
+// --- Antennas ---
+Squad/Parts/Utility/commDish88-88/
+Squad/Parts/Utility/DirectAntennas/
+Squad/Parts/Utility/RelayAntennas/
+
+// --- Rover wheels ---
+Squad/Parts/Wheel/roverWheelS2/
+
+// --- Science ---
+Squad/Parts/Science/MaterialBay/
+
+// --- Kerbodyne fuel tanks (stock 3.75 m) ---
+Squad/Parts/FuelTank/Size3Tanks/
