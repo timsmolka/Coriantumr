@@ -2941,6 +2941,7 @@ const BB = {
   height: 20,
   gap: 2.2,         // pitches of bench between one board and the next
   maxBoards: 4,
+  minCols: 30, maxCols: 180, colStep: 30,
   boardOf: (r) => Math.floor(r / 1000),
   local: (r) => r % 1000,
   isRail: (r) => (r % 1000) >= 100,
@@ -2949,6 +2950,9 @@ const BB = {
 };
 
 const boardCount = () => clamp((S.board && S.board.boards) || 1, 1, BB.maxBoards);
+/** How wide the boards are. Adjustable, because how much fits on one is the
+    thing that decides whether a design is buildable at all. */
+const boardCols = () => clamp((S.board && S.board.cols) || BB.cols, BB.minCols, BB.maxCols);
 /** Every row id currently on the bench, top to bottom. */
 function allRows() {
   const out = [];
@@ -2958,7 +2962,7 @@ function allRows() {
 
 const holeX = (c) => (c + 1.2) * BB.P;
 const holeY = (r) => (BB.rowY[BB.local(r)] + 0.5 + BB.boardOf(r) * (BB.height + BB.gap)) * BB.P;
-const boardW = () => (BB.cols + 2.4) * BB.P;
+const boardW = () => (boardCols() + 2.4) * BB.P;
 const boardTop = (b) => b * (BB.height + BB.gap) * BB.P;
 const boardH = () => (BB.height * boardCount() + BB.gap * (boardCount() - 1)) * BB.P;
 
@@ -2970,7 +2974,7 @@ function tieKey(r, c) {
   return local >= 100 ? `b${b}rail${local}` : `b${b}c${c}.${local < 5 ? 0 : 1}`;
 }
 
-function makeBoard() { return { cols: BB.cols, boards: 2, parts: [] }; }
+function makeBoard() { return { cols: 90, boards: 2, parts: [] }; }
 
 /* ---- the parts bin ------------------------------------------------------ */
 
@@ -3724,11 +3728,11 @@ function drawBoard() {
   const railLine = (r, color) => {
     const y = holeY(r) + (BB.railPlus(r) ? -0.62 : 0.62) * P;
     ctx.strokeStyle = color; ctx.lineWidth = 1.6;
-    ctx.beginPath(); ctx.moveTo(holeX(0) - P * 0.5, y); ctx.lineTo(holeX(BB.cols - 1) + P * 0.5, y); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(holeX(0) - P * 0.5, y); ctx.lineTo(holeX(boardCols() - 1) + P * 0.5, y); ctx.stroke();
     ctx.fillStyle = color; ctx.font = `700 ${P * 0.6}px ${FONT}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(0) - P * 1.0, holeY(r));
-    ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(BB.cols - 1) + P * 1.0, holeY(r));
+    ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(boardCols() - 1) + P * 1.0, holeY(r));
   };
 
   /* one slab of plastic per board, each with its own rails and channel */
@@ -3753,7 +3757,7 @@ function drawBoard() {
   const s = P * 0.30;
   for (const r of allRows()) {
     const y = holeY(r);
-    for (let c = 0; c < BB.cols; c++) {
+    for (let c = 0; c < boardCols(); c++) {
       const x = holeX(c);
       const net = netOfHole(r, c);
       const st = holeState(r, c);
@@ -3781,7 +3785,7 @@ function drawBoard() {
   ctx.textBaseline = 'middle';
   for (let bd = 0; bd < nBoards; bd++) {
     ctx.textAlign = 'center';
-    for (let c = 0; c < BB.cols; c += 5) {
+    for (let c = 0; c < boardCols(); c += 5) {
       const x = holeX(c);
       ctx.fillText(String(c + 1), x, holeY(BB.row(bd, 0)) - P * 0.9);
       ctx.fillText(String(c + 1), x, holeY(BB.row(bd, 9)) + P * 0.9);
@@ -3790,7 +3794,7 @@ function drawBoard() {
       ctx.textAlign = 'right';
       ctx.fillText(BB.rowName[local], holeX(0) - P * 0.75, holeY(BB.row(bd, local)));
       ctx.textAlign = 'left';
-      ctx.fillText(BB.rowName[local], holeX(BB.cols - 1) + P * 0.75, holeY(BB.row(bd, local)));
+      ctx.fillText(BB.rowName[local], holeX(boardCols() - 1) + P * 0.75, holeY(BB.row(bd, local)));
     }
     if (nBoards > 1) {
       ctx.textAlign = 'left';
@@ -4011,7 +4015,7 @@ function drawBoardGhost() {
   ctx.globalAlpha = 0.5;
   if (a.type === 'npn' || a.type === 'pnp') {
     if (S.bhoverHole.r < 100) {
-      drawBoardPart({ k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, BB.cols - 3) });
+      drawBoardPart({ k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, boardCols() - 3) });
     }
   } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip') {
     const col = ghostColumn(S.bhoverHole);
@@ -4035,7 +4039,7 @@ function hitHole(w) {
     const y = holeY(r);
     if (Math.abs(w.y - y) > BB.P * 0.7) continue;
     const c = Math.round(w.x / BB.P - 1.2);
-    if (c < 0 || c >= BB.cols) continue;
+    if (c < 0 || c >= boardCols()) continue;
     const d = Math.hypot(w.x - holeX(c), w.y - y);
     if (d < bd) { bd = d; best = { r, c }; }
   }
@@ -4087,7 +4091,7 @@ const BOARD_1T = { vcc: 1, gnd: 1 };
 function ghostColumn(hole) {
   const a = S.armed;
   const width = a.type === 'ic' ? ICS[a.ic].pins / 2 : a.type === 'seg' ? 5 : a.type === 'btn' ? 3 : 4;
-  return clamp(hole.c, 0, BB.cols - width);
+  return clamp(hole.c, 0, boardCols() - width);
 }
 
 function makeBoardPart(a, hole, second) {
@@ -4099,7 +4103,7 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'gnd') return { k: 'gnd', id, a: hole };
   if (a.type === 'npn' || a.type === 'pnp') {
     if (hole.r >= 100) { toast('Transistors go in the main rows, not the power rails.', true); return null; }
-    return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, BB.cols - 3) };
+    return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3) };
   }
   const col = ghostColumn(hole);
   const board = BB.boardOf(hole.r);
@@ -4197,7 +4201,7 @@ function boardMove(ev, p, w) {
   if (d.kind === 'bmove') {
     const span = partSpan(d.part);
     const width = span[1] - span[0] + 1;
-    const col = clamp(d.col0 + Math.round((p.x - d.sx) / (BB.P * S.bcam.z)), 0, BB.cols - width);
+    const col = clamp(d.col0 + Math.round((p.x - d.sx) / (BB.P * S.bcam.z)), 0, boardCols() - width);
     if (col !== d.part.col) {
       const old = d.part.col;
       d.part.col = col;
@@ -4235,6 +4239,16 @@ function renderBoardPalette(host, q) {
     const n = boardCount();
     host.append(h('div', { class: 'stack' },
       h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
+      h('div', { class: 'row', style: 'margin:0' },
+        h('label', { style: 'flex:1 1 auto' }, `${boardCols()} columns wide`),
+        h('button', {
+          class: 'btn icon', title: 'Narrower', disabled: boardCols() <= BB.minCols,
+          onclick: () => setBoardCols(boardCols() - BB.colStep),
+        }, '−'),
+        h('button', {
+          class: 'btn icon', title: 'Wider', disabled: boardCols() >= BB.maxCols,
+          onclick: () => setBoardCols(boardCols() + BB.colStep),
+        }, '+')),
       h('div', { class: 'row', style: 'margin:0' },
         h('label', { style: 'flex:1 1 auto' }, `${n} board${n > 1 ? 's' : ''}`),
         h('button', {
@@ -4319,6 +4333,32 @@ function renderBoardPalette(host, q) {
       })));
   }
 
+}
+
+/** Make the boards wider or narrower. Narrowing can strand parts off the end,
+    so it counts them first and asks. */
+async function setBoardCols(n) {
+  n = clamp(Math.round(n / BB.colStep) * BB.colStep, BB.minCols, BB.maxCols);
+  const cur = boardCols();
+  if (n === cur) return;
+  if (n < cur) {
+    const doomed = S.board.parts.filter((p) => {
+      const cols = partHoles(p).map((h2) => h2.c);
+      return cols.some((c) => c >= n);
+    });
+    if (doomed.length && !await ask(
+      `Make the boards ${n} columns wide?`,
+      `${doomed.length} part${doomed.length > 1 ? 's hang' : ' hangs'} off the end at that width and would come off. Ctrl+Z puts everything back.`,
+      'Narrow them')) return;
+    pushUndo();
+    S.board.parts = S.board.parts.filter((p) => !doomed.includes(p));
+  } else {
+    pushUndo();
+  }
+  S.board.cols = n;
+  S.bsel = null; S.bdirty = true;
+  scheduleSave(); renderPalette(); renderInspector(); fitView();
+  toast(`Boards are now ${n} columns wide.`);
 }
 
 /** Bolt another board onto the bench, or take the bottom one off. Removing one

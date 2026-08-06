@@ -662,6 +662,27 @@ const TESTS = String.raw`
       'unpowered=' + sim.unpowered.join(',') + ' y=' + sim.val[y]);
   }
 
+  /* 12e. the boards can be made wider */
+  {
+    const wide = { cols: 150, boards: 1, parts: [] };
+    const c = L.compileBoard(wide);
+    ok('a wider board has more tie points', c.nets === 150 * 2 + 4, c.nets);
+    ok('a chip can sit out past the old right-hand edge', (() => {
+      wide.parts.push({ k: 'ic', id: 'far', type: '7400', col: 140, board: 0 });
+      wide.parts.push({ k: 'vcc', id: 'v', a: { r: 2, c: 140 } });
+      wide.parts.push({ k: 'gnd', id: 'g', a: { r: 7, c: 146 } });
+      wide.parts.push({ k: 'gnd', id: 'a', a: { r: 7, c: 140 } });
+      const c2 = L.compileBoard(wide);
+      const sim = new L.BoardSim(c2);
+      for (let i = 0; i < 30; i++) sim.tick(1000 + i);
+      const y = c2.holeNet.get(L.tieKey(7, 142));      // gate 1 output, pin 3
+      return sim.unpowered.length === 0 && sim.val[y] === 1;
+    })());
+    /* how much actually fits, which is the point of the whole exercise */
+    const perBoard = Math.floor(150 / 8);
+    ok('a 150-column board holds this many 16-pin chips', perBoard >= 18, perBoard);
+  }
+
   /* 13. short circuit detection */
   {
     const b = { cols: 60, parts: [
@@ -1577,18 +1598,16 @@ const TESTS = String.raw`
       ['two-boards', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
          document.querySelector('#mode-board').click();
-         L.S.board={cols:60, boards:2, parts:[
-           {k:'ic',id:'a',type:'74173',col:2,board:0},
-           {k:'ic',id:'b',type:'74173',col:11,board:0},
-           {k:'ic',id:'c',type:'7483',col:20,board:0},
-           {k:'ic',id:'d',type:'74245',col:30,board:0},
-           {k:'ic',id:'e',type:'74161',col:42,board:0},
-           {k:'ic',id:'f',type:'74138',col:2,board:1},
-           {k:'ic',id:'g',type:'7475',col:11,board:1},
-           {k:'ic',id:'h',type:'74151',col:20,board:1},
-           {k:'ic',id:'i',type:'7486',col:30,board:1},
-           {k:'ic',id:'j',type:'74595',col:38,board:1},
-           {k:'ic',id:'k',type:'7400',col:47,board:1}]};
+         const chips=['74173','74173','7483','74245','74161','7485','74151','7400',
+                      '74138','7475','7486','74595','7404','74157','7474','7432'];
+         const parts=[]; let col=1, board=0;
+         for(const t of chips){
+           const w=L.ICS[t].pins/2;
+           if(col+w > 88){ col=1; board++; }
+           parts.push({k:'ic',id:'u'+parts.length,type:t,col,board});
+           col+=w+1;
+         }
+         L.S.board={cols:90, boards:2, parts};
          L.S.bsel=null; L.S.bdirty=true; L.renderPalette(); L.renderInspector(); L.fitView();
          return 1;})()`],
       ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';

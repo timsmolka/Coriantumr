@@ -92,11 +92,13 @@ transistor is a working inverter, two in series is a NAND, two in parallel is a
 NOR — and two of the worked examples build exactly that, with buttons and a
 light, out of nothing but transistors and resistors.
 
-One board holds about seven chips, because a 14-pin package covers seven of
-its sixty columns and every chip has to straddle the one channel. So the bench
-takes **up to four boards**, stacked the way they would be on a desk — nothing
-crosses from one to the next until you run a jumper, rails included. That is
-enough room for a small CPU: the 74173 register and 74245 transceiver both
+How much fits is what decides whether a design is buildable, so the bench is
+adjustable in both directions: boards are **30 to 180 columns** wide (90 by
+default) and you can stack **up to four** of them, the way they would sit on a
+desk. A 14-pin package covers seven columns and every chip has to straddle the
+one channel, so that ranges from about four chips to roughly ninety. Boards are
+separate slabs — nothing crosses from one to the next until you run a jumper,
+rails included. That is enough room for a small CPU: the 74173 register and 74245 transceiver both
 genuinely let go of their pins when switched off, so several of them can share
 one set of wires the way a real bus does.
 
