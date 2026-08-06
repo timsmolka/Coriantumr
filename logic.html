@@ -1503,7 +1503,7 @@ function deleteHandle() {
     if (!p) return null;
     const span = partSpan(p);
     let wx, wy;
-    if (span) { wx = holeX(span[1]) + BB.P * 0.75; wy = holeY(4) - BB.P * 0.1; }
+    if (span) { wx = holeX(span[1]) + BB.P * 0.75; wy = holeY(chipRowHi(p)) - BB.P * 0.1; }
     else if (p.b) { wx = (holeX(p.a.c) + holeX(p.b.c)) / 2; wy = (holeY(p.a.r) + holeY(p.b.r)) / 2 - BB.P * 0.8; }
     else { wx = holeX(p.a.c) + BB.P * 0.55; wy = holeY(p.a.r) - BB.P * 0.55; }
     const s = toScreen(wx, wy);
@@ -2925,25 +2925,52 @@ function openFileMenu() {
    Row ids 0–9 are A–J; 100–103 are the four rails.
    ========================================================================== */
 
+/* One breadboard is 60 columns and holds about seven chips in the single row
+   that straddles its channel — which is why a real bench has several boards
+   bolted side by side. So does this one.
+
+   A row is numbered board * 1000 + local row: 0–9 are A–J and 100–103 are the
+   four rails, so board 0 keeps exactly the numbers it always had and anything
+   saved before there was more than one board still loads. */
 const BB = {
   P: 22,            // hole pitch, world units (0.1 inch)
   cols: 60,
-  rows: [100, 101, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 102, 103],
+  localRows: [100, 101, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 102, 103],
   rowY: { 100: 1, 101: 2, 0: 4, 1: 5, 2: 6, 3: 7, 4: 8, 5: 11, 6: 12, 7: 13, 8: 14, 9: 15, 102: 17, 103: 18 },
   rowName: { 100: '+', 101: '−', 0: 'A', 1: 'B', 2: 'C', 3: 'D', 4: 'E', 5: 'F', 6: 'G', 7: 'H', 8: 'I', 9: 'J', 102: '−', 103: '+' },
   height: 20,
-  isRail: (r) => r >= 100,
-  railPlus: (r) => r === 100 || r === 103,
+  gap: 2.2,         // pitches of bench between one board and the next
+  maxBoards: 4,
+  boardOf: (r) => Math.floor(r / 1000),
+  local: (r) => r % 1000,
+  isRail: (r) => (r % 1000) >= 100,
+  railPlus: (r) => (r % 1000) === 100 || (r % 1000) === 103,
+  row: (board, local) => board * 1000 + local,
 };
+
+const boardCount = () => clamp((S.board && S.board.boards) || 1, 1, BB.maxBoards);
+/** Every row id currently on the bench, top to bottom. */
+function allRows() {
+  const out = [];
+  for (let b = 0; b < boardCount(); b++) for (const r of BB.localRows) out.push(BB.row(b, r));
+  return out;
+}
+
 const holeX = (c) => (c + 1.2) * BB.P;
-const holeY = (r) => (BB.rowY[r] + 0.5) * BB.P;
+const holeY = (r) => (BB.rowY[BB.local(r)] + 0.5 + BB.boardOf(r) * (BB.height + BB.gap)) * BB.P;
 const boardW = () => (BB.cols + 2.4) * BB.P;
-const boardH = () => BB.height * BB.P;
+const boardTop = (b) => b * (BB.height + BB.gap) * BB.P;
+const boardH = () => (BB.height * boardCount() + BB.gap * (boardCount() - 1)) * BB.P;
 
-/** The hidden copper: which holes are already joined to each other. */
-function tieKey(r, c) { return r >= 100 ? 'rail' + r : 'c' + c + '.' + (r < 5 ? 0 : 1); }
+/** The hidden copper: which holes are already joined to each other. Boards are
+    separate slabs of plastic, so nothing crosses from one to the next until you
+    run a jumper — the rails included. */
+function tieKey(r, c) {
+  const b = BB.boardOf(r), local = BB.local(r);
+  return local >= 100 ? `b${b}rail${local}` : `b${b}c${c}.${local < 5 ? 0 : 1}`;
+}
 
-function makeBoard() { return { cols: BB.cols, parts: [] }; }
+function makeBoard() { return { cols: BB.cols, boards: 2, parts: [] }; }
 
 /* ---- the parts bin ------------------------------------------------------ */
 
@@ -3269,6 +3296,45 @@ const ICS = {
       for (let i = 0; i < 8; i++) put(pins[i], (s.lat >> i) & 1);
     },
   },
+  '74173': {
+    name: '74173', desc: '4-bit register, three-state', nick: 'a register that shares a bus',
+    plain: 'Four bits of memory with a switch on the way out. It only takes a new value when you let it, and only puts its value on the wires when you let it — which is how a dozen registers can share one set of wires without shouting over each other. This is the building block of a home-made CPU.',
+    pins: 16, vcc: 16, gnd: 8, family: 'Memory',
+    pinNames: ['M', 'N', 'Q1', 'Q2', 'Q3', 'Q4', 'CLK', 'GND',
+      'G1', 'G2', 'D4', 'D3', 'D2', 'D1', 'CLR', 'VCC'],
+    note: 'M and N are the output switches and G1/G2 the input switches — all four are active LOW, so tie the ones you are not using to ground. CLR is the odd one out: it clears the register when HIGH.',
+    outs: [3, 4, 5, 6],
+    custom(read, put, st) {
+      const s = st.s || (st.s = { v: 0, pc: 0 });
+      const clk = read(7);
+      if (read(15)) s.v = 0;                              // clear is active HIGH here
+      else if (clk && !s.pc && !read(9) && !read(10)) {
+        s.v = (read(14) ? 1 : 0) | (read(13) ? 2 : 0) | (read(12) ? 4 : 0) | (read(11) ? 8 : 0);
+      }
+      s.pc = clk;
+      if (read(1) || read(2)) return;                     // outputs switched off: let go of the wires
+      put(3, s.v & 1); put(4, (s.v >> 1) & 1); put(5, (s.v >> 2) & 1); put(6, (s.v >> 3) & 1);
+    },
+  },
+  '74245': {
+    name: '74245', desc: 'octal bus transceiver', nick: 'an eight-lane gate between two buses',
+    plain: 'Eight signals that can be passed either way, or blocked entirely. One pin picks the direction and another switches the whole thing off. Used to let a chip join a shared bus only when it is that chip’s turn.',
+    pins: 20, vcc: 20, gnd: 10, family: 'Memory',
+    pinNames: ['DIR', 'A1', 'A2', 'A3', 'A4', 'A5', 'A6', 'A7', 'A8', 'GND',
+      'B8', 'B7', 'B6', 'B5', 'B4', 'B3', 'B2', 'B1', 'OE', 'VCC'],
+    note: 'OE is active low — hold it high and both sides are let go of completely. DIR high sends A to B, DIR low sends B to A.',
+    outs: [2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 17, 18],
+    custom(read, put) {
+      if (read(19)) return;                               // not enabled: both sides float
+      const A = [2, 3, 4, 5, 6, 7, 8, 9];                 // A1..A8
+      const B = [18, 17, 16, 15, 14, 13, 12, 11];         // B1..B8
+      const toB = read(1);
+      for (let i = 0; i < 8; i++) {
+        if (toB) put(B[i], read(A[i]));
+        else put(A[i], read(B[i]));
+      }
+    },
+  },
   '74125': {
     name: '74125', desc: 'quad three-state buffer', nick: 'four on/off buffers',
     plain: 'Passes a signal straight through while switched on. Switched off it lets go of the wire completely, so another chip can drive it instead.', pins: 14, vcc: 14, gnd: 7, family: 'Gates',
@@ -3310,10 +3376,16 @@ const MODULES = {
 
 /* ---- where a part's legs land ------------------------------------------- */
 
+/** Which board a part sits on, and the row ids of that board's two chip rows. */
+const partBoard = (p) => p.board || 0;
+const chipRowLo = (p) => BB.row(partBoard(p), 5);
+const chipRowHi = (p) => BB.row(partBoard(p), 4);
+
 /** Every hole a part occupies, as {r, c, pin}. Pin 1 sits at the notch end,
     on the lower row, and the numbering runs anticlockwise like the real thing. */
 function partHoles(p) {
   const out = [];
+  const lo = chipRowLo(p), hi = chipRowHi(p);
   if (p.k === 'wire' || p.k === 'res' || p.k === 'led') {
     out.push({ ...p.a, pin: 1 }, { ...p.b, pin: 2 });
   } else if (p.k === 'vcc' || p.k === 'gnd') {
@@ -3321,17 +3393,17 @@ function partHoles(p) {
   } else if (p.k === 'ic' || p.k === 'seg') {
     const n = p.k === 'ic' ? ICS[p.type].pins : MODULES.seg.pins;
     const half = n / 2;
-    for (let i = 0; i < half; i++) out.push({ r: 5, c: p.col + i, pin: i + 1 });
-    for (let i = 0; i < half; i++) out.push({ r: 4, c: p.col + half - 1 - i, pin: half + i + 1 });
+    for (let i = 0; i < half; i++) out.push({ r: lo, c: p.col + i, pin: i + 1 });
+    for (let i = 0; i < half; i++) out.push({ r: hi, c: p.col + half - 1 - i, pin: half + i + 1 });
   } else if (p.k === 'npn' || p.k === 'pnp') {
     // TO-92 package: three legs in a row, emitter · base · collector.
     out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
   } else if (p.k === 'btn') {
-    out.push({ r: 5, c: p.col, pin: 1 }, { r: 5, c: p.col + 2, pin: 2 },
-      { r: 4, c: p.col, pin: 3 }, { r: 4, c: p.col + 2, pin: 4 });
+    out.push({ r: lo, c: p.col, pin: 1 }, { r: lo, c: p.col + 2, pin: 2 },
+      { r: hi, c: p.col, pin: 3 }, { r: hi, c: p.col + 2, pin: 4 });
   } else if (p.k === 'dip') {
     for (let i = 0; i < p.n; i++) {
-      out.push({ r: 5, c: p.col + i, pin: i + 1 }, { r: 4, c: p.col + i, pin: p.n + i + 1 });
+      out.push({ r: lo, c: p.col + i, pin: i + 1 }, { r: hi, c: p.col + i, pin: p.n + i + 1 });
     }
   }
   return out;
@@ -3382,8 +3454,11 @@ function inputPins(spec) {
 function compileBoard(b) {
   const dsu = new DSU();
   const keys = [];
-  for (let c = 0; c < b.cols; c++) { keys.push('c' + c + '.0'); keys.push('c' + c + '.1'); }
-  keys.push('rail100', 'rail101', 'rail102', 'rail103');
+  const nBoards = clamp(b.boards || 1, 1, BB.maxBoards);
+  for (let bd = 0; bd < nBoards; bd++) {
+    for (let c = 0; c < b.cols; c++) { keys.push(`b${bd}c${c}.0`); keys.push(`b${bd}c${c}.1`); }
+    for (const rail of [100, 101, 102, 103]) keys.push(`b${bd}rail${rail}`);
+  }
   keys.forEach((k) => dsu.id(k));
 
   const errors = [];
@@ -3392,13 +3467,15 @@ function compileBoard(b) {
   for (const p of b.parts) {
     if (p.k === 'wire') U(tieKey(p.a.r, p.a.c), tieKey(p.b.r, p.b.c));
     else if (p.k === 'btn') {
-      U(tieKey(5, p.col), tieKey(4, p.col));                    // the two legs on each side
-      U(tieKey(5, p.col + 2), tieKey(4, p.col + 2));
-      if (p.pressed) U(tieKey(5, p.col), tieKey(5, p.col + 2));
+      const lo = chipRowLo(p), hi = chipRowHi(p);
+      U(tieKey(lo, p.col), tieKey(hi, p.col));                  // the two legs on each side
+      U(tieKey(lo, p.col + 2), tieKey(hi, p.col + 2));
+      if (p.pressed) U(tieKey(lo, p.col), tieKey(lo, p.col + 2));
     } else if (p.k === 'dip') {
-      for (let i = 0; i < p.n; i++) if (p.on && p.on[i]) U(tieKey(5, p.col + i), tieKey(4, p.col + i));
+      const lo = chipRowLo(p), hi = chipRowHi(p);
+      for (let i = 0; i < p.n; i++) if (p.on && p.on[i]) U(tieKey(lo, p.col + i), tieKey(hi, p.col + i));
     } else if (p.k === 'seg') {
-      U(tieKey(5, p.col + 2), tieKey(4, p.col + 2));            // pins 3 and 8, the common cathode
+      U(tieKey(chipRowLo(p), p.col + 2), tieKey(chipRowHi(p), p.col + 2));   // pins 3 and 8, the common cathode
     }
   }
 
@@ -3641,14 +3718,9 @@ function drawBoard() {
   ctx.save();
   ctx.translate(cm.x, cm.y); ctx.scale(cm.z, cm.z);
 
-  const W = boardW(), H = boardH(), P = BB.P;
+  const W = boardW(), P = BB.P;
+  const nBoards = boardCount();
 
-  /* body */
-  roundRect(0, 0, W, H, 10);
-  ctx.fillStyle = C.board; ctx.fill();
-  ctx.strokeStyle = C.boardLine; ctx.lineWidth = 2; ctx.stroke();
-
-  /* rails */
   const railLine = (r, color) => {
     const y = holeY(r) + (BB.railPlus(r) ? -0.62 : 0.62) * P;
     ctx.strokeStyle = color; ctx.lineWidth = 1.6;
@@ -3658,20 +3730,28 @@ function drawBoard() {
     ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(0) - P * 1.0, holeY(r));
     ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(BB.cols - 1) + P * 1.0, holeY(r));
   };
-  railLine(100, '#c0392b'); railLine(101, '#2b6cb0');
-  railLine(102, '#2b6cb0'); railLine(103, '#c0392b');
 
-  /* the channel down the middle */
-  const chTop = holeY(4) + P * 0.55, chBot = holeY(5) - P * 0.55;
-  ctx.fillStyle = C.boardLine;
-  ctx.globalAlpha = 0.45;
-  ctx.fillRect(P * 0.4, chTop, W - P * 0.8, chBot - chTop);
-  ctx.globalAlpha = 1;
+  /* one slab of plastic per board, each with its own rails and channel */
+  for (let bd = 0; bd < nBoards; bd++) {
+    const top = boardTop(bd);
+    roundRect(0, top, W, BB.height * P, 10);
+    ctx.fillStyle = C.board; ctx.fill();
+    ctx.strokeStyle = C.boardLine; ctx.lineWidth = 2; ctx.stroke();
+
+    railLine(BB.row(bd, 100), '#c0392b'); railLine(BB.row(bd, 101), '#2b6cb0');
+    railLine(BB.row(bd, 102), '#2b6cb0'); railLine(BB.row(bd, 103), '#c0392b');
+
+    const chTop = holeY(BB.row(bd, 4)) + P * 0.55, chBot = holeY(BB.row(bd, 5)) - P * 0.55;
+    ctx.fillStyle = C.boardLine;
+    ctx.globalAlpha = 0.45;
+    ctx.fillRect(P * 0.4, chTop, W - P * 0.8, chBot - chTop);
+    ctx.globalAlpha = 1;
+  }
 
   /* holes */
   const hov = S.bhoverNet;
   const s = P * 0.30;
-  for (const r of BB.rows) {
+  for (const r of allRows()) {
     const y = holeY(r);
     for (let c = 0; c < BB.cols; c++) {
       const x = holeX(c);
@@ -3698,18 +3778,26 @@ function drawBoard() {
 
   /* labels */
   ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.46}px ${FONT}`;
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  for (let c = 0; c < BB.cols; c += 5) {
-    const x = holeX(c);
-    ctx.fillText(String(c + 1), x, holeY(0) - P * 0.9);
-    ctx.fillText(String(c + 1), x, holeY(9) + P * 0.9);
-  }
-  ctx.textAlign = 'right';
-  for (const r of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
-    ctx.fillText(BB.rowName[r], holeX(0) - P * 0.75, holeY(r));
-    ctx.textAlign = 'left';
-    ctx.fillText(BB.rowName[r], holeX(BB.cols - 1) + P * 0.75, holeY(r));
-    ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (let bd = 0; bd < nBoards; bd++) {
+    ctx.textAlign = 'center';
+    for (let c = 0; c < BB.cols; c += 5) {
+      const x = holeX(c);
+      ctx.fillText(String(c + 1), x, holeY(BB.row(bd, 0)) - P * 0.9);
+      ctx.fillText(String(c + 1), x, holeY(BB.row(bd, 9)) + P * 0.9);
+    }
+    for (const local of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) {
+      ctx.textAlign = 'right';
+      ctx.fillText(BB.rowName[local], holeX(0) - P * 0.75, holeY(BB.row(bd, local)));
+      ctx.textAlign = 'left';
+      ctx.fillText(BB.rowName[local], holeX(BB.cols - 1) + P * 0.75, holeY(BB.row(bd, local)));
+    }
+    if (nBoards > 1) {
+      ctx.textAlign = 'left';
+      ctx.fillStyle = '#a9a49a'; ctx.font = `600 ${P * 0.5}px ${FONT}`;
+      ctx.fillText('board ' + (bd + 1), holeX(0) - P * 0.4, boardTop(bd) + P * 0.5);
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.46}px ${FONT}`;
+    }
   }
 
   /* parts, in placement order so later ones sit on top */
@@ -3856,7 +3944,7 @@ function drawModule(p, sel) {
   const P = BB.P;
   const span = partSpan(p);
   const x0 = holeX(span[0]) - P * 0.5, x1 = holeX(span[1]) + P * 0.5;
-  const legT = holeY(4), legB = holeY(5);
+  const legT = holeY(chipRowHi(p)), legB = holeY(chipRowLo(p));
 
   /* legs */
   ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.4; ctx.lineCap = 'round';
@@ -3927,7 +4015,7 @@ function drawBoardGhost() {
     }
   } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip') {
     const col = ghostColumn(S.bhoverHole);
-    const p = makeBoardPart(a, { r: 5, c: col });
+    const p = makeBoardPart(a, { r: BB.row(BB.boardOf(S.bhoverHole.r), 5), c: col });
     if (p) drawModule(p, false);
   } else if (S.bhoverHole) {
     const x = holeX(S.bhoverHole.c), y = holeY(S.bhoverHole.r);
@@ -3943,7 +4031,7 @@ function drawBoardGhost() {
 
 function hitHole(w) {
   let best = null, bd = Infinity;
-  for (const r of BB.rows) {
+  for (const r of allRows()) {
     const y = holeY(r);
     if (Math.abs(w.y - y) > BB.P * 0.7) continue;
     const c = Math.round(w.x / BB.P - 1.2);
@@ -3962,8 +4050,9 @@ function hitBoardPart(w) {
     const span = partSpan(p);
     if (span) {
       const x0 = holeX(span[0]) - P * 0.6, x1 = holeX(span[1]) + P * 0.6;
-      const y0 = p.k === 'seg' ? holeY(4) - P * 1.8 : holeY(4);
-      const y1 = p.k === 'seg' ? holeY(5) + P * 1.8 : holeY(5);
+      const hi = holeY(chipRowHi(p)), lo = holeY(chipRowLo(p));
+      const y0 = p.k === 'seg' ? hi - P * 1.8 : hi;
+      const y1 = p.k === 'seg' ? lo + P * 1.8 : lo;
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
@@ -4013,10 +4102,11 @@ function makeBoardPart(a, hole, second) {
     return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, BB.cols - 3) };
   }
   const col = ghostColumn(hole);
-  if (a.type === 'ic') return { k: 'ic', id, type: a.ic, col };
-  if (a.type === 'seg') return { k: 'seg', id, col };
-  if (a.type === 'btn') return { k: 'btn', id, col, pressed: false };
-  if (a.type === 'dip') return { k: 'dip', id, col, n: 4, on: [false, false, false, false] };
+  const board = BB.boardOf(hole.r);
+  if (a.type === 'ic') return { k: 'ic', id, type: a.ic, col, board };
+  if (a.type === 'seg') return { k: 'seg', id, col, board };
+  if (a.type === 'btn') return { k: 'btn', id, col, board, pressed: false };
+  if (a.type === 'dip') return { k: 'dip', id, col, board, n: 4, on: [false, false, false, false] };
   return null;
 }
 
@@ -4024,7 +4114,7 @@ function boardOverlaps(part) {
   const span = partSpan(part);
   if (!span) return false;
   return S.board.parts.some((q) => {
-    if (q.id === part.id) return false;
+    if (q.id === part.id || partBoard(q) !== partBoard(part)) return false;
     const s = partSpan(q);
     return s && !(span[1] < s[0] || span[0] > s[1]);
   });
@@ -4142,8 +4232,19 @@ function renderBoardPalette(host, q) {
      at the top rather than at the bottom of a scroll. */
   if (!q) {
     host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Board'), h('span', { class: 'rule' })));
+    const n = boardCount();
     host.append(h('div', { class: 'stack' },
       h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
+      h('div', { class: 'row', style: 'margin:0' },
+        h('label', { style: 'flex:1 1 auto' }, `${n} board${n > 1 ? 's' : ''}`),
+        h('button', {
+          class: 'btn icon', title: 'One board fewer', disabled: n <= 1,
+          onclick: () => setBoardCount(n - 1),
+        }, '−'),
+        h('button', {
+          class: 'btn icon', title: 'Bolt another board on', disabled: n >= BB.maxBoards,
+          onclick: () => setBoardCount(n + 1),
+        }, '+')),
       h('button', {
         class: 'btn danger', onclick: async () => {
           if (!S.board.parts.length) return;
@@ -4220,15 +4321,45 @@ function renderBoardPalette(host, q) {
 
 }
 
+/** Bolt another board onto the bench, or take the bottom one off. Removing one
+    takes whatever was built on it, so it asks first. */
+async function setBoardCount(n) {
+  n = clamp(n, 1, BB.maxBoards);
+  const cur = boardCount();
+  if (n === cur) return;
+  if (n < cur) {
+    const doomed = S.board.parts.filter((p) => {
+      const r = p.a ? p.a.r : p.r !== undefined ? p.r : BB.row(partBoard(p), 5);
+      return BB.boardOf(r) >= n;
+    });
+    if (doomed.length && !await ask(
+      `Take board ${cur} off the bench?`,
+      `${doomed.length} part${doomed.length > 1 ? 's are' : ' is'} on it, and ${doomed.length > 1 ? 'they' : 'it'} will go too. Ctrl+Z puts everything back.`,
+      'Remove it')) return;
+    pushUndo();
+    S.board.parts = S.board.parts.filter((p) => !doomed.includes(p));
+  } else {
+    pushUndo();
+  }
+  S.board.boards = n;
+  S.bsel = null; S.bdirty = true;
+  scheduleSave(); renderPalette(); renderInspector();
+  toast(n === 1 ? 'One board on the bench.' : `${n} boards on the bench.`);
+}
+
 function powerTheRails() {
   pushUndo();
   const has = (k, r) => S.board.parts.some((p) => p.k === k && p.a && p.a.r === r);
-  if (!has('vcc', 100)) S.board.parts.push({ k: 'vcc', id: uid(), a: { r: 100, c: 0 } });
-  if (!has('gnd', 101)) S.board.parts.push({ k: 'gnd', id: uid(), a: { r: 101, c: 0 } });
-  if (!has('vcc', 103)) S.board.parts.push({ k: 'vcc', id: uid(), a: { r: 103, c: 0 } });
-  if (!has('gnd', 102)) S.board.parts.push({ k: 'gnd', id: uid(), a: { r: 102, c: 0 } });
+  for (let bd = 0; bd < boardCount(); bd++) {
+    for (const [kind, local] of [['vcc', 100], ['gnd', 101], ['gnd', 102], ['vcc', 103]]) {
+      const r = BB.row(bd, local);
+      if (!has(kind, r)) S.board.parts.push({ k: kind, id: uid(), a: { r, c: 0 } });
+    }
+  }
   S.bdirty = true; scheduleSave();
-  toast('Both + rails are at 5 V and both − rails at ground.');
+  toast(boardCount() > 1
+    ? 'Every board’s + rails are at 5 V and − rails at ground.'
+    : 'Both + rails are at 5 V and both − rails at ground.');
 }
 
 let inspT = 0;
@@ -5064,7 +5195,7 @@ window.LogicLab = {
   S, PARTS, ICS, MODULES, BB,
   compile, Sim, compileBoard, BoardSim, computeTruthTable,
   newDef, makeNode, ioOrder, builder, tieKey, partHoles,
-  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector,
+  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector, renderPalette,
   wireHandles,
   examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES }, RECIPES,
   get lib() { return LIB; },

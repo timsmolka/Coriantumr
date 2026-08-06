@@ -78,7 +78,7 @@ switches and a seven-segment display. The chips, by family:
 | Gates | 7400 NAND · 7402 NOR · 7404 inverter · 7408 AND · 7410/7411 3-input · 7432 OR · 7486 XOR · 74125 three-state buffer |
 | Arithmetic | 7483 4-bit adder · 7485 4-bit comparator |
 | Decoders & selectors | 7447 / 7448 BCD to 7-segment · 74138 3-to-8 decoder · 74151 8-to-1 selector · 74157 quad 2-to-1 selector |
-| Memory & counting | 7474 D flip-flop · 7475 quad latch · 7476 JK flip-flop · 7493 ripple counter · 74161 loadable counter · 74164 shift register · 74595 shift register with latch |
+| Memory & counting | 7474 D flip-flop · 7475 quad latch · 7476 JK flip-flop · 7493 ripple counter · 74161 loadable counter · 74164 shift register · 74595 shift register with latch · 74173 bus register · 74245 octal transceiver |
 | Clock | a canned oscillator module |
 
 The 74125 and the 74595's output-enable both leave their pins genuinely
@@ -91,6 +91,14 @@ later. That is enough for the real thing — a pull-up resistor and one
 transistor is a working inverter, two in series is a NAND, two in parallel is a
 NOR — and two of the worked examples build exactly that, with buttons and a
 light, out of nothing but transistors and resistors.
+
+One board holds about seven chips, because a 14-pin package covers seven of
+its sixty columns and every chip has to straddle the one channel. So the bench
+takes **up to four boards**, stacked the way they would be on a desk — nothing
+crosses from one to the next until you run a jumper, rails included. That is
+enough room for a small CPU: the 74173 register and 74245 transceiver both
+genuinely let go of their pins when switched off, so several of them can share
+one set of wires the way a real bus does.
 
 Selecting any part explains it: what it is in plain words, what it does, and
 the specific thing that will catch you out. Chips also show what is inside

@@ -420,6 +420,19 @@ const TESTS = String.raw`
       ok('74125 passes through, then lets go of the wire',
         on.read(3) === 1 && off.read(3) === 'Z', on.read(3) + '/' + off.read(3));
     }
+    /* 74245: passes eight signals one way, and lets go when disabled */
+    {
+      const on = rig('74245', { 19: 0, 1: 1, 2: 1, 3: 0 });      // enabled, A -> B
+      const off = rig('74245', { 19: 1, 1: 1, 2: 1 });           // disabled
+      const back = rig('74245', { 19: 0, 1: 0, 18: 1, 17: 0 });  // enabled, B -> A
+      ok('74245 passes A across to B', on.read(18) === 1 && on.read(17) === 0,
+        on.read(18) + '' + on.read(17));
+      // pin 3 is A2, which the rig is not driving — so if the chip is quiet it floats
+      ok('74245 lets go of both sides when disabled',
+        off.read(18) === 'Z' && off.read(3) === 'Z', off.read(18) + '/' + off.read(3));
+      ok('74245 goes the other way when told to',
+        back.read(2) === 1 && back.read(3) === 0, back.read(2) + '' + back.read(3));
+    }
     /* 7475: transparent while enabled, holds when the enable drops */
     {
       const board = (() => {
@@ -515,6 +528,18 @@ const TESTS = String.raw`
       ok('7476 toggles on the falling edge when J and K are high',
         got.join('') === '1010', got.join(''));
     }
+    /* 74173: loads on a clock edge, and only speaks when its outputs are on */
+    {
+      const seq = [
+        { clk: 0 }, { clk: 1 }, { clk: 0, read: [3, 4, 5, 6] },
+      ];
+      // D1..D4 = 1010, both input enables low, clear low, outputs on
+      const got = clocked('74173', { 14: 1, 13: 0, 12: 1, 11: 0, 9: 0, 10: 0, 15: 0, 1: 0, 2: 0 }, 7, seq);
+      ok('74173 loads four bits on the clock edge', got[0] === '1010', got[0]);
+      const quiet = clocked('74173', { 14: 1, 13: 0, 12: 1, 11: 0, 9: 0, 10: 0, 15: 0, 1: 1, 2: 0 }, 7, seq);
+      ok('74173 lets go of the bus when its outputs are switched off',
+        quiet[0] === 'ZZZZ', quiet[0]);
+    }
     /* 74595: shift three bits in, then pulse the latch clock */
     {
       const shift = [
@@ -600,6 +625,41 @@ const TESTS = String.raw`
       ok('and lets the pull-up win when the base is low',
         readC(mk(false)) === '1~', readC(mk(false)));
     }
+  }
+
+  /* 12d. more than one board on the bench */
+  {
+    const BB0 = (board, local) => board * 1000 + local;
+    const b2 = { cols: 60, boards: 2, parts: [] };
+    const c = L.compileBoard(b2);
+    const n = (r, col) => c.holeNet.get(L.tieKey(r, col));
+    ok('a second board doubles the tie points', c.nets === 2 * (60 * 2 + 4), c.nets);
+    ok('the same column on two boards is two different nets',
+      n(0, 7) !== n(1000, 7), n(0, 7) + '/' + n(1000, 7));
+    ok('the rails do not carry across from one board to the next',
+      n(100, 0) !== n(1100, 0), n(100, 0) + '/' + n(1100, 0));
+    ok('a jumper is what joins them', (() => {
+      b2.parts.push({ k: 'wire', id: 'j', a: { r: 100, c: 3 }, b: { r: 1100, c: 3 } });
+      const c2 = L.compileBoard(b2);
+      return c2.holeNet.get(L.tieKey(100, 0)) === c2.holeNet.get(L.tieKey(1100, 0));
+    })());
+
+    /* a chip on the second board works exactly like one on the first */
+    const board = {
+      cols: 60, boards: 2, parts: [
+        { k: 'ic', id: 'u', type: '7400', col: 5, board: 1 },
+        { k: 'vcc', id: 'v', a: { r: BB0(1, 2), c: 5 } },
+        { k: 'gnd', id: 'g', a: { r: BB0(1, 7), c: 11 } },
+        { k: 'gnd', id: 'a', a: { r: BB0(1, 7), c: 5 } },
+      ],
+    };
+    const cc = L.compileBoard(board);
+    const sim = new L.BoardSim(cc);
+    for (let i = 0; i < 30; i++) sim.tick(1000 + i);
+    const y = cc.holeNet.get(L.tieKey(BB0(1, 7), 7));   // gate 1 output, pin 3
+    ok('a chip on the second board runs the same as on the first',
+      sim.unpowered.length === 0 && sim.val[y] === 1,
+      'unpowered=' + sim.unpowered.join(',') + ' y=' + sim.val[y]);
   }
 
   /* 13. short circuit detection */
@@ -1029,7 +1089,7 @@ const TESTS = String.raw`
     const powered = await ev(`(()=>{const L=LogicLab; L.S.bdirty=true;
       const c=L.compileBoard(L.S.board); const s=new L.BoardSim(c);
       for(let i=0;i<6;i++) s.tick(1000+i);
-      const plus=c.holeNet.get('rail100'), minus=c.holeNet.get('rail101');
+      const plus=c.holeNet.get(L.tieKey(100,0)), minus=c.holeNet.get(L.tieKey(101,0));
       return L.S.board.parts.length + '|' + s.val[plus] + s.str[plus] + '|' + s.val[minus] + s.str[minus];})()`);
     report('"power the rails" energises both + and − rails', powered === '4|12|02', powered);
 
@@ -1514,6 +1574,23 @@ const TESTS = String.raw`
          L.S.bsel=L.S.board.parts.find(p=>p.k==='npn').id;
          L.S.bdirty=true; L.renderInspector(); L.fitView();
          L.S.bcam.z*=1.7; L.S.bcam.x=-40; L.S.bcam.y=-120; return 1;})()`],
+      ['two-boards', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-board').click();
+         L.S.board={cols:60, boards:2, parts:[
+           {k:'ic',id:'a',type:'74173',col:2,board:0},
+           {k:'ic',id:'b',type:'74173',col:11,board:0},
+           {k:'ic',id:'c',type:'7483',col:20,board:0},
+           {k:'ic',id:'d',type:'74245',col:30,board:0},
+           {k:'ic',id:'e',type:'74161',col:42,board:0},
+           {k:'ic',id:'f',type:'74138',col:2,board:1},
+           {k:'ic',id:'g',type:'7475',col:11,board:1},
+           {k:'ic',id:'h',type:'74151',col:20,board:1},
+           {k:'ic',id:'i',type:'7486',col:30,board:1},
+           {k:'ic',id:'j',type:'74595',col:38,board:1},
+           {k:'ic',id:'k',type:'7400',col:47,board:1}]};
+         L.S.bsel=null; L.S.bdirty=true; L.renderPalette(); L.renderInspector(); L.fitView();
+         return 1;})()`],
       ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#modal .btn.icon').click();
          document.querySelector('#mode-board').click();
