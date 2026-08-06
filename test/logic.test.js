@@ -536,6 +536,72 @@ const TESTS = String.raw`
     }
   }
 
+  /* 12c. gates built out of transistors, with no chip involved */
+  {
+    const run = (board, ticks) => {
+      const c = L.compileBoard(board);
+      const sim = new L.BoardSim(c);
+      for (let i = 0; i < (ticks || 40); i++) sim.tick(1000 + i);
+      return sim;
+    };
+    /* the inverter: button up = light on, button down = light off */
+    {
+      const board = L.examples.BOARD_EXAMPLES[4].make();
+      const btn = board.parts.find(p => p.k === 'btn');
+      const led = board.parts.find(p => p.k === 'led');
+      let sim = run(board);
+      const idle = led._lit, shorts1 = sim.shorts;
+      btn.pressed = true;
+      sim = run(board);
+      const pressed = led._lit;
+      ok('one transistor makes a working NOT gate',
+        idle === true && pressed === false, 'idle=' + idle + ' pressed=' + pressed);
+      ok('the transistor inverter has no shorts',
+        shorts1 === 0 && sim.shorts === 0, shorts1 + '/' + sim.shorts);
+      btn.pressed = false;
+    }
+    /* the NAND: only both-pressed puts the light out */
+    {
+      const board = L.examples.BOARD_EXAMPLES[5].make();
+      const [a, b] = board.parts.filter(p => p.k === 'btn');
+      const led = board.parts.find(p => p.k === 'led');
+      const table = [];
+      for (const [pa, pb] of [[0, 0], [0, 1], [1, 0], [1, 1]]) {
+        a.pressed = !!pa; b.pressed = !!pb;
+        const sim = run(board, 60);
+        table.push(led._lit ? 1 : 0);
+        if (sim.shorts) table.push('SHORT');
+      }
+      ok('two transistors make a working NAND gate', table.join('') === '1110', table.join(''));
+      a.pressed = false; b.pressed = false;
+    }
+    /* the switch itself: base high joins collector to emitter, base low parts them */
+    {
+      const mk = (baseHigh) => ({
+        cols: 60, parts: [
+          { k: 'npn', id: 't', r: 7, c: 10 },
+          { k: 'gnd', id: 'g', a: { r: 9, c: 10 } },              // emitter to ground
+          { k: 'res', id: 'r', a: { r: 9, c: 12 }, b: { r: 0, c: 40 }, ohms: 1000 },
+          { k: 'vcc', id: 'v', a: { r: 1, c: 40 } },              // pull-up on the collector
+          baseHigh
+            ? { k: 'vcc', id: 'b', a: { r: 9, c: 11 } }
+            : { k: 'gnd', id: 'b', a: { r: 9, c: 11 } },
+        ],
+      });
+      const readC = (board) => {
+        const c = L.compileBoard(board);
+        const sim = new L.BoardSim(c);
+        for (let i = 0; i < 30; i++) sim.tick(1000 + i);
+        const net = c.holeNet.get(L.tieKey(7, 12));
+        return sim.str[net] === 0 ? 'Z' : String(sim.val[net]) + (sim.str[net] === 2 ? '!' : '~');
+      };
+      ok('a transistor pulls its collector down when the base is high',
+        readC(mk(true)) === '0!', readC(mk(true)));
+      ok('and lets the pull-up win when the base is low',
+        readC(mk(false)) === '1~', readC(mk(false)));
+    }
+  }
+
   /* 13. short circuit detection */
   {
     const b = { cols: 60, parts: [
@@ -906,7 +972,7 @@ const TESTS = String.raw`
     const plainness = await ev(`(()=>{const L=LogicLab;
       const bad=Object.keys(L.ICS).filter(k=>{const c=L.ICS[k];
         return !c.nick || !c.plain || c.plain.length < 40;});
-      const shown=[...document.querySelectorAll('.pal-item.named .sub')].map(e=>e.textContent);
+      const shown=[...document.querySelectorAll('.pal-item.named[data-type="ic"] .sub')].map(e=>e.textContent);
       return (bad.join(',')||'none') + '|' + shown.length;})()`);
     report('every chip has a plain name and an explanation, shown in the palette',
       plainness === 'none|' + (await ev(`Object.keys(LogicLab.ICS).length`)), plainness);
@@ -919,6 +985,29 @@ const TESTS = String.raw`
       return t.includes('What it does') + '|' + t.includes('eight outputs from three wires')
         + '|' + t.includes('Watch out');})()`);
     report('selecting a chip explains it on the side', explains === 'true|true|true', explains);
+
+    /* a chip on the breadboard shows what is inside it, and a gate diagram */
+    const inside = await ev(`(()=>{const L=LogicLab;
+      L.S.board={cols:60,parts:[{k:'ic',id:'z2',type:'7400',col:6}]};
+      L.S.bsel='z2'; L.S.bdirty=true; L.renderInspector();
+      const t=document.querySelector('#inspector').textContent;
+      const cv2=document.querySelector('#inspector canvas.preview');
+      return t.includes('What’s inside') + '|' + t.includes('4 separate NAND gates')
+        + '|' + t.includes('transistors') + '|' + !!cv2;})()`);
+    report('a breadboard chip shows what is inside it', inside === 'true|true|true|true', inside);
+
+    /* the editor explains its parts the same way the breadboard does */
+    const editorSays = await ev(`(()=>{const L=LogicLab;
+      document.querySelector('#mode-editor').click();
+      L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true;
+      const n=L.S.work.nodes.find(x=>x.type==='XOR');
+      L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector();
+      const t=document.querySelector('#inspector').textContent;
+      return t.includes('In plain words') + '|' + t.includes('different')
+        + '|' + t.includes('What it does');})()`);
+    report('the circuit editor explains its parts too', editorSays === 'true|true|true', editorSays);
+    await clickSel('#mode-board');
+    await wait(250);
 
     const explainsPart = await ev(`(()=>{const L=LogicLab;
       L.S.board={cols:60,parts:[{k:'res',id:'r1',a:{r:0,c:2},b:{r:0,c:9},ohms:220}]};
@@ -1417,6 +1506,14 @@ const TESTS = String.raw`
          L.fitView();
          const n=L.S.work.nodes.find(x=>x.type==='OR');
          L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`],
+      ['transistor-nand', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-board').click();
+         L.S.board=L.examples.BOARD_EXAMPLES[5].make();
+         L.S.board.parts.filter(p=>p.k==='btn').forEach(b=>{b.pressed=true;});
+         L.S.bsel=L.S.board.parts.find(p=>p.k==='npn').id;
+         L.S.bdirty=true; L.renderInspector(); L.fitView();
+         L.S.bcam.z*=1.7; L.S.bcam.x=-40; L.S.bcam.y=-120; return 1;})()`],
       ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#modal .btn.icon').click();
          document.querySelector('#mode-board').click();

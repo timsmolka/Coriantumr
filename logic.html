@@ -272,6 +272,10 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .tt-wrap{max-height:260px;overflow:auto;border:1px solid var(--line-soft);border-radius:8px}
 .stack{display:flex;flex-direction:column;gap:6px}
 .madeof{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+h4.does{
+  margin:10px 0 4px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--accent);font-weight:700;
+}
 .madeof h4{margin:0 0 5px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 .madeof p{margin:0 0 8px;line-height:1.45}
 canvas.preview{
@@ -527,27 +531,27 @@ const xorOf = (a) => a.reduce((s, v) => s ^ (v ? 1 : 0), 0);
 const PARTS = {
   /* ---- chip boundary ------------------------------------------------- */
   IN: {
-    name: 'Input pin', cat: 'io', group: 'Signals', shape: 'pin',
+    name: 'Input pin', cat: 'io', nick: "a switch", plain: "A pin on the edge of your circuit, and a switch you can flip: click it to change between 0 and 1. When you package the circuit as a chip, each of these becomes one of that chip's input connections.", group: 'Signals', shape: 'pin',
     ins: () => [], outs: () => [''], w: 30, h: 30,
     make: () => ({ label: 'in', value: 0, momentary: false }),
     tip: 'A pin on the edge of the chip. Click it to flip it between 0 and 1.',
     sim: (p, v, put) => put(p.outs[0], p.node.value ? 1 : 0),
   },
   OUT: {
-    name: 'Output pin', cat: 'io', group: 'Signals', shape: 'pin',
+    name: 'Output pin', cat: 'io', nick: "a result", plain: "A pin on the edge of your circuit. It lights up when the signal reaching it is 1, and becomes one of the chip's output connections when you package it.", group: 'Signals', shape: 'pin',
     ins: () => [''], outs: () => [], w: 30, h: 30,
     make: () => ({ label: 'out' }),
     tip: 'A pin on the edge of the chip. Lights up when the signal is 1.',
   },
   CONST: {
-    name: 'Constant', cat: 'src', group: 'Signals', shape: 'const',
+    name: 'Constant', cat: 'src', nick: "always 0, or always 1", plain: "Holds one value forever; click it to change which. Handy for tying an input you are not using to a fixed level.", group: 'Signals', shape: 'const',
     ins: () => [], outs: () => [''], w: 40, h: 26,
     make: () => ({ value: 1 }),
     tip: 'A permanent 0 or 1. Click to flip it.',
     sim: (p, v, put) => put(p.outs[0], p.node.value ? 1 : 0),
   },
   CLOCK: {
-    name: 'Clock', cat: 'src', group: 'Signals', shape: 'clock',
+    name: 'Clock', cat: 'src', nick: "a steady pulse", plain: "Turns itself on and off forever, at whatever rate you set in this panel. This is what drives counters and flip-flops.", group: 'Signals', shape: 'clock',
     ins: () => [], outs: () => [''], w: 46, h: 30,
     make: () => ({ hz: 2 }),
     tip: 'A square wave. Set its rate in the inspector.',
@@ -561,26 +565,26 @@ const PARTS = {
   },
 
   /* ---- gates ---------------------------------------------------------- */
-  AND: { name: 'AND', cat: 'gate', group: 'Gates', vin: true, tip: '1 only when every input is 1.',
+  AND: { name: 'AND', cat: 'gate', nick: "both", plain: "On only when every one of its inputs is on. Think \u201cthis AND that\u201d.", group: 'Gates', vin: true, tip: '1 only when every input is 1.',
     sim: (p, v, put) => put(p.outs[0], andOf(p.ins.map((n) => v[n]))) },
-  OR: { name: 'OR', cat: 'gate', group: 'Gates', vin: true, tip: '1 when at least one input is 1.',
+  OR: { name: 'OR', cat: 'gate', nick: "either", plain: "On when at least one of its inputs is on \u2014 or both. Think \u201cthis OR that\u201d.", group: 'Gates', vin: true, tip: '1 when at least one input is 1.',
     sim: (p, v, put) => put(p.outs[0], orOf(p.ins.map((n) => v[n]))) },
-  NAND: { name: 'NAND', cat: 'gate', group: 'Gates', vin: true, bubble: true,
+  NAND: { name: 'NAND', cat: 'gate', nick: "not both", plain: "On unless every input is on \u2014 an AND with its answer flipped. Every other gate can be built out of NANDs, which is why they are everywhere.", group: 'Gates', vin: true, bubble: true,
     tip: 'AND, inverted. Every other gate can be built from these.',
     sim: (p, v, put) => put(p.outs[0], andOf(p.ins.map((n) => v[n])) ^ 1) },
-  NOR: { name: 'NOR', cat: 'gate', group: 'Gates', vin: true, bubble: true, tip: 'OR, inverted.',
+  NOR: { name: 'NOR', cat: 'gate', nick: "neither", plain: "On only when all of its inputs are off \u2014 an OR with its answer flipped. Like the NAND, it is enough on its own to build anything.", group: 'Gates', vin: true, bubble: true, tip: 'OR, inverted.',
     sim: (p, v, put) => put(p.outs[0], orOf(p.ins.map((n) => v[n])) ^ 1) },
-  XOR: { name: 'XOR', cat: 'gate', group: 'Gates', vin: true, tip: '1 when an odd number of inputs are 1.',
+  XOR: { name: 'XOR', cat: 'gate', nick: "different", plain: "On when its two inputs disagree. Adding two bits is an XOR for the answer and an AND for the carry \u2014 that is the whole half adder.", group: 'Gates', vin: true, tip: '1 when an odd number of inputs are 1.',
     sim: (p, v, put) => put(p.outs[0], xorOf(p.ins.map((n) => v[n]))) },
-  XNOR: { name: 'XNOR', cat: 'gate', group: 'Gates', vin: true, bubble: true, tip: 'XOR, inverted — 1 when the inputs match.',
+  XNOR: { name: 'XNOR', cat: 'gate', nick: "the same", plain: "On when its inputs match. An XOR with its answer flipped, and the quickest way to ask whether two things agree.", group: 'Gates', vin: true, bubble: true, tip: 'XOR, inverted — 1 when the inputs match.',
     sim: (p, v, put) => put(p.outs[0], xorOf(p.ins.map((n) => v[n])) ^ 1) },
   NOT: {
-    name: 'NOT', cat: 'gate', group: 'Gates', bubble: true, w: 46,
+    name: 'NOT', cat: 'gate', nick: "the opposite", plain: "Flips its input over: 1 becomes 0 and 0 becomes 1. Also called an inverter.", group: 'Gates', bubble: true, w: 46,
     ins: () => [''], outs: () => [''], tip: 'Flips the bit.',
     sim: (p, v, put) => put(p.outs[0], v[p.ins[0]] ^ 1),
   },
   BUF: {
-    name: 'BUFFER', cat: 'gate', group: 'Gates', w: 56,
+    name: 'BUFFER', cat: 'gate', nick: "a pause", plain: "Passes its input straight through, one tick later. The answer is unchanged; the delay is the point.", group: 'Gates', w: 56,
     ins: () => [''], outs: () => [''], tip: 'Passes the bit through, one tick later.',
     sim: (p, v, put) => put(p.outs[0], v[p.ins[0]]),
   },
@@ -590,7 +594,7 @@ const PARTS = {
      combinational stuff works — but nothing stops you building your own out
      of NANDs and packaging that instead. */
   DFF: {
-    name: 'D FLIP-FLOP', cat: 'seq', group: 'Memory', w: 76,
+    name: 'D FLIP-FLOP', cat: 'seq', nick: "one bit of memory", plain: "At the instant the clock rises it takes a copy of D and holds it, whatever D does afterwards, until the next rising edge. This is how anything remembers anything.", group: 'Memory', w: 76,
     ins: () => ['D', '>'], outs: () => ['Q', 'Q̄'],
     tip: 'Copies D to Q on each rising edge of the clock input.',
     sim: (p, v, put) => {
@@ -601,7 +605,7 @@ const PARTS = {
     },
   },
   DLATCH: {
-    name: 'D LATCH', cat: 'seq', group: 'Memory', w: 66,
+    name: 'D LATCH', cat: 'seq', nick: "one bit, while the door is open", plain: "While the enable input is 1 the output simply follows D. The moment enable drops to 0 it freezes whatever was there.", group: 'Memory', w: 66,
     ins: () => ['D', 'E'], outs: () => ['Q', 'Q̄'],
     tip: 'While enable is 1, Q follows D. When it drops to 0, Q holds.',
     sim: (p, v, put) => {
@@ -612,19 +616,19 @@ const PARTS = {
 
   /* ---- displays -------------------------------------------------------- */
   LED: {
-    name: 'LED', cat: 'disp', group: 'Displays', shape: 'led',
+    name: 'LED', cat: 'disp', nick: "a light", plain: "Lights up while its input is 1. It has no effect on the circuit \u2014 it is there for you to watch.", group: 'Displays', shape: 'led',
     ins: () => [''], outs: () => [], w: 26, h: 26,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Glows while its input is 1.',
   },
   SEG7: {
-    name: '7-SEGMENT', cat: 'disp', group: 'Displays', shape: 'seg7',
+    name: '7-SEGMENT', cat: 'disp', nick: "a digit, bar by bar", plain: "Seven bars and a dot, each with its own input, which together can draw a digit. You decide which bars light \u2014 working out the shapes is a decoder chip's job.", group: 'Displays', shape: 'seg7',
     ins: () => ['a', 'b', 'c', 'd', 'e', 'f', 'g', '.'], outs: () => [], w: 104, h: 8 * PORT_GAP + 16,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Eight segments, driven one bit each — a through g plus the dot.',
   },
   HEX: {
-    name: 'HEX DIGIT', cat: 'disp', group: 'Displays', shape: 'seg7',
+    name: 'HEX DIGIT', cat: 'disp', nick: "a digit, worked out for you", plain: "Reads four bits as a number from 0 to 15 and draws it as one digit, 0 to F. The decoding is done for you; the 7-SEGMENT part is the honest version.", group: 'Displays', shape: 'seg7',
     ins: () => ['8', '4', '2', '1'], outs: () => [], w: 76, h: 92,
     make: () => ({ color: '#ffc247' }),
     tip: 'Shows a 4-bit number as one hex digit, 0–F. Decoding is done for you.',
@@ -634,12 +638,12 @@ const PARTS = {
      Neither of these computes anything: the compiler simply fuses the nets on
      either side, so they cost nothing and add no delay. */
   JOINT: {
-    name: 'Junction', cat: 'plumb', group: 'Routing', shape: 'joint',
+    name: 'Junction', cat: 'plumb', nick: "where wires meet", plain: "One wire in, as many out as you like. It costs nothing and adds no delay \u2014 it is only a place for wires to gather.", group: 'Routing', shape: 'joint',
     ins: () => [''], outs: () => [''], w: 18, h: 18,
     tip: 'A meeting point for wires: one wire in, as many out as you like. Drop a wire onto another wire to make one.',
   },
   TUNNEL: {
-    name: 'Tunnel', cat: 'plumb', group: 'Routing', shape: 'tunnel',
+    name: 'Tunnel', cat: 'plumb', nick: "a wire without the wire", plain: "Every tunnel with the same name is joined together, however far apart they sit. Use them instead of dragging a wire right across the board.", group: 'Routing', shape: 'tunnel',
     ins: () => [''], outs: () => [''], w: 62, h: 24,
     make: () => ({ label: 'net' }),
     tip: 'Every tunnel with the same name is wired together — a wire without the wire.',
@@ -2330,8 +2334,17 @@ function nodeInspector(node) {
   const sec = h('div', { class: 'insp-sec' }, h('h3', {}, 'Selected part'));
   const title = node.type === 'CHIP' ? (part ? part.name : 'missing chip') : part.name;
   sec.append(h('div', { class: 'kv' }, h('span', {}, 'Type'), h('span', {}, title)));
-  if (PARTS[node.type] && PARTS[node.type].tip) {
-    sec.append(h('p', { class: 'muted', style: 'margin:2px 0 8px' }, PARTS[node.type].tip));
+
+  /* The same "here is what this is" treatment the breadboard gets. */
+  const prim = PARTS[node.type];
+  if (prim && prim.nick) {
+    sec.append(h('div', { class: 'kv' }, h('span', {}, 'In plain words'), h('span', {}, prim.nick)));
+  }
+  const blurb = prim ? (prim.plain || prim.tip)
+    : (part ? `A chip you made: ${part.nodes.length} parts inside, wired up the way you left them.` : null);
+  if (blurb) {
+    sec.append(h('h4', { class: 'does' }, 'What it does'));
+    sec.append(h('p', { class: 'muted', style: 'margin:0 0 8px' }, blurb));
   }
 
   const rerender = () => { markDirty(); renderInspector(); };
@@ -2411,7 +2424,7 @@ const previewObs = window.ResizeObserver
   })
   : null;
 
-function madeOfBlock(text, makeDef, buttonLabel) {
+function madeOfBlock(text, makeDef, buttonLabel, title) {
   const canvas = h('canvas', {
     class: 'preview', title: 'Click to see it bigger',
     onclick: () => openDiagram(text, makeDef, buttonLabel),
@@ -2420,14 +2433,14 @@ function madeOfBlock(text, makeDef, buttonLabel) {
   if (previewObs) previewObs.observe(canvas);
   else requestAnimationFrame(() => drawDefInto(canvas, canvas._def));
   return h('div', { class: 'madeof' },
-    h('h4', {}, 'What it’s made of'),
+    h('h4', {}, title || 'What it’s made of'),
     h('p', { class: 'muted' }, text),
     canvas,
     h('p', { class: 'zoomhint' }, 'Click the picture to see it bigger'),
-    h('button', {
+    buttonLabel ? h('button', {
       class: 'btn', style: 'margin-top:5px;width:100%',
       onclick: () => insertDef(makeDef()),
-    }, buttonLabel));
+    }, buttonLabel) : null);
 }
 
 /** The same diagram at a size you can actually read. */
@@ -3310,6 +3323,9 @@ function partHoles(p) {
     const half = n / 2;
     for (let i = 0; i < half; i++) out.push({ r: 5, c: p.col + i, pin: i + 1 });
     for (let i = 0; i < half; i++) out.push({ r: 4, c: p.col + half - 1 - i, pin: half + i + 1 });
+  } else if (p.k === 'npn' || p.k === 'pnp') {
+    // TO-92 package: three legs in a row, emitter · base · collector.
+    out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
   } else if (p.k === 'btn') {
     out.push({ r: 5, c: p.col, pin: 1 }, { r: 5, c: p.col + 2, pin: 2 },
       { r: 4, c: p.col, pin: 3 }, { r: 4, c: p.col + 2, pin: 4 });
@@ -3398,7 +3414,7 @@ function compileBoard(b) {
   for (const k of keys) holeNet.set(k, netOfKey(k));
 
   /* Resolve each part's pins to nets. */
-  const supplies = [], resistors = [], leds = [], chips = [], displays = [];
+  const supplies = [], resistors = [], leds = [], chips = [], displays = [], transistors = [];
   for (const p of b.parts) {
     const holes = partHoles(p);
     p._nets = {};
@@ -3409,6 +3425,9 @@ function compileBoard(b) {
     else if (p.k === 'led') leds.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'ic') chips.push({ p, spec: ICS[p.type] });
     else if (p.k === 'seg') displays.push({ p });
+    else if (p.k === 'npn' || p.k === 'pnp') {
+      transistors.push({ p, npn: p.k === 'npn', e: p._nets[1], b: p._nets[2], c: p._nets[3], on: false });
+    }
   }
 
   /* An LED with no resistor anywhere on either leg will not survive long. */
@@ -3422,7 +3441,7 @@ function compileBoard(b) {
   const used = new Set();
   for (const p of b.parts) for (const k in p._nets) used.add(p._nets[k]);
 
-  return { board: b, nets: count, used: used.size, holeNet, supplies, resistors, leds, chips, displays, errors };
+  return { board: b, nets: count, used: used.size, holeNet, supplies, resistors, leds, chips, displays, transistors, errors };
 }
 
 class BoardSim {
@@ -3528,10 +3547,28 @@ class BoardSim {
       }
     }
 
-    /* Resistors pass a weak copy in whichever direction has something to pass.
-       Two strong nets joined by a resistor is a current path, not a short. */
-    for (let pass = 0; pass < 4; pass++) {
+    /* A transistor is a switch that another wire closes: put the right level on
+       the base and the collector and emitter are joined. Which level depends on
+       the previous tick, so a transistor costs a tick of delay just like a gate
+       — which is exactly what it is made of. */
+    for (const t of this.c.transistors) {
+      const bs = this.str[t.b];
+      t.on = bs === FLOAT ? false : (t.npn ? this.val[t.b] === 1 : this.val[t.b] === 0);
+      t.p._on = t.on;
+    }
+
+    /* Settle the passive side: closed transistors carry a level across at full
+       strength, resistors pass a weak copy. Two strong nets joined by a
+       resistor is a current path, not a short; joined by a transistor it is. */
+    for (let pass = 0; pass < 8; pass++) {
       let changed = false;
+      for (const t of this.c.transistors) {
+        if (!t.on) continue;
+        const a = t.c, b = t.e;
+        if (str[a] > str[b]) { str[b] = str[a]; val[b] = val[a]; changed = true; }
+        else if (str[b] > str[a]) { str[a] = str[b]; val[a] = val[b]; changed = true; }
+        else if (str[a] === STRONG && val[a] !== val[b]) { conf[a] = 1; conf[b] = 1; }
+      }
       for (const r of this.c.resistors) {
         if (str[r.a] !== FLOAT && str[r.b] === FLOAT) { str[r.b] = WEAK; val[r.b] = val[r.a]; changed = true; }
         else if (str[r.b] !== FLOAT && str[r.a] === FLOAT) { str[r.a] = WEAK; val[r.a] = val[r.b]; changed = true; }
@@ -3770,6 +3807,32 @@ function drawBoardPart(p) {
       ctx.fillText(red ? '5V' : 'G', A.x, A.y + 0.5);
       break;
     }
+    case 'npn': case 'pnp': {
+      const P = BB.P;
+      const y = holeY(p.r);
+      const cx = holeX(p.c + 1), cy = y - P * 1.05, R = P * 0.7;
+      ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const x = holeX(p.c + i);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy + R * 0.45); ctx.stroke();
+      }
+      roundRect(cx - R, cy - R * 0.85, R * 2, R * 1.7, R * 0.62);
+      ctx.fillStyle = '#1c1f24'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : p._on ? C.accent : '#0c0e11';
+      ctx.lineWidth = sel || p._on ? 2.4 : 1; ctx.stroke();
+      // the flat face of a TO-92, so you can tell which way round it is
+      ctx.strokeStyle = '#4b525b'; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.moveTo(cx - R * 0.72, cy + R * 0.8); ctx.lineTo(cx + R * 0.72, cy + R * 0.8);
+      ctx.stroke();
+      ctx.fillStyle = p._on ? C.accent : '#9aa0a6';
+      ctx.font = `700 ${P * 0.36}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(p.k === 'npn' ? 'NPN' : 'PNP', cx, cy - R * 0.05);
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.34}px ${FONT}`;
+      ['E', 'B', 'C'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
+      break;
+    }
     case 'ic': case 'seg': case 'btn': case 'dip': drawModule(p, sel); break;
   }
 }
@@ -3858,7 +3921,11 @@ function drawBoardGhost() {
   const a = S.armed;
   if (!a || !S.bhoverHole) return;
   ctx.globalAlpha = 0.5;
-  if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip') {
+  if (a.type === 'npn' || a.type === 'pnp') {
+    if (S.bhoverHole.r < 100) {
+      drawBoardPart({ k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, BB.cols - 3) });
+    }
+  } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip') {
     const col = ghostColumn(S.bhoverHole);
     const p = makeBoardPart(a, { r: 5, c: col });
     if (p) drawModule(p, false);
@@ -3900,6 +3967,12 @@ function hitBoardPart(w) {
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
+    if (p.k === 'npn' || p.k === 'pnp') {
+      const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 2) + P * 0.6;
+      const y1 = holeY(p.r) + P * 0.4, y0 = y1 - P * 2.3;
+      if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
+      continue;
+    }
     if (p.k === 'vcc' || p.k === 'gnd') {
       if (dist2(w.x, w.y, holeX(p.a.c), holeY(p.a.r)) < 100) return p;
       continue;
@@ -3935,6 +4008,10 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'led') return { k: 'led', id, a: hole, b: second, color: a.color || '#ff4436' };
   if (a.type === 'vcc') return { k: 'vcc', id, a: hole };
   if (a.type === 'gnd') return { k: 'gnd', id, a: hole };
+  if (a.type === 'npn' || a.type === 'pnp') {
+    if (hole.r >= 100) { toast('Transistors go in the main rows, not the power rails.', true); return null; }
+    return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, BB.cols - 3) };
+  }
   const col = ghostColumn(hole);
   if (a.type === 'ic') return { k: 'ic', id, type: a.ic, col };
   if (a.type === 'seg') return { k: 'seg', id, col };
@@ -4111,6 +4188,12 @@ function renderBoardPalette(host, q) {
     { name: '+5 V clip', color: '#c0392b', desc: 'Feeds 5 V into a hole.', arm: { type: 'vcc' } },
     { name: 'Ground clip', color: '#2c3038', desc: 'Ties a hole to 0 V.', arm: { type: 'gnd' } },
   ]);
+  add('Transistors — build a gate yourself', [
+    { name: 'NPN transistor', color: '#1c1f24', sub: 'a switch a wire closes',
+      desc: 'Conducts when its base is high.', arm: { type: 'npn' } },
+    { name: 'PNP transistor', color: '#1c1f24', sub: 'a switch a wire opens',
+      desc: 'Conducts when its base is low.', arm: { type: 'pnp' } },
+  ]);
   add('Modules', [
     { name: 'Push button', color: '#c0392b', desc: MODULES.btn.desc, arm: { type: 'btn' } },
     { name: 'DIP switch ×4', color: '#c9302c', desc: MODULES.dip.desc, arm: { type: 'dip' } },
@@ -4184,6 +4267,8 @@ function renderBoardInspector(host) {
     gnd: ['Ground clip', 'Whatever hole it sits in becomes 0 volts — a logical 0. Every chip needs one on its GND pin too.'],
     btn: ['Push button', 'Its two legs on each side are joined all the time; pressing it joins the two sides together. Held down, it is a wire; released, it is a gap.'],
     dip: ['DIP switch', 'Four separate switches. Each one joins the hole above it to the hole below it while it is on. Click a lever to flip it.'],
+    npn: ['NPN transistor', "A switch that another wire closes. Put a 1 on the base \u2014 the middle leg \u2014 and the collector and emitter are joined; take it away and they part. Legs left to right: emitter, base, collector. Every chip in this list is millions of these, and you can build the gates yourself out of a transistor and a couple of resistors."],
+    pnp: ['PNP transistor', "The NPN's mirror image: it conducts while its base is held LOW, and stops when the base goes high. Pairs with an NPN to make the push-pull arrangement inside modern chips. Legs left to right: emitter, base, collector."],
     seg: ['7-segment display', 'Draws a digit out of seven bars. Each bar has its own pin, and the COM pin is the shared return that has to go to ground.'],
   };
 
@@ -4192,8 +4277,7 @@ function renderBoardInspector(host) {
   const nick = spec0 ? spec0.nick : null;
   s2.append(h('div', { class: 'kv' }, h('span', {}, 'Part'), h('span', {}, title)));
   if (nick) s2.append(h('div', { class: 'kv' }, h('span', {}, 'In plain words'), h('span', {}, nick)));
-  s2.append(h('h4', { style: 'margin:10px 0 4px;font-size:11px;color:var(--accent);letter-spacing:.12em;text-transform:uppercase' },
-    'What it does'));
+  s2.append(h('h4', { class: 'does' }, 'What it does'));
   s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' },
     spec0 ? spec0.plain : PLAIN[part.k][1]));
 
@@ -4202,6 +4286,13 @@ function renderBoardInspector(host) {
       h('b', { style: 'color:var(--ink-soft)' }, 'Watch out: '), ICS[part.type].note));
   }
   if (part.k === 'seg') s2.append(h('p', { class: 'muted' }, MODULES.seg.note));
+  if (part.k === 'npn' || part.k === 'pnp') {
+    s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' },
+      h('b', { style: 'color:var(--ink-soft)' }, 'Watch out: '),
+      'feed the base through a resistor, and give the collector one up to +5 V. '
+      + 'On a real bench a base with no resistor destroys the transistor; here it simply works, '
+      + 'but the collector resistor is doing real work — it is what makes the output a 1 when the switch is open.'));
+  }
 
   if (part.k === 'res') {
     s2.append(h('div', { class: 'row' }, h('label', {}, 'Ohms'),
@@ -4267,6 +4358,29 @@ function renderBoardInspector(host) {
 
   s2.append(h('div', { class: 'stack', style: 'margin-top:10px' },
     h('button', { class: 'btn danger', onclick: boardDelete }, 'Remove part')));
+
+  /* What is actually inside the package. For the plain gate chips that is a
+     row of identical gates, and each of those is a handful of transistors —
+     which you can go and build yourself from the parts list. */
+  if (spec0 && spec0.gates) {
+    const kinds = new Set(spec0.gates.map((g) => g.f.toUpperCase()));
+    const kind = kinds.size === 1 ? [...kinds][0] : null;
+    const n = spec0.gates.length;
+    const rec = kind && RECIPES[kind];
+    if (rec) {
+      s2.append(madeOfBlock(
+        `Inside the package are ${n} separate ${kind} gates, each with its own pins. `
+        + `One of them, built from simpler gates: ${rec.text}`,
+        rec.make, null, 'What’s inside'));
+      s2.append(h('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' },
+        'And each of those gates is a couple of transistors and a resistor. '
+        + 'There are transistors in the parts list — try Examples → “NAND gate, from two transistors”.'));
+    }
+  } else if (spec0) {
+    s2.append(h('p', { class: 'muted', style: 'margin:10px 0 0;font-size:12px' },
+      'Inside this one is a few dozen gates wired into a fixed arrangement — too many to draw, '
+      + 'but every one of them is transistors underneath. Try Examples → “NAND gate, from two transistors”.'));
+  }
   host.append(s2);
 }
 
@@ -4606,11 +4720,71 @@ function bbCounter() {
   return { cols: BB.cols, parts };
 }
 
+const T_ = (kind, r, c) => ({ k: kind, id: uid(), r, c });
+
+/* A NOT gate with no chip in sight: one transistor and two resistors, the way
+   the inside of a 7404 works. Press the button and the light goes OUT. */
+function bbTransistorNot() {
+  return {
+    cols: BB.cols, parts: [
+      ...POWER(),
+      T_('npn', 7, 10),                              // E=(7,10) B=(7,11) C=(7,12)
+      W_(9, 10, 102, 10, '#4a4f58'),                 // emitter to ground
+      R_(9, 12, 103, 12, 1000),                      // collector up to +5 V — the pull-up
+      R_(9, 11, 8, 20, 10000),                       // base resistor, from the input node
+      R_(9, 20, 102, 20, 10000),                     // pull-down, so the input is never floating
+      { k: 'btn', id: uid(), col: 24, pressed: false },
+      W_(7, 24, 103, 24, '#e04b3c'),                 // button: one side to +5 V
+      W_(7, 26, 7, 20, '#3c7de0'),                   // the other side to the input node
+      L_(8, 12, 8, 30, '#4bd684'),                   // the output, straight off the collector
+      W_(7, 30, 102, 30, '#4a4f58'),
+    ],
+  };
+}
+
+/* Two transistors in series: current only reaches ground when BOTH are on, so
+   the output is low only when both inputs are high. That is a NAND — the gate
+   a 7400 has four of. */
+function bbTransistorNand() {
+  return {
+    cols: BB.cols, parts: [
+      ...POWER(),
+      /* Two transistors, side by side rather than stacked — five holes in a
+         column are one strip, so sharing columns would just join them. */
+      T_('npn', 7, 10),                              // top of the stack: C=(7,12) is the output
+      T_('npn', 7, 16),                              // bottom of the stack, sitting on ground
+      W_(8, 10, 8, 18, '#b06fd0'),                   // top emitter -> bottom collector
+      W_(8, 16, 102, 16, '#4a4f58'),                 // bottom emitter -> ground
+      R_(8, 12, 103, 12, 1000),                      // pull-up on the output
+      R_(8, 11, 8, 30, 10000),                       // input A -> top base
+      R_(8, 17, 8, 34, 10000),                       // input B -> bottom base
+      R_(9, 30, 102, 30, 10000),                     // pull-downs, so neither input floats
+      R_(9, 34, 102, 34, 10000),
+      { k: 'btn', id: uid(), col: 38, pressed: false },
+      W_(7, 38, 103, 38, '#e04b3c'), W_(7, 40, 6, 30, '#3c7de0'),
+      { k: 'btn', id: uid(), col: 44, pressed: false },
+      W_(7, 44, 103, 44, '#e04b3c'), W_(7, 46, 6, 34, '#3c7de0'),
+      L_(9, 12, 9, 50, '#ffc247'),                   // output light
+      W_(8, 50, 102, 50, '#4a4f58'),
+    ],
+  };
+}
+
 const BOARD_EXAMPLES = [
   { name: 'Blinking LED', desc: 'An oscillator module, a resistor and an LED. The "hello world" of the bench.', make: bbBlink },
   { name: 'Button, pull-down, inverter', desc: 'A 7404 with a proper pull-down resistor — and what happens without one.', make: bbButton },
   { name: 'NAND latch on a 7400', desc: 'Two cross-coupled gates, two buttons and two LEDs: one bit you can hold.', make: bbLatch },
   { name: 'Counting digit', desc: 'Oscillator into a 7493 counter, into a 7447 decoder, onto a seven-segment display.', make: bbCounter },
+  {
+    name: 'NOT gate, from one transistor',
+    desc: 'No chip at all: a transistor, two resistors and a button. Press it and the light goes off — that is an inverter, and it is what is inside a 7404.',
+    make: bbTransistorNot,
+  },
+  {
+    name: 'NAND gate, from two transistors',
+    desc: 'Two transistors stacked so current only gets through when both are on. Press both buttons to put the light out. A 7400 is four of these.',
+    make: bbTransistorNand,
+  },
 ];
 
 function openExamples() {

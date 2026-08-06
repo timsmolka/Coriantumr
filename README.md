@@ -82,7 +82,19 @@ switches and a seven-segment display. The chips, by family:
 | Clock | a canned oscillator module |
 
 The 74125 and the 74595's output-enable both leave their pins genuinely
-undriven, which is how several chips share one wire. Nothing works until you power the chips, and the
+undriven, which is how several chips share one wire.
+
+There are **NPN and PNP transistors** too, so you can go a layer below the
+chips and build a gate yourself. A transistor is modelled at switch level: the
+level on its base decides whether collector and emitter are joined, one tick
+later. That is enough for the real thing — a pull-up resistor and one
+transistor is a working inverter, two in series is a NAND, two in parallel is a
+NOR — and two of the worked examples build exactly that, with buttons and a
+light, out of nothing but transistors and resistors.
+
+Selecting any part explains it: what it is in plain words, what it does, and
+the specific thing that will catch you out. Chips also show what is inside
+them — how many gates, and a diagram of one. Nothing works until you power the chips, and the
 failure modes are reported rather than papered over — shorts, floating inputs,
 unpowered chips, an LED with no series resistor. Hover any hole to light up
 every hole it is already connected to.
