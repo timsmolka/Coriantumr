@@ -625,9 +625,9 @@ const PARTS = {
      Neither of these computes anything: the compiler simply fuses the nets on
      either side, so they cost nothing and add no delay. */
   JOINT: {
-    name: 'Joint', cat: 'plumb', group: 'Routing', shape: 'joint',
-    ins: () => [''], outs: () => [''], w: 14, h: 14,
-    tip: 'A bend in a wire. Also how you branch one output into several places.',
+    name: 'Junction', cat: 'plumb', group: 'Routing', shape: 'joint',
+    ins: () => [''], outs: () => [''], w: 18, h: 18,
+    tip: 'A meeting point for wires: one wire in, as many out as you like. Drop a wire onto another wire to make one.',
   },
   TUNNEL: {
     name: 'Tunnel', cat: 'plumb', group: 'Routing', shape: 'tunnel',
@@ -961,7 +961,7 @@ const S = {
   undo: [], redo: [],                           // the circuit's history
   bundo: [], bredo: [],                         // the breadboard keeps its own
   compileWarn: [], runWarn: [],
-  ttable: null, stash: null, bsel: null, bpending: null, pressing: null,
+  ttable: null, stash: null, bsel: null, bpending: null, pressing: null, pendingWire: null,
   board: null,                                  // breadboard state (section 9)
   bsim: null, bdirty: true,
 };
@@ -983,6 +983,7 @@ function readColors() {
     line: g('--line', '#2a3849'), panel: g('--panel', '#151d26'), panel2: g('--panel-2', '#1b2634'),
     hi: g('--wire-hi', '#ffc247'), lo: g('--wire-lo', '#41505f'), accent: g('--accent', '#ffc247'),
     sel: g('--select', '#5cc8ff'), danger: g('--danger', '#ff6b5e'), warn: g('--warn', '#ffb03a'),
+    ok: g('--ok', '#4bd684'),
     chip: g('--chip', '#2f4257'), chipInk: g('--chip-ink', '#dbe6f2'),
     board: g('--board', '#e8e4d8'), boardLine: g('--board-line', '#c9c4b4'), boardHole: g('--board-hole', '#8f8b7e'),
   };
@@ -1110,7 +1111,7 @@ function hitWireHandle(w, touch) {
 /** Pull one end of a wire off and follow the pointer with it. The wire is
     lifted out of the circuit for the duration, so the drop lands it exactly
     like a fresh one — including dropping it back where it came from. */
-function startRewire(wr, end, w) {
+function startRewire(wr, end, w, p) {
   pushUndo();
   S.work.wires = S.work.wires.filter((x) => x.id !== wr.id);
   const anchor = end === 'a' ? wr.b : wr.a;      // the end that stays put
@@ -1120,7 +1121,7 @@ function startRewire(wr, end, w) {
   S.drag = {
     kind: 'wire', end: { n: anchor.n, s: anchor.s, i: anchor.i },
     from: { x: pos.x, y: pos.y }, to: { x: w.x, y: w.y },
-    rev: anchor.s === 'in', restore: wr,
+    rev: anchor.s === 'in', restore: wr, sx0: p.x, sy0: p.y,
   };
   markDirty();
 }
@@ -1365,15 +1366,41 @@ function drawWorld() {
     }
   }
 
-  /* the wire currently being pulled */
-  if (S.drag && S.drag.kind === 'wire') {
-    const a = S.drag.from, b = S.drag.to;
-    ctx.lineWidth = 2.5; ctx.strokeStyle = C.sel; ctx.setLineDash([6, 4]);
-    wirePath(S.drag.rev ? b : a, S.drag.rev ? a : b); ctx.stroke();
+  for (const n of S.work.nodes) drawNode(n, false);
+
+  /* the wire currently being drawn — dragged, or waiting for its second click */
+  const aim = (S.drag && S.drag.kind === 'wire') ? S.drag : S.pendingWire;
+  if (aim) {
+    const at = aim === S.pendingWire ? (S.hover && S.hover.world) || aim.from : aim.to;
+    const land = wireLanding(aim.end, at, false);
+    // Show where it would land, so you can see it has caught before letting go.
+    let b = at;
+    if (land.kind === 'port') {
+      const t = nodeById(S.work, land.port.n);
+      if (t) {
+        const g = gm(t);
+        const p2 = (land.port.s === 'in' ? g.ins : g.outs)[land.port.i];
+        if (p2) {
+          b = p2;
+          ctx.beginPath(); ctx.arc(p2.x, p2.y, 11 / cam().z, 0, 7);
+          ctx.strokeStyle = C.ok; ctx.lineWidth = 3 / cam().z; ctx.stroke();
+        }
+      }
+    } else if (land.kind === 'wire') {
+      const t = S.work.wires.find((x) => x.id === land.wire);
+      const ea = t && endPos(S.work, t.a), eb = t && endPos(S.work, t.b);
+      if (ea && eb) {
+        ctx.beginPath(); ctx.arc(at.x, at.y, 8 / cam().z, 0, 7);
+        ctx.strokeStyle = C.ok; ctx.lineWidth = 3 / cam().z; ctx.stroke();
+      }
+    }
+    const a = aim.from;
+    ctx.lineWidth = 2.5; ctx.strokeStyle = land.kind === 'none' ? C.lo : C.sel;
+    ctx.setLineDash([6, 4]);
+    wirePath(aim.rev ? b : a, aim.rev ? a : b); ctx.stroke();
     ctx.setLineDash([]);
   }
 
-  for (const n of S.work.nodes) drawNode(n, false);
 
   /* the part waiting to be dropped */
   if (S.armed && S.hover && S.hover.world) {
@@ -1420,7 +1447,7 @@ const snap = (v) => Math.round(v / GRID) * GRID;
 
 function hitTest(w, touch) {
   const z = cam().z;
-  const pr = (touch ? 13 : 8) / z;                 // port grab radius, in world units
+  const pr = (touch ? 20 : 13) / z;                // port grab radius, in world units
   const nodes = S.work.nodes;
   for (let i = nodes.length - 1; i >= 0; i--) {
     const n = nodes[i], g = gm(n);
@@ -1644,6 +1671,91 @@ function addWire(a, b) {
   return w;
 }
 
+/* ---- landing a wire ------------------------------------------------------
+   Wiring should not demand a steady hand. A wire being drawn looks for the
+   nearest port it could legally land on, well beyond the port itself, and
+   shows you which one it has picked before you let go. */
+
+const SNAP_PX = 55;
+
+function snapTarget(w, want, from) {
+  const r = SNAP_PX / cam().z;
+  let best = null, bd = r * r;
+  for (const n of S.work.nodes) {
+    const g = gm(n);
+    const list = want === 'in' ? g.ins : g.outs;
+    for (let i = 0; i < list.length; i++) {
+      if (from && from.n === n.id && from.i === i && from.s === want) continue;
+      const d = dist2(w.x, w.y, list[i].x, list[i].y);
+      if (d < bd) { bd = d; best = { n: n.id, s: want, i, pos: list[i] }; }
+    }
+  }
+  return best;
+}
+
+/** Cut a joint into an existing wire, so several wires can meet at one point. */
+function spliceJoint(wire, at) {
+  const j = makeNode('JOINT', 0, 0);
+  const g = gm(j);
+  j.x = snap(at.x - g.w / 2); j.y = snap(at.y - g.h / 2);
+  S.work.nodes.push(j);
+  S.work.wires = S.work.wires.filter((x) => x.id !== wire.id);
+  S.work.wires.push({ id: uid(), a: { ...wire.a }, b: { n: j.id, s: 'in', i: 0 } });
+  S.work.wires.push({ id: uid(), a: { n: j.id, s: 'out', i: 0 }, b: { ...wire.b } });
+  return j;
+}
+
+/** Where a wire being drawn would land right now, if you let go here. */
+function wireLanding(end, w, touch) {
+  const want = end.s === 'out' ? 'in' : 'out';
+  const hit = hitTest(w, touch);
+  if (hit.kind === 'wire') return { kind: 'wire', wire: hit.wire, want };
+  if (hit.kind === 'node') {
+    const port = resolveDrop(hit, want, w);
+    if (port) return { kind: 'port', port, want };
+  }
+  const near = snapTarget(w, want, end);
+  if (near) return { kind: 'port', port: near, want };
+  if (hit.kind === 'empty') return { kind: 'empty', want };
+  return { kind: 'none', want };
+}
+
+/** Finish a wire that is being drawn, wherever it happens to be pointing.
+    `fromClick` is the click-then-click flow: a click on nothing means the
+    person changed their mind, whereas dragging a wire out into open space and
+    letting go there is a deliberate request for a junction. */
+function landWire(end, w, touch, restore, fromClick) {
+  const land = wireLanding(end, w, touch);
+  if (fromClick && (land.kind === 'empty' || land.kind === 'none')) {
+    if (restore) { S.work.wires.push(restore); markDirty(); }
+    toast('Nothing there to connect to — wire cancelled.');
+    return null;
+  }
+  let made = null;
+  if (land.kind === 'wire') {
+    const target = S.work.wires.find((x) => x.id === land.wire);
+    if (target) {
+      if (end.s === 'out') toast('Two outputs cannot share a wire. Aim at an input.', true);
+      else {
+        // Tapping into an existing wire: put a junction where you dropped it.
+        pushUndo();
+        const j = spliceJoint(target, w);
+        made = addWire({ n: j.id, s: 'out', i: 0 }, end);
+      }
+    }
+  } else if (land.kind === 'port') {
+    if (!(land.port.n === end.n && land.port.i === end.i && land.port.s === end.s)) {
+      made = addWire(end, { n: land.port.n, s: land.port.s, i: land.port.i });
+    }
+  } else if (land.kind === 'empty') {
+    const j = placeNode('JOINT', w.x, w.y);
+    if (j) made = addWire(end, { n: j.id, s: land.want, i: 0 });
+  }
+  if (made) select([], [made.id]);
+  else if (restore) { S.work.wires.push(restore); markDirty(); select([], [restore.id]); }
+  return made;
+}
+
 /** Dropping on a node body (not exactly on a port) still connects: pick the
     nearest port on the side we need, preferring one that is still free. */
 function resolveDrop(hit, want, at) {
@@ -1695,9 +1807,17 @@ cv.addEventListener('pointerdown', (ev) => {
     return;
   }
   if (S.armed) {
-    const g = armedGhost(w);
     placeNode(S.armed.type, w.x, w.y, S.armed.type === 'CHIP' ? { chip: S.armed.chip } : null);
     if (!ev.shiftKey) armPart(null);
+    return;
+  }
+
+  /* a wire waiting for its second click */
+  if (S.pendingWire) {
+    const pend = S.pendingWire;
+    S.pendingWire = null;
+    landWire(pend.end, w, touch, pend.restore, true);
+    endBatch();
     return;
   }
 
@@ -1705,7 +1825,7 @@ cv.addEventListener('pointerdown', (ev) => {
   const handle = hitWireHandle(w, touch);
   if (handle) {
     beginBatch();
-    startRewire(handle.wire, handle.end, w);
+    startRewire(handle.wire, handle.end, w, p);
     return;
   }
 
@@ -1715,13 +1835,14 @@ cv.addEventListener('pointerdown', (ev) => {
     // out rather than starting a second wire that would replace it anyway.
     if (hit.side === 'in') {
       const plugged = S.work.wires.find((x) => x.b.n === hit.node && x.b.i === hit.i);
-      if (plugged) { beginBatch(); startRewire(plugged, 'b', w); return; }
+      if (plugged) { beginBatch(); startRewire(plugged, 'b', w, p); return; }
     }
     const pos = hit.pos;
     beginBatch();
     S.drag = {
       kind: 'wire', end: { n: hit.node, s: hit.side, i: hit.i },
       from: { x: pos.x, y: pos.y }, to: { x: w.x, y: w.y }, rev: hit.side === 'in',
+      sx0: p.x, sy0: p.y,
     };
     return;
   }
@@ -1768,8 +1889,9 @@ cv.addEventListener('pointermove', (ev) => {
       : hit.kind === 'wire'
         ? { kind: 'wire', wire: hit.wire, world: w }
         : { kind: hit.kind, world: w };
-    cv.style.cursor = onHandle ? 'grab' : hit.kind === 'port' ? 'crosshair'
-      : hit.kind === 'node' ? 'move' : S.armed ? 'copy' : 'default';
+    cv.style.cursor = S.pendingWire ? 'crosshair' : onHandle ? 'grab'
+      : hit.kind === 'port' ? 'crosshair'
+        : hit.kind === 'node' ? 'move' : S.armed ? 'copy' : 'default';
     return;
   }
   S.hover = { kind: 'drag', world: w };
@@ -1788,7 +1910,7 @@ cv.addEventListener('pointermove', (ev) => {
     case 'branch':
       if (Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) > 4) d.moved = true;
       d.to = w;
-      if (d.moved) { S.drag = { kind: 'wire', end: d.end, from: d.from, to: w, rev: false }; }
+      if (d.moved) { S.drag = { kind: 'wire', end: d.end, from: d.from, to: w, rev: false, sx0: d.sx, sy0: d.sy }; }
       break;
     case 'wire':
       d.to = w;
@@ -1811,22 +1933,17 @@ function finishDrag(ev) {
     return;
   }
   if (d.kind === 'wire') {
-    const hit = hitTest(w, ev.pointerType === 'touch');
-    const want = d.end.s === 'out' ? 'in' : 'out';
-    const other = resolveDrop(hit, want, w);
-    let made = null;
-    if (other) made = addWire(d.end, other);
-    else if (hit.kind === 'empty') {
-      // Dropping in space leaves a joint behind, so long runs can be shaped.
-      const j = placeNode('JOINT', w.x, w.y);
-      if (j) made = addWire(d.end, { n: j.id, s: want, i: 0 });
+    const touch = ev.pointerType === 'touch';
+    const slack = touch ? 12 : 6;
+    if (Math.abs(p.x - (d.sx0 || p.x)) + Math.abs(p.y - (d.sy0 || p.y)) < slack) {
+      // Barely moved: treat it as "click here, then click there" instead, which
+      // is far kinder than dragging — especially with a finger.
+      S.pendingWire = { end: d.end, from: d.from, rev: d.rev, restore: d.restore };
+      S.hover = { kind: 'aim', world: w };
+      toast('Now click where it should go. Esc cancels.');
+      return;                                    // batch stays open until it lands
     }
-    if (made) select([], [made.id]);
-    else if (d.restore) {
-      // Re-routed to nowhere useful: put the wire back as it was.
-      S.work.wires.push(d.restore);
-      markDirty(); select([], [d.restore.id]);
-    }
+    landWire(d.end, w, touch, d.restore);
   } else if (d.kind === 'move' && !d.moved) {
     const node = nodeById(S.work, d.node);
     // Flipping a switch is not a structural edit, so it is not undoable — but
@@ -1864,6 +1981,10 @@ cv.addEventListener('contextmenu', (ev) => {
   // Right-click means "cancel what I am placing" if anything is in hand, and
   // "delete what is under the pointer" otherwise. The delete itself happens on
   // release, so a right-drag can still pan; this flag stops one press doing both.
+  if (S.pendingWire) {
+    if (S.pendingWire.restore) { S.work.wires.push(S.pendingWire.restore); markDirty(); }
+    S.pendingWire = null; S.armCancel = true; endBatch();
+  }
   if (S.armed || S.bpending) { armPart(null); S.bpending = null; S.armCancel = true; }
 });
 cv.addEventListener('dblclick', (ev) => {
@@ -1943,6 +2064,10 @@ window.addEventListener('keydown', (ev) => {
       break;
     case 'Escape':
       if (S.drag && S.drag.restore) { S.work.wires.push(S.drag.restore); markDirty(); }
+      if (S.pendingWire) {
+        if (S.pendingWire.restore) { S.work.wires.push(S.pendingWire.restore); markDirty(); }
+        S.pendingWire = null;
+      }
       armPart(null); select([]); S.drag = null; endBatch(); closeModal();
       break;
     case 'f': case 'F': fitView(); break;
@@ -2079,6 +2204,7 @@ function paintWarnings() {
 
 function armPart(p) {
   S.armed = p;
+  if (p) S.pendingWire = null;
   const sub = p ? (p.chip || p.ic || '') : '';
   $$('.pal-item').forEach((e) => e.classList.toggle('armed',
     !!p && e.dataset.type === p.type && e.dataset.chip === sub));
@@ -2184,7 +2310,7 @@ function renderInspector() {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
       h('p', { class: 'muted' },
-        'Pick a part from the left, then click the board. Drag from a port to wire it up. Click an input pin to flip it.')));
+        'Pick a part from the left, then click the board. To wire two parts together, click one port and then the other. Click an input pin to flip it between 0 and 1.')));
   }
 
   if (S.ttable) host.append(truthTableSection());
@@ -4299,15 +4425,29 @@ function openHelp() {
 <h4>Circuit editor</h4>
 <ul>
   <li>Click a part on the left, then click the board to drop it. <kbd>Esc</kbd> cancels.</li>
-  <li>Drag from a port to another port to wire them up. Wires run output → input;
-      dropping one in empty space leaves a joint you can route around.</li>
+  <li><b>To wire two things together</b>, either drag from one port to the other, or —
+      easier — <b>click the first port, then click the second</b>. No dragging, no steady
+      hand. <kbd>Esc</kbd> abandons a half-drawn wire.</li>
+  <li>You do not have to hit the port exactly. A wire being drawn looks for the nearest
+      port it could legally reach and rings it in green; let go anywhere near and it
+      lands there. Let go in open space instead and you get a junction.</li>
   <li>To <b>move a wire you already drew</b>, point at it: a blue dot appears at each
       end. Drag a dot to take that end somewhere else. Dragging from a connected input
       does the same thing — it pulls the plug out.</li>
-  <li>To <b>branch</b> instead, drag from the <em>middle</em> of a wire: you get a second
-      wire out of the same output, which is how one signal feeds several inputs.</li>
+  <li>Wires run output → input. An output can feed as many inputs as you like; an input
+      takes one wire, because two things driving one input is a short.</li>
   <li><kbd>Esc</kbd> mid-drag puts a wire back where it was, and a whole re-route is a
       single undo.</li>
+</ul>
+
+<h4>Junctions — more than two wires at one point</h4>
+<ul>
+  <li><b>Drop a wire onto another wire</b> and a junction appears where you dropped it,
+      with both wires feeding out of it. That is the way to tap a signal on its way past.</li>
+  <li>A junction takes one wire in and as many out as you want, so drag out of one as
+      often as you need. It costs nothing and adds no delay — it is only a meeting point.</li>
+  <li>Dragging from the <em>middle</em> of a wire branches it too: you get a second wire
+      out of the same output, without a junction in the picture.</li>
   <li>Click an <b>input pin</b> to flip it between 0 and 1. Set it to “button” in the
       inspector if you want it to spring back.</li>
   <li>Add input and output pins, then press <b>Package as a chip</b>. Your chip joins the
@@ -4379,7 +4519,7 @@ single JSON file with your chip library, the current circuit and the breadboard 
 
 function setMode(m) {
   S.mode = m;
-  S.armed = null; S.bpending = null; S.drag = null;
+  S.armed = null; S.bpending = null; S.drag = null; S.pendingWire = null;
   $('#mode-editor').classList.toggle('on', m === 'editor');
   $('#mode-board').classList.toggle('on', m === 'board');
   $('#btn-chip').style.display = m === 'editor' ? '' : 'none';
@@ -4387,7 +4527,7 @@ function setMode(m) {
   if (m === 'board' && !S.board) S.board = makeBoard();
   $('#status-tip').textContent = m === 'board'
     ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
-    : 'Click a part on the left, then click the board. Drag between ports to wire. To remove something: click it and press Delete, tap the red ✕, or right-click it.';
+    : 'Click a part on the left, then click the board. To wire: click one port, then the other. To remove something: click it and press Delete, tap the red ✕, or right-click it.';
   renderPalette(); renderInspector(); renderCrumbs(); syncUndoButtons();
   if (m === 'board' && !S.bcam.set) { S.bcam.set = 1; fitView(); }
   scheduleSave();

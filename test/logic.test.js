@@ -821,6 +821,108 @@ const TESTS = String.raw`
     report('a plug dropped where it cannot go returns to its socket',
       (await aWire()) === 'AND.0' && (await wireCount()) === 3, (await aWire()) + '/' + (await wireCount()));
 
+    /* ---- easier ways to add a wire ---- */
+    const wireSetup = async () => {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('wiring');
+        const a=b.pin('A',0,0);
+        const g=b.add('AND',260,0), nt=b.add('NOT',260,220), o=b.out('out',520,16);
+        b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear(); L.S.hover=null;
+        L.S.pendingWire=null; L.S.cam.x=150; L.S.cam.y=170; L.S.cam.z=1; return 1;})()`);
+      await wait(250);
+    };
+    const portPt = (find, side, i) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(${find}); const g=L.geom(n);
+      const p=(${JSON.stringify(side)}==='in'?g.ins:g.outs)[${i}];
+      const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+
+    /* click once on a port, then once on the target — no dragging at all */
+    await wireSetup();
+    const src = await portPt(`x=>x.label==='A'`, 'out', 0);
+    const dst = await portPt(`x=>x.type==='AND'`, 'in', 0);
+    await clickAt(src.x, src.y);
+    await wait(250);
+    report('one click on a port starts a wire', (await ev(`!!LogicLab.S.pendingWire`)) === true);
+    await clickAt(dst.x, dst.y);
+    await wait(250);
+    report('a second click finishes it without dragging',
+      (await ev(`LogicLab.S.work.wires.length`)) === 2 && !(await ev(`!!LogicLab.S.pendingWire`)),
+      await ev(`LogicLab.S.work.wires.length`));
+
+    /* Esc gets you out of it */
+    await wireSetup();
+    await clickAt(src.x, src.y);
+    await wait(200);
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await wait(250);
+    report('Esc abandons a half-drawn wire',
+      !(await ev(`!!LogicLab.S.pendingWire`)) && (await ev(`LogicLab.S.work.wires.length`)) === 1);
+
+    /* a second click on nothing cancels rather than leaving a stray junction */
+    await wireSetup();
+    await clickAt(src.x, src.y);
+    await wait(200);
+    await clickAt(src.x + 330, src.y + 260);
+    await wait(250);
+    report('clicking empty space cancels instead of leaving clutter',
+      (await ev(`LogicLab.S.work.wires.length`)) === 1
+      && (await ev(`LogicLab.S.work.nodes.filter(n=>n.type==='JOINT').length`)) === 0
+      && !(await ev(`!!LogicLab.S.pendingWire`)),
+      await ev(`LogicLab.S.work.wires.length + '/' + LogicLab.S.work.nodes.length`));
+
+    /* you no longer have to hit the port exactly */
+    await wireSetup();
+    const nearMiss = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const g=L.S.work.nodes.find(x=>x.type==='NOT'); const gg=L.geom(g);
+      const p=gg.ins[0]; const s=L.toScreen(p.x-38, p.y-24);   // well short of the port
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await dragAt(src.x, src.y, nearMiss.x, nearMiss.y);
+    await wait(300);
+    const landed = await ev(`(()=>{const L=LogicLab;
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      if(!w) return 'none';
+      const t=L.S.work.nodes.find(n=>n.id===w.b.n); return t.type;})()`);
+    report('a wire dropped near a port snaps onto it', landed === 'NOT', landed);
+
+    /* dropping a wire onto another wire makes a junction they share */
+    await wireSetup();
+    await dragAt(src.x, src.y, dst.x, dst.y);          // A -> AND.in0
+    await wait(250);
+    const onWire = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      const a=L.S.work.nodes.find(n=>n.id===w.a.n), b2=L.S.work.nodes.find(n=>n.id===w.b.n);
+      const ga=L.geom(a), gb=L.geom(b2);
+      const m={x:(ga.outs[0].x+gb.ins[0].x)/2, y:(ga.outs[0].y+gb.ins[0].y)/2};
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const sm=L.toScreen(m.x,m.y), sn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {mx:r.left+sm.x, my:r.top+sm.y, nx:r.left+sn.x, ny:r.top+sn.y};})()`);
+    /* drag from the NOT's input onto the middle of the existing wire */
+    await dragAt(onWire.nx, onWire.ny, onWire.mx, onWire.my);
+    await wait(300);
+    const junction = await ev(`(()=>{const L=LogicLab;
+      const js=L.S.work.nodes.filter(x=>x.type==='JOINT');
+      if(js.length!==1) return 'joints:'+js.length;
+      const j=js[0];
+      const outs=L.S.work.wires.filter(w=>w.a.n===j.id).length;
+      const ins=L.S.work.wires.filter(w=>w.b.n===j.id).length;
+      return ins+'in,'+outs+'out';})()`);
+    report('dropping a wire on a wire makes a junction feeding both',
+      junction === '1in,2out', junction);
+
+    /* and the junction really does carry the signal to both places */
+    const bothFed = await ev(`(()=>{const L=LogicLab;
+      const c=L.compile(L.S.work);
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const g=L.S.work.nodes.find(x=>x.type==='AND');
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT');
+      const src=c.portNet.get(A.id+'.o0');
+      return src===c.portNet.get(g.id+'.i0') && src===c.portNet.get(nt.id+'.i0');})()`);
+    report('the junction really joins all three points', bothFed === true, bothFed);
+
     /* ---- "what it's made of" panel ---- */
     await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
       L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
@@ -1050,6 +1152,17 @@ const TESTS = String.raw`
          b.w(one,0,hex,1); b.w(one,0,hex,3);
          const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['wire-aim', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('aim'); const a=b.pin('A',0,0);
+         const g=b.add('AND',300,0), o=b.out('out',560,16);
+         b.w(g,0,o,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+         L.fitView();
+         const ga=L.geom(a), gg=L.geom(g);
+         L.S.pendingWire={end:{n:a.id,s:'out',i:0}, from:ga.outs[0], rev:false};
+         L.S.hover={kind:'aim', world:{x:gg.ins[0].x-26, y:gg.ins[0].y-17}};
+         return 1;})()`],
       ['wire-handles', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#mode-editor').click();
          L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true; L.S.sel.clear();
