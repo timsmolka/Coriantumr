@@ -509,6 +509,13 @@ const TESTS = String.raw`
     if (!box) throw new Error('no element ' + sel);
     await clickAt(box.x, box.y);
   };
+  /* Replacing something you have already built asks first; say yes. */
+  const confirmIfAsked = async () => {
+    if (await ev(`!!document.querySelector('#modal footer .wreck')`)) {
+      await clickSel('#modal footer .wreck');
+      await wait(350);
+    }
+  };
   const dragAt = async (x0, y0, x1, y1) => {
     await mouse('mousePressed', x0, y0);
     await mouse('mouseMoved', (x0 + x1) / 2, (y0 + y1) / 2);
@@ -621,8 +628,12 @@ const TESTS = String.raw`
     report('a 74-series chip drops onto the board', ic === '7400@20', ic);
 
     /* power the rails, drop a DIP switch, throw one of its levers */
-    await clickSel('#palette button.btn.danger');            // clear the board
-    await wait(200);
+    await clickSel('#palette button.btn.danger');            // clear the board...
+    await wait(250);
+    await clickSel('#modal footer .wreck');                   // ...and confirm it
+    await wait(250);
+    report('the breadboard clears when confirmed', (await ev(`LogicLab.S.board.parts.length`)) === 0,
+      await ev(`LogicLab.S.board.parts.length`));
     await ev(`(()=>{const b=[...document.querySelectorAll('#palette button')]
       .find(x=>x.textContent==='Power the rails'); b.click(); return 1;})()`);
     await wait(300);
@@ -649,7 +660,90 @@ const TESTS = String.raw`
       return p.on.map(Number).join('') + '|' + joined;})()`);
     report('a DIP switch lever closes its own contact', dip === '0100|true', dip);
 
+    /* ---- clearing, which used to rely on window.confirm ---- */
+    await clickSel('#mode-editor');
+    await wait(250);
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
+    await wait(200);
+    /* Nothing on the page may call window.confirm: it is ignored outright in a
+       sandboxed frame, which is how the clear buttons came to do nothing. */
+    await ev(`(()=>{window.__confirmCalls=0;
+      window.confirm=function(){ window.__confirmCalls++; return false; }; return 1;})()`);
+    await ev(`(()=>{const b=[...document.querySelectorAll('#inspector button')]
+      .find(x=>x.textContent==='Clear the board'); b.click(); return 1;})()`);
+    await wait(300);
+    const asked = await ev(`!!document.querySelector('#modal').classList.contains('open')`);
+    report('clearing asks in the page, not with a browser popup', asked === true, asked);
+    await clickSel('#modal footer .wreck');
+    await wait(300);
+    const cleared = await ev(`LogicLab.S.work.nodes.length + '|' + window.__confirmCalls`);
+    report('confirming actually clears the board', cleared === '0|0', cleared);
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and undo brings the circuit back', (await ev(`LogicLab.S.work.nodes.length`)) === 6);
+
+    /* ---- delete shortcuts ---- */
+    const partCount = () => ev(`LogicLab.S.work.nodes.length`);
+    const firstGate = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='AND'); L.S.sel.clear(); L.S.sel.add(n.id);
+      const g=L.geom(n); const s=L.toScreen(g.x+g.w/2,g.y+g.h/2);
+      return {x:r.left+s.x, y:r.top+s.y, id:n.id};})()`);
+    await wait(150);
+    const xBtn = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const hd=L.deleteHandle(); return hd ? {x:r.left+hd.x, y:r.top+hd.y} : null;})()`);
+    report('a ✕ appears next to the selection', !!xBtn, JSON.stringify(xBtn));
+    if (xBtn) {
+      await clickAt(xBtn.x, xBtn.y);
+      await wait(250);
+      report('tapping the ✕ deletes the selected part', (await partCount()) === 5, await partCount());
+    }
+    /* right-click deletes, but a right-drag still pans */
+    const xorPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    const camBefore = await ev(`JSON.stringify(LogicLab.S.cam)`);
+    await mouse('mousePressed', xorPt.x, xorPt.y, { button: 'right', buttons: 2 });
+    await mouse('mouseMoved', xorPt.x + 90, xorPt.y + 40, { button: 'right', buttons: 2 });
+    await mouse('mouseReleased', xorPt.x + 90, xorPt.y + 40, { button: 'right', buttons: 0 });
+    await wait(250);
+    const afterDrag = await partCount();
+    const camAfter = await ev(`JSON.stringify(LogicLab.S.cam)`);
+    report('a right-drag pans and deletes nothing', afterDrag === 5 && camAfter !== camBefore,
+      afterDrag + ' cam moved: ' + (camAfter !== camBefore));
+    const xorPt2 = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await mouse('mousePressed', xorPt2.x, xorPt2.y, { button: 'right', buttons: 2 });
+    await mouse('mouseReleased', xorPt2.x, xorPt2.y, { button: 'right', buttons: 0 });
+    await wait(250);
+    report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
+
+    /* the breadboard has its own undo, so deleting there is reversible too */
+    await clickSel('#mode-board');
+    await wait(300);
+    const bParts = () => ev(`LogicLab.S.board.parts.length`);
+    await ev(`(()=>{const L=LogicLab; L.S.board=L.examples.BOARD_EXAMPLES[0].make();
+      L.S.bundo=[]; L.S.bredo=[]; L.S.bdirty=true; L.S.bsel=null; L.fitView(); return 1;})()`);
+    await wait(300);
+    const n0 = await bParts();
+    const icPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const p=L.S.board.parts.find(x=>x.k==='ic');
+      const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await mouse('mousePressed', icPt.x, icPt.y, { button: 'right', buttons: 2 });
+    await mouse('mouseReleased', icPt.x, icPt.y, { button: 'right', buttons: 0 });
+    await wait(250);
+    report('right-click removes a breadboard part', (await bParts()) === n0 - 1, await bParts());
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('breadboard undo puts it back', (await bParts()) === n0, await bParts());
+    const circuitIntact = await ev(`LogicLab.S.work.nodes.length`);
+    report('undoing on the breadboard leaves the circuit alone', circuitIntact === 4, circuitIntact);
+
     /* ---- load an example through the real dialog ---- */
+    await clickSel('#mode-editor');
+    await wait(250);
     await clickSel('#mode-editor');
     await wait(200);
     await clickSel('#btn-examples');
@@ -657,7 +751,8 @@ const TESTS = String.raw`
     const cards = await ev(`document.querySelectorAll('#modal .card').length`);
     report('the examples dialog lists circuits', cards >= 8, cards);
     await clickSel('#modal .card:nth-child(3)');       // 4-bit adder, which installs chips
-    await wait(500);
+    await wait(400);
+    await confirmIfAsked();
     const loaded = await ev(`(()=>{const L=LogicLab;
       return L.S.work.name + '|' + Object.keys(L.lib).length + '|' + L.S.work.nodes.length;})()`);
     report('loading an example installs its chips too', /^4-bit adder\|[2-9]/.test(loaded), loaded);
@@ -670,7 +765,8 @@ const TESTS = String.raw`
     await clickSel('#btn-examples');
     await wait(250);
     await clickSel('#modal .card:nth-child(3)');
-    await wait(500);
+    await wait(400);
+    await confirmIfAsked();
     const reload = await ev(`(()=>{const L=LogicLab;
       const names=Object.values(L.lib).map(d=>d.name);
       const used=new Set(L.S.work.nodes.filter(n=>n.type==='CHIP').map(n=>n.chip));
@@ -761,6 +857,12 @@ const TESTS = String.raw`
          b.w(one,0,hex,1); b.w(one,0,hex,3);
          const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['delete-handle', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work; L.S.dirty=true;
+         L.fitView();
+         const n=L.S.work.nodes.find(x=>x.type==='OR');
+         L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`],
       ['board-counter', `(()=>{const L=LogicLab; document.querySelector('#mode-board').click();
          L.S.board = L.examples.BOARD_EXAMPLES[3].make(); L.S.bdirty=true; L.S.bsel=null; L.fitView();
          L.S.bcam.z*=1.9; L.S.bcam.x=-330; L.S.bcam.y=-20; return 1;})()`],

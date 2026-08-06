@@ -166,6 +166,8 @@ button,input,select{font:inherit;color:inherit}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.icon{padding:5px 8px;min-width:32px;text-align:center}
 .btn.danger{color:var(--danger);border-color:var(--line)}
+.btn.wreck{background:var(--danger);border-color:var(--danger);color:#fff;font-weight:600}
+.btn.wreck:hover{filter:brightness(1.08)}
 
 /* ---- palette ---- */
 #palette{
@@ -944,7 +946,8 @@ const S = {
   dirty: true, compiled: null, sim: null,
   armed: null,                                  // part waiting to be placed
   drag: null, hover: null,
-  undo: [], redo: [],
+  undo: [], redo: [],                           // the circuit's history
+  bundo: [], bredo: [],                         // the breadboard keeps its own
   compileWarn: [], runWarn: [],
   ttable: null, stash: null, bsel: null, bpending: null, pressing: null,
   board: null,                                  // breadboard state (section 9)
@@ -1300,6 +1303,8 @@ function drawEditor() {
   }
   ctx.restore();
 
+  drawDeleteHandle();
+
   /* marquee */
   if (S.drag && S.drag.kind === 'marquee') {
     const a = toScreen(S.drag.x0, S.drag.y0), b = toScreen(S.drag.x1, S.drag.y1);
@@ -1358,6 +1363,87 @@ function hitTest(w, touch) {
   return { kind: 'empty' };
 }
 
+/* ---- getting rid of things ----------------------------------------------
+   Three ways, because a keyboard is not always to hand: press Delete, click
+   the ✕ that appears on whatever is selected, or right-click it. The ✕ is the
+   one that works on a touchscreen. It is positioned in screen coordinates so
+   it stays the same size however far you zoom out. */
+
+function deleteHandle() {
+  const R = 13;
+  if (S.mode === 'board') {
+    const p = S.board && S.board.parts.find((q) => q.id === S.bsel);
+    if (!p) return null;
+    const span = partSpan(p);
+    let wx, wy;
+    if (span) { wx = holeX(span[1]) + BB.P * 0.75; wy = holeY(4) - BB.P * 0.1; }
+    else if (p.b) { wx = (holeX(p.a.c) + holeX(p.b.c)) / 2; wy = (holeY(p.a.r) + holeY(p.b.r)) / 2 - BB.P * 0.8; }
+    else { wx = holeX(p.a.c) + BB.P * 0.55; wy = holeY(p.a.r) - BB.P * 0.55; }
+    const s = toScreen(wx, wy);
+    return { x: s.x, y: s.y, r: R };
+  }
+  if (S.sel.size) {
+    let x1 = -Infinity, y0 = Infinity;
+    for (const n of S.work.nodes) {
+      if (!S.sel.has(n.id)) continue;
+      const g = gm(n);
+      x1 = Math.max(x1, g.x + g.w); y0 = Math.min(y0, g.y);
+    }
+    if (x1 === -Infinity) return null;
+    const s = toScreen(x1, y0);
+    return { x: s.x + 11, y: s.y - 11, r: R };
+  }
+  if (S.selWires.size) {
+    const wr = S.work.wires.find((w) => S.selWires.has(w.id));
+    if (!wr) return null;
+    const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
+    if (!a || !b) return null;
+    const mid = wirePoints(a, b, 10)[5];
+    const s = toScreen(mid.x, mid.y);
+    return { x: s.x, y: s.y - 18, r: R };
+  }
+  return null;
+}
+
+/** Screen-space, so call it outside the world transform. */
+function drawDeleteHandle() {
+  const hd = deleteHandle();
+  if (!hd) return;
+  ctx.beginPath(); ctx.arc(hd.x, hd.y, hd.r, 0, 7);
+  ctx.fillStyle = C.danger; ctx.fill();
+  ctx.strokeStyle = C.bg; ctx.lineWidth = 2.5; ctx.stroke();
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+  const k = hd.r * 0.36;
+  ctx.beginPath();
+  ctx.moveTo(hd.x - k, hd.y - k); ctx.lineTo(hd.x + k, hd.y + k);
+  ctx.moveTo(hd.x + k, hd.y - k); ctx.lineTo(hd.x - k, hd.y + k);
+  ctx.stroke();
+}
+
+/** True when a press at this screen point landed on the ✕. */
+function hitDeleteHandle(sx, sy) {
+  const hd = deleteHandle();
+  if (!hd) return false;
+  const grab = hd.r + 8;                       // fingers are bigger than the dot
+  return dist2(sx, sy, hd.x, hd.y) <= grab * grab;
+}
+
+/** Right-click deletes whatever is under the pointer, in either workspace. */
+function deleteAt(w) {
+  if (S.armCancel) { S.armCancel = false; return; }   // that click cancelled a placement
+  if (S.mode === 'board') {
+    const p = hitBoardPart(w);
+    if (p) { boardDelete(p.id); toast('Removed. Ctrl+Z puts it back.'); }
+    return;
+  }
+  const hit = hitTest(w);
+  if (hit.kind === 'node' || hit.kind === 'port') {
+    select([hit.node]); deleteSelection(); toast('Deleted. Ctrl+Z puts it back.');
+  } else if (hit.kind === 'wire') {
+    select([], [hit.wire]); deleteSelection(); toast('Wire cut. Ctrl+Z puts it back.');
+  }
+}
+
 function segDist(p, a, b) {
   const dx = b.x - a.x, dy = b.y - a.y;
   const L = dx * dx + dy * dy;
@@ -1367,32 +1453,36 @@ function segDist(p, a, b) {
 
 function markDirty() { S.dirty = true; scheduleSave(); }
 
+/* History. Each workspace keeps its own stack, so undoing on the breadboard
+   never reaches behind you and changes the circuit. */
+const hist = () => (S.mode === 'board'
+  ? { undo: S.bundo, redo: S.bredo, read: () => JSON.stringify(S.board, noScratch) }
+  : { undo: S.undo, redo: S.redo, read: () => JSON.stringify(S.work) });
+
 function pushUndo() {
-  S.undo.push(JSON.stringify(S.work));
-  if (S.undo.length > 200) S.undo.shift();
-  S.redo.length = 0;
+  const h2 = hist();
+  h2.undo.push(h2.read());
+  if (h2.undo.length > 200) h2.undo.shift();
+  h2.redo.length = 0;
   markDirty();
   syncUndoButtons();
 }
-function undo() {
-  if (!S.undo.length) return;
-  S.redo.push(JSON.stringify(S.work));
-  S.work = JSON.parse(S.undo.pop());
-  afterHistory();
-}
-function redo() {
-  if (!S.redo.length) return;
-  S.undo.push(JSON.stringify(S.work));
-  S.work = JSON.parse(S.redo.pop());
-  afterHistory();
-}
-function afterHistory() {
-  S.sel.clear(); S.selWires.clear();
-  markDirty(); syncUndoButtons(); renderInspector();
+function undo() { shiftHistory('undo', 'redo'); }
+function redo() { shiftHistory('redo', 'undo'); }
+
+function shiftHistory(from, to) {
+  const h2 = hist();
+  if (!h2[from].length) return;
+  h2[to].push(h2.read());
+  const state = JSON.parse(h2[from].pop());
+  if (S.mode === 'board') { S.board = state; S.bsel = null; S.bdirty = true; scheduleSave(); }
+  else { S.work = state; S.sel.clear(); S.selWires.clear(); markDirty(); }
+  syncUndoButtons(); renderInspector();
 }
 function syncUndoButtons() {
-  $('#btn-undo').disabled = !S.undo.length;
-  $('#btn-redo').disabled = !S.redo.length;
+  const h2 = hist();
+  $('#btn-undo').disabled = !h2.undo.length;
+  $('#btn-redo').disabled = !h2.redo.length;
 }
 
 function select(ids, wires, add) {
@@ -1489,14 +1579,22 @@ cv.addEventListener('pointerdown', (ev) => {
   ptrs.set(ev.pointerId, pointerPos(ev));
   if (ptrs.size === 2) { startPinch(); return; }
   if (ptrs.size > 2) return;
+
+  /* The ✕ on the selection sits above everything, in both workspaces. */
+  const sp = pointerPos(ev);
+  if (ev.button === 0 && hitDeleteHandle(sp.x, sp.y)) {
+    if (S.mode === 'board') boardDelete(); else deleteSelection();
+    toast('Deleted. Ctrl+Z puts it back.');
+    return;
+  }
   if (S.mode === 'board') { boardDown(ev); return; }
 
-  const p = pointerPos(ev);
+  const p = sp;
   const w = toWorld(p.x, p.y);
   const touch = ev.pointerType === 'touch';
 
   if (ev.button === 1 || ev.button === 2 || spaceDown) {
-    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y };
+    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y, btn: ev.button };
     return;
   }
   if (S.armed) {
@@ -1588,6 +1686,11 @@ function finishDrag(ev) {
   if (!d) return;
   const p = pointerPos(ev);
   const w = toWorld(p.x, p.y);
+  if (d.kind === 'pan') {
+    // A right-click that did not turn into a pan means "delete this".
+    if (d.btn === 2 && Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) < 5) deleteAt(w);
+    return;
+  }
   if (d.kind === 'wire') {
     const hit = hitTest(w, ev.pointerType === 'touch');
     const want = d.end.s === 'out' ? 'in' : 'out';
@@ -1630,7 +1733,10 @@ cv.addEventListener('pointercancel', (ev) => {
 cv.addEventListener('pointerleave', () => { if (!S.drag) S.hover = null; });
 cv.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
-  if (S.armed) armPart(null);
+  // Right-click means "cancel what I am placing" if anything is in hand, and
+  // "delete what is under the pointer" otherwise. The delete itself happens on
+  // release, so a right-drag can still pan; this flag stops one press doing both.
+  if (S.armed || S.bpending) { armPart(null); S.bpending = null; S.armCancel = true; }
 });
 cv.addEventListener('dblclick', (ev) => {
   if (S.mode !== 'editor') return;
@@ -2092,8 +2198,35 @@ function openModal(title, bodyEl, footEl, wide) {
   if (footEl) sheet.append(h('footer', {}, footEl));
   $('#modal').classList.add('open');
 }
-function closeModal() { $('#modal').classList.remove('open'); }
+let modalOnClose = null;
+function closeModal() {
+  $('#modal').classList.remove('open');
+  const f = modalOnClose;
+  modalOnClose = null;
+  if (f) f();
+}
 $('#modal').addEventListener('click', (e) => { if (e.target.dataset.close) closeModal(); });
+
+/** Ask before doing something destructive.
+
+    This used to be window.confirm, which is fine on its own site but is
+    silently ignored when the page is embedded in a sandboxed frame — the
+    button simply did nothing. Asking in the page works everywhere, and looks
+    like the rest of the app besides. */
+function ask(question, detail, confirmLabel) {
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = (v) => { if (done) return; done = true; closeModal(); resolve(v); };
+    openModal(question,
+      h('p', { class: 'muted', style: 'margin:0' }, detail || ''),
+      h('div', {},
+        h('button', { class: 'btn', onclick: () => finish(false) }, 'Cancel'),
+        h('button', {
+          class: 'btn wreck', style: 'margin-left:8px', onclick: () => finish(true),
+        }, confirmLabel || 'Yes, do it')));
+    modalOnClose = () => finish(false);          // the ✕ and the backdrop mean "no"
+  });
+}
 
 /* ---- packaging a circuit into a chip ------------------------------------ */
 
@@ -2221,9 +2354,9 @@ function usersOf(id) {
   return out;
 }
 
-function clearBoard() {
+async function clearBoard() {
   if (!S.work.nodes.length) return;
-  if (!confirm('Clear everything on the board?')) return;
+  if (!await ask('Clear the board?', 'Everything on it goes. Your saved chips are not affected, and Ctrl+Z brings it back.', 'Clear it')) return;
   pushUndo();
   S.work.nodes = []; S.work.wires = [];
   S.sel.clear(); S.selWires.clear();
@@ -2353,12 +2486,14 @@ function openFileMenu() {
       h('button', { class: 'card', onclick: () => $('#file-input').click() },
         h('b', {}, 'Import a .json file'), h('span', {}, 'Replaces everything currently loaded.')),
       h('button', {
-        class: 'card', onclick: () => {
-          if (!confirm('Throw away every chip, the board and the breadboard?')) return;
+        class: 'card', onclick: async () => {
+          if (!await ask('Start over?', 'Every chip you have made, the circuit on the board and the breadboard all go. This one cannot be undone.', 'Throw it all away')) return;
           LIB = {}; S.work = newDef('Untitled'); S.editing = null; S.stash = null; S.board = makeBoard();
-          S.undo = []; S.redo = []; S.sel.clear(); S.selWires.clear();
+          S.undo = []; S.redo = []; S.bundo = []; S.bredo = [];
+          S.sel.clear(); S.selWires.clear(); S.bsel = null;
           markDirty(); S.bdirty = true;
-          closeModal(); renderPalette(); renderInspector(); renderCrumbs(); fitView();
+          closeModal(); renderPalette(); renderInspector(); renderCrumbs();
+          syncUndoButtons(); fitView();
         },
       }, h('b', {}, 'Start over'), h('span', {}, 'Clears the library, the board and the breadboard.'))));
   openModal('File', body, h('button', { class: 'btn', onclick: closeModal }, 'Close'));
@@ -2946,6 +3081,7 @@ function drawBoard() {
     ctx.setLineDash([]);
   }
   ctx.restore();
+  drawDeleteHandle();
 }
 
 function jumperPath(a, b) {
@@ -3214,21 +3350,25 @@ function boardOverlaps(part) {
 function addBoardPart(part) {
   if (!part) return;
   if (boardOverlaps(part)) { toast('Something is already sitting across the channel there.', true); return; }
+  pushUndo();
   S.board.parts.push(part);
   S.bsel = part.id;
   S.bdirty = true; scheduleSave(); renderBoardInspectorSoon();
 }
 
-function boardDelete() {
-  if (!S.bsel) return;
-  S.board.parts = S.board.parts.filter((p) => p.id !== S.bsel);
-  S.bsel = null; S.bdirty = true; scheduleSave(); renderInspector();
+function boardDelete(id) {
+  const target = id || S.bsel;
+  if (!target) return;
+  pushUndo();
+  S.board.parts = S.board.parts.filter((p) => p.id !== target);
+  if (S.bsel === target) S.bsel = null;
+  S.bdirty = true; scheduleSave(); renderInspector();
 }
 
 function boardDown(ev) {
   const p = pointerPos(ev), w = toWorld(p.x, p.y);
   if (ev.button === 1 || ev.button === 2 || spaceDown) {
-    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.bcam.x, cy: S.bcam.y };
+    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.bcam.x, cy: S.bcam.y, btn: ev.button };
     return;
   }
   const hole = hitHole(w);
@@ -3289,14 +3429,22 @@ function boardMove(ev, p, w) {
       const old = d.part.col;
       d.part.col = col;
       if (boardOverlaps(d.part)) d.part.col = old;
-      else { S.bdirty = true; scheduleSave(); }
+      else {
+        if (!d.moved) { d.moved = true; d.part.col = old; pushUndo(); d.part.col = col; }
+        S.bdirty = true; scheduleSave();
+      }
     }
   }
 }
 
-function boardUp() {
+function boardUp(ev) {
   if (S.pressing) { S.pressing.pressed = false; S.bdirty = true; S.pressing = null; }
+  const d = S.drag;
   S.drag = null;
+  if (d && d.kind === 'pan' && d.btn === 2 && ev) {
+    const p = pointerPos(ev);
+    if (Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) < 5) deleteAt(toWorld(p.x, p.y));
+  }
 }
 
 function nextWireColor(cur) {
@@ -3347,14 +3495,17 @@ function renderBoardPalette(host, q) {
   host.append(h('div', { class: 'stack' },
     h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
     h('button', {
-      class: 'btn danger', onclick: () => {
-        if (!S.board.parts.length || !confirm('Strip the board bare?')) return;
+      class: 'btn danger', onclick: async () => {
+        if (!S.board.parts.length) return;
+        if (!await ask('Strip the breadboard bare?', 'Every part and jumper comes off. Ctrl+Z puts them back.', 'Strip it')) return;
+        pushUndo();
         S.board.parts = []; S.bsel = null; S.bdirty = true; scheduleSave(); renderInspector();
       },
     }, 'Clear the board')));
 }
 
 function powerTheRails() {
+  pushUndo();
   const has = (k, r) => S.board.parts.some((p) => p.k === k && p.a && p.a.r === r);
   if (!has('vcc', 100)) S.board.parts.push({ k: 'vcc', id: uid(), a: { r: 100, c: 0 } });
   if (!has('gnd', 101)) S.board.parts.push({ k: 'gnd', id: uid(), a: { r: 101, c: 0 } });
@@ -3742,16 +3893,24 @@ function installChips(chips, work) {
   retarget(work);
 }
 
-function loadExample(ex) {
-  if (S.mode === 'board') {
-    if (S.board && S.board.parts.length && !confirm('Replace what is on the breadboard?')) return;
+async function loadExample(ex) {
+  const board = S.mode === 'board';
+  const occupied = board ? !!(S.board && S.board.parts.length) : !!S.work.nodes.length;
+  if (occupied) {
+    const go = await ask(
+      board ? 'Replace what is on the breadboard?' : 'Replace the circuit on the board?',
+      `“${ex.name}” needs the board to itself.` + (board ? '' : ' Your saved chips are not affected.'),
+      'Replace it');
+    if (!go) { openExamples(); return; }        // back to the list they came from
+  }
+  if (board) {
+    pushUndo();
     S.board = ex.make();
     S.bsel = null; S.bdirty = true;
     closeModal(); scheduleSave(); renderInspector(); fitView();
     toast(`Loaded “${ex.name}”.`);
     return;
   }
-  if (S.work.nodes.length && !confirm('Replace the circuit on the board?')) return;
   if (S.editing) leaveChipEdit(false);
   const r = ex.make();
   installChips(r.chips || [], r.work);
@@ -3805,6 +3964,17 @@ its outputs at the same instant — one gate, one tick of delay. That is what le
 cross-coupled NANDs remember a bit and a ring of inverters oscillate. The speed slider sets
 how many ticks run per frame; turn it down to 1 to watch a signal crawl through the gates.</p>
 
+<h4>Getting rid of things</h4>
+<p>Three ways, in both workspaces — whichever suits what you are holding:</p>
+<ul>
+  <li>Click it, then press <kbd>Delete</kbd> (or <kbd>Backspace</kbd>).</li>
+  <li>Click it and tap the red <b>✕</b> that appears beside it. This is the one for
+      touchscreens, and it works on a whole selection at once.</li>
+  <li><b>Right-click</b> it. A right-<em>drag</em> still pans, so nothing goes by accident.</li>
+</ul>
+<p>Undo brings anything back, and the circuit and the breadboard each keep their own
+undo history.</p>
+
 <h4>Keyboard</h4>
 <ul>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Esc</kbd> deselect</li>
@@ -3833,9 +4003,9 @@ function setMode(m) {
   $('#pal-q').placeholder = m === 'board' ? 'Search parts…' : 'Search gates and chips…';
   if (m === 'board' && !S.board) S.board = makeBoard();
   $('#status-tip').textContent = m === 'board'
-    ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. Hover a hole to see what it is connected to.'
-    : 'Click a part on the left, then click the board. Drag between ports to wire. Click an input pin to flip it.';
-  renderPalette(); renderInspector(); renderCrumbs();
+    ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
+    : 'Click a part on the left, then click the board. Drag between ports to wire. To remove something: click it and press Delete, tap the red ✕, or right-click it.';
+  renderPalette(); renderInspector(); renderCrumbs(); syncUndoButtons();
   if (m === 'board' && !S.bcam.set) { S.bcam.set = 1; fitView(); }
   scheduleSave();
 }
@@ -3937,7 +4107,7 @@ window.LogicLab = {
   S, PARTS, ICS, MODULES, BB,
   compile, Sim, compileBoard, BoardSim, computeTruthTable,
   newDef, makeNode, ioOrder, builder, tieKey, partHoles,
-  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView,
+  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle,
   examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES },
   get lib() { return LIB; },
 };
