@@ -2988,7 +2988,7 @@ const ICS = {
     { f: 'and', i: [9, 10, 11], o: 8 }],
   },
   '7474': {
-    name: '7474', desc: 'dual D flip-flop, preset + clear', pins: 14, vcc: 14, gnd: 7,
+    name: '7474', desc: 'dual D flip-flop, preset + clear', pins: 14, vcc: 14, gnd: 7, family: 'Memory',
     pinNames: ['1CLR', '1D', '1CLK', '1PRE', '1Q', '1Q̄', 'GND', '2Q̄', '2Q', '2PRE', '2CLK', '2D', '2CLR', 'VCC'],
     note: 'Preset and clear are active low and beat the clock.',
     outs: [5, 6, 8, 9],
@@ -3008,7 +3008,7 @@ const ICS = {
     },
   },
   '7493': {
-    name: '7493', desc: '4-bit ripple counter', pins: 14, vcc: 5, gnd: 10,
+    name: '7493', desc: '4-bit ripple counter', pins: 14, vcc: 5, gnd: 10, family: 'Memory',
     pinNames: ['CKB', 'R0(1)', 'R0(2)', 'NC', 'VCC', 'NC', 'NC', 'QC', 'QB', 'GND', 'QD', 'QA', 'NC', 'CKA'],
     note: 'Watch the supply: VCC is pin 5 and GND is pin 10 on this one. Clocks fall, not rise. Wire QA to CKB for a plain 0–15 count.',
     outs: [12, 9, 8, 11],
@@ -3026,7 +3026,7 @@ const ICS = {
     },
   },
   '7447': {
-    name: '7447', desc: 'BCD to 7-segment decoder', pins: 16, vcc: 16, gnd: 8,
+    name: '7447', desc: 'BCD to 7-segment decoder', pins: 16, vcc: 16, gnd: 8, family: 'Selectors',
     pinNames: ['B', 'C', 'LT', 'BI', 'RBI', 'D', 'A', 'GND', 'e', 'd', 'c', 'b', 'a', 'g', 'f', 'VCC'],
     note: 'Outputs pull LOW to light a segment, so it drives a common-ANODE display. LT, BI and RBI are active low.',
     outs: [9, 10, 11, 12, 13, 14, 15],
@@ -3042,7 +3042,7 @@ const ICS = {
     },
   },
   '74138': {
-    name: '74138', desc: '3-to-8 line decoder', pins: 16, vcc: 16, gnd: 8,
+    name: '74138', desc: '3-to-8 line decoder', pins: 16, vcc: 16, gnd: 8, family: 'Selectors',
     pinNames: ['A', 'B', 'C', 'G2A', 'G2B', 'G1', 'Y7', 'GND', 'Y6', 'Y5', 'Y4', 'Y3', 'Y2', 'Y1', 'Y0', 'VCC'],
     note: 'Enabled when G1 is high and both G2 pins are low. The selected output goes LOW.',
     outs: [7, 9, 10, 11, 12, 13, 14, 15],
@@ -3053,8 +3053,191 @@ const ICS = {
       for (let i = 0; i < 8; i++) put(pin[i], on && i === n ? 0 : 1);
     },
   },
+  /* ---- arithmetic ---- */
+  '7483': {
+    name: '7483', desc: '4-bit binary adder', pins: 16, vcc: 5, gnd: 12, family: 'Arithmetic',
+    pinNames: ['A4', 'S3', 'A3', 'B3', 'VCC', 'S2', 'B2', 'A2', 'S1', 'A1', 'B1', 'GND', 'C0', 'C4', 'S4', 'B4'],
+    note: 'Adds two 4-bit numbers in one go. Supply pins are odd on this one: VCC is pin 5 and GND is pin 12. Tie C0 low unless you are chaining two of them.',
+    outs: [2, 6, 9, 14, 15],
+    custom(read, put) {
+      const a = (read(10) ? 1 : 0) | (read(8) ? 2 : 0) | (read(3) ? 4 : 0) | (read(1) ? 8 : 0);
+      const b = (read(11) ? 1 : 0) | (read(7) ? 2 : 0) | (read(4) ? 4 : 0) | (read(16) ? 8 : 0);
+      const s = a + b + (read(13) ? 1 : 0);
+      put(9, s & 1); put(6, (s >> 1) & 1); put(2, (s >> 2) & 1); put(15, (s >> 3) & 1);
+      put(14, (s >> 4) & 1);
+    },
+  },
+  '7485': {
+    name: '7485', desc: '4-bit comparator', pins: 16, vcc: 16, gnd: 8, family: 'Arithmetic',
+    pinNames: ['B3', 'A<B in', 'A=B in', 'A>B in', 'A>B', 'A=B', 'A<B', 'GND',
+      'B0', 'A0', 'B1', 'A1', 'A2', 'B2', 'A3', 'VCC'],
+    note: 'Says whether A is bigger than, equal to or smaller than B. When the two are equal it passes on whatever the cascade inputs say, so tie A=B in high and the other two low if you are not chaining.',
+    outs: [5, 6, 7],
+    custom(read, put) {
+      const a = (read(10) ? 1 : 0) | (read(12) ? 2 : 0) | (read(13) ? 4 : 0) | (read(15) ? 8 : 0);
+      const b = (read(9) ? 1 : 0) | (read(11) ? 2 : 0) | (read(14) ? 4 : 0) | (read(1) ? 8 : 0);
+      if (a > b) { put(5, 1); put(6, 0); put(7, 0); }
+      else if (a < b) { put(5, 0); put(6, 0); put(7, 1); }
+      else { put(5, read(4)); put(6, read(3)); put(7, read(2)); }
+    },
+  },
+
+  /* ---- picking one signal out of several ---- */
+  '74151': {
+    name: '74151', desc: '8-to-1 selector', pins: 16, vcc: 16, gnd: 8, family: 'Selectors',
+    pinNames: ['D3', 'D2', 'D1', 'D0', 'Y', 'W', 'STROBE', 'GND',
+      'C', 'B', 'A', 'D7', 'D6', 'D5', 'D4', 'VCC'],
+    note: 'The 3-bit number on C B A picks which of the eight D inputs reaches Y. W is Y inverted. Hold STROBE low to enable it.',
+    outs: [5, 6],
+    custom(read, put) {
+      if (read(7)) { put(5, 0); put(6, 1); return; }
+      const sel = (read(11) ? 1 : 0) | (read(10) ? 2 : 0) | (read(9) ? 4 : 0);
+      const v = read([4, 3, 2, 1, 15, 14, 13, 12][sel]);
+      put(5, v); put(6, v ^ 1);
+    },
+  },
+  '74157': {
+    name: '74157', desc: 'quad 2-to-1 selector', pins: 16, vcc: 16, gnd: 8, family: 'Selectors',
+    pinNames: ['SELECT', '1A', '1B', '1Y', '2A', '2B', '2Y', 'GND',
+      '3Y', '3B', '3A', '4Y', '4B', '4A', 'ENABLE', 'VCC'],
+    note: 'Four switches that all throw together: SELECT low passes the A inputs, high passes the B inputs. ENABLE is active low — leave it high and every output stays at 0.',
+    outs: [4, 7, 9, 12],
+    custom(read, put) {
+      if (read(15)) { put(4, 0); put(7, 0); put(9, 0); put(12, 0); return; }
+      const s = read(1);
+      put(4, read(s ? 3 : 2));
+      put(7, read(s ? 6 : 5));
+      put(9, read(s ? 10 : 11));
+      put(12, read(s ? 13 : 14));
+    },
+  },
+  '7448': {
+    name: '7448', desc: 'BCD to 7-segment', pins: 16, vcc: 16, gnd: 8, family: 'Selectors',
+    pinNames: ['B', 'C', 'LT', 'BI', 'RBI', 'D', 'A', 'GND',
+      'e', 'd', 'c', 'b', 'a', 'g', 'f', 'VCC'],
+    note: 'The 7447’s twin, but its outputs go HIGH to light a segment — so this is the one for a common-CATHODE display, which is what the display part here is by default.',
+    outs: [9, 10, 11, 12, 13, 14, 15],
+    custom(read, put) {
+      const SEG = [63, 6, 91, 79, 102, 109, 124, 7, 127, 103, 88, 76, 98, 105, 120, 0];
+      const n = (read(7) ? 1 : 0) | (read(1) ? 2 : 0) | (read(2) ? 4 : 0) | (read(6) ? 8 : 0);
+      let bits = SEG[n];
+      if (!read(5) && n === 0) bits = 0;
+      if (!read(3)) bits = 0;
+      if (read(3) && !read(4)) bits = 127;
+      const pin = [13, 12, 11, 10, 9, 15, 14];
+      for (let i = 0; i < 7; i++) put(pin[i], (bits >> i) & 1);
+    },
+  },
+
+  /* ---- memory and counting ---- */
+  '7475': {
+    name: '7475', desc: 'quad D latch', pins: 16, vcc: 5, gnd: 12, family: 'Memory',
+    pinNames: ['1Q', '1D', '2D', 'EN 3-4', 'VCC', '3D', '4D', '4Q',
+      '4Q', '3Q', '3Q', 'GND', 'EN 1-2', '2Q', '2Q', '1Q'],
+    note: 'Four latches sharing two enable lines. While an enable is HIGH its two latches follow their D inputs; drop it low and they hold. VCC is pin 5, GND pin 12.',
+    outs: [1, 8, 9, 10, 11, 14, 15, 16],
+    custom(read, put, st) {
+      const latch = (d, e, q, qb, k) => {
+        if (st[k] === undefined) st[k] = 0;
+        if (read(e)) st[k] = read(d);
+        put(q, st[k]); put(qb, st[k] ^ 1);
+      };
+      latch(2, 13, 16, 1, 'a');
+      latch(3, 13, 15, 14, 'b');
+      latch(6, 4, 10, 11, 'c');
+      latch(7, 4, 9, 8, 'd');
+    },
+  },
+  '7476': {
+    name: '7476', desc: 'dual JK flip-flop', pins: 16, vcc: 5, gnd: 13, family: 'Memory',
+    pinNames: ['1CLK', '1PRE', '1CLR', '1J', 'VCC', '2CLK', '2PRE', '2CLR',
+      '2J', '2Q', '2Q', '2K', 'GND', '1Q', '1Q', '1K'],
+    note: 'J and K together decide what a clock edge does: 0 0 holds, 1 0 sets, 0 1 clears, 1 1 flips. It triggers on the FALLING edge. Preset and clear are active low. VCC is pin 5, GND pin 13.',
+    outs: [10, 11, 14, 15],
+    custom(read, put, st) {
+      const ff = (clk, pre, clr, j, k, q, qb, key) => {
+        const s = st[key] || (st[key] = { q: 0, pc: 0 });
+        const c = read(clk), rp = read(pre), rc = read(clr);
+        if (!rp && !rc) { s.pc = c; put(q, 1); put(qb, 1); return; }
+        if (!rp) s.q = 1;
+        else if (!rc) s.q = 0;
+        else if (!c && s.pc) {                      // falling edge
+          const J = read(j), K = read(k);
+          if (J && K) s.q ^= 1; else if (J) s.q = 1; else if (K) s.q = 0;
+        }
+        s.pc = c;
+        put(q, s.q); put(qb, s.q ^ 1);
+      };
+      ff(1, 2, 3, 4, 16, 15, 14, 'a');
+      ff(6, 7, 8, 9, 12, 11, 10, 'b');
+    },
+  },
+  '74161': {
+    name: '74161', desc: '4-bit counter, loadable', pins: 16, vcc: 16, gnd: 8, family: 'Memory',
+    pinNames: ['CLR', 'CLK', 'A', 'B', 'C', 'D', 'ENP', 'GND',
+      'LOAD', 'ENT', 'QD', 'QC', 'QB', 'QA', 'RCO', 'VCC'],
+    note: 'A friendlier counter than the 7493: all four bits change on the same clock edge, LOAD (active low) drops a starting number in from A–D, and it only counts while both ENP and ENT are high. RCO goes high on 15, for chaining.',
+    outs: [11, 12, 13, 14, 15],
+    custom(read, put, st) {
+      const s = st.s || (st.s = { n: 0, pc: 0 });
+      const c = read(2);
+      if (!read(1)) s.n = 0;                         // clear, straight away
+      else if (c && !s.pc) {
+        if (!read(9)) s.n = (read(3) ? 1 : 0) | (read(4) ? 2 : 0) | (read(5) ? 4 : 0) | (read(6) ? 8 : 0);
+        else if (read(7) && read(10)) s.n = (s.n + 1) & 15;
+      }
+      s.pc = c;
+      put(14, s.n & 1); put(13, (s.n >> 1) & 1); put(12, (s.n >> 2) & 1); put(11, (s.n >> 3) & 1);
+      put(15, read(10) && s.n === 15 ? 1 : 0);
+    },
+  },
+  '74164': {
+    name: '74164', desc: '8-bit shift register', pins: 14, vcc: 14, gnd: 7, family: 'Memory',
+    pinNames: ['A', 'B', 'QA', 'QB', 'QC', 'QD', 'GND', 'CLK', 'CLR', 'QE', 'QF', 'QG', 'QH', 'VCC'],
+    note: 'Each clock edge shoves one more bit in at QA and moves everything along one place. The bit that goes in is A AND B — tie one of them high and feed the other. CLR is active low.',
+    outs: [3, 4, 5, 6, 10, 11, 12, 13],
+    custom(read, put, st) {
+      const s = st.s || (st.s = { v: 0, pc: 0 });
+      const c = read(8);
+      if (!read(9)) s.v = 0;
+      else if (c && !s.pc) s.v = ((s.v << 1) | (read(1) && read(2) ? 1 : 0)) & 255;
+      s.pc = c;
+      const pins = [3, 4, 5, 6, 10, 11, 12, 13];
+      for (let i = 0; i < 8; i++) put(pins[i], (s.v >> i) & 1);
+    },
+  },
+  '74595': {
+    name: '74595', desc: '8-bit shift register + latch', pins: 16, vcc: 16, gnd: 8, family: 'Memory',
+    pinNames: ['QB', 'QC', 'QD', 'QE', 'QF', 'QG', 'QH', 'GND',
+      'QH*', 'SRCLR', 'SRCLK', 'RCLK', 'OE', 'SER', 'QA', 'VCC'],
+    note: 'Shift eight bits in one at a time on SRCLK, then pulse RCLK and all eight appear at once — so the outputs never flicker while you are loading. Three wires drive eight outputs. OE high switches the outputs off entirely (floating), and QH* is the leftover bit, for chaining.',
+    outs: [1, 2, 3, 4, 5, 6, 7, 9, 15],
+    custom(read, put, st) {
+      const s = st.s || (st.s = { sr: 0, lat: 0, psr: 0, prc: 0 });
+      const srclk = read(11), rclk = read(12);
+      if (!read(10)) s.sr = 0;
+      else if (srclk && !s.psr) s.sr = ((s.sr << 1) | (read(14) ? 1 : 0)) & 255;
+      if (rclk && !s.prc) s.lat = s.sr;
+      s.psr = srclk; s.prc = rclk;
+      put(9, (s.sr >> 7) & 1);
+      if (read(13)) return;                          // output enable is active low
+      const pins = [15, 1, 2, 3, 4, 5, 6, 7];
+      for (let i = 0; i < 8; i++) put(pins[i], (s.lat >> i) & 1);
+    },
+  },
+  '74125': {
+    name: '74125', desc: 'quad three-state buffer', pins: 14, vcc: 14, gnd: 7, family: 'Gates',
+    pinNames: ['1EN', '1A', '1Y', '2EN', '2A', '2Y', 'GND', '3Y', '3A', '3EN', '4Y', '4A', '4EN', 'VCC'],
+    note: 'Passes its input through while its enable is LOW. While the enable is high the output is not driven at all — not 0, not 1, just floating — which is how several chips take turns driving one wire.',
+    outs: [3, 6, 8, 11],
+    custom(read, put) {
+      const buf = (en, a, y) => { if (!read(en)) put(y, read(a)); };
+      buf(1, 2, 3); buf(4, 5, 6); buf(10, 9, 8); buf(13, 12, 11);
+    },
+  },
+
   'CLK': {
-    name: 'CLK', desc: 'oscillator module', pins: 8, vcc: 8, gnd: 4,
+    name: 'CLK', desc: 'oscillator module', pins: 8, vcc: 8, gnd: 4, family: 'Clock',
     pinNames: ['NC', 'NC', 'NC', 'GND', 'OUT', 'NC', 'NC', 'VCC'],
     note: 'A canned oscillator. Set its rate in the inspector.',
     outs: [5], hz: 2,
@@ -3845,6 +4028,22 @@ function nextWireColor(cur) {
 /* ---- breadboard palette and inspector ----------------------------------- */
 
 function renderBoardPalette(host, q) {
+  /* These two get used constantly, and the chip list below is long, so they go
+     at the top rather than at the bottom of a scroll. */
+  if (!q) {
+    host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Board'), h('span', { class: 'rule' })));
+    host.append(h('div', { class: 'stack' },
+      h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
+      h('button', {
+        class: 'btn danger', onclick: async () => {
+          if (!S.board.parts.length) return;
+          if (!await ask('Strip the breadboard bare?', 'Every part and jumper comes off. Ctrl+Z puts them back.', 'Strip it')) return;
+          pushUndo();
+          S.board.parts = []; S.bsel = null; S.bdirty = true; scheduleSave(); renderInspector();
+        },
+      }, 'Clear the board')));
+  }
+
   const add = (title, items) => {
     const match = items.filter((it) => !q || it.name.toLowerCase().includes(q) || (it.desc || '').toLowerCase().includes(q));
     if (!match.length) return;
@@ -3877,21 +4076,24 @@ function renderBoardPalette(host, q) {
     { name: 'DIP switch ×4', color: '#c9302c', desc: MODULES.dip.desc, arm: { type: 'dip' } },
     { name: '7-seg display', color: '#1a1c20', desc: MODULES.seg.desc, arm: { type: 'seg' } },
   ]);
-  add('74-series chips', Object.keys(ICS).map((k) => ({
-    name: ICS[k].name, color: '#22262b', desc: ICS[k].desc, arm: { type: 'ic', ic: k },
-  })));
+  /* Two dozen chips is too many for one list, so they are grouped by what they
+     are for — which is how you would look for one anyway. */
+  const FAMILIES = ['Gates', 'Arithmetic', 'Selectors', 'Memory', 'Clock'];
+  const FAMILY_TITLE = {
+    Gates: 'Chips: gates',
+    Arithmetic: 'Chips: arithmetic',
+    Selectors: 'Chips: decoders & selectors',
+    Memory: 'Chips: memory & counting',
+    Clock: 'Chips: clock',
+  };
+  for (const fam of FAMILIES) {
+    add(FAMILY_TITLE[fam], Object.keys(ICS)
+      .filter((k) => (ICS[k].family || 'Gates') === fam)
+      .map((k) => ({
+        name: ICS[k].name, color: '#22262b', desc: ICS[k].desc, arm: { type: 'ic', ic: k },
+      })));
+  }
 
-  host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Board'), h('span', { class: 'rule' })));
-  host.append(h('div', { class: 'stack' },
-    h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
-    h('button', {
-      class: 'btn danger', onclick: async () => {
-        if (!S.board.parts.length) return;
-        if (!await ask('Strip the breadboard bare?', 'Every part and jumper comes off. Ctrl+Z puts them back.', 'Strip it')) return;
-        pushUndo();
-        S.board.parts = []; S.bsel = null; S.bdirty = true; scheduleSave(); renderInspector();
-      },
-    }, 'Clear the board')));
 }
 
 function powerTheRails() {

@@ -337,6 +337,205 @@ const TESTS = String.raw`
     ok('7400 with one input low outputs 1', sim.val[hn2(5, 7)] === 1, sim.val[hn2(5, 7)]);
   }
 
+  /* 12b. every chip, exercised on a powered board through its real pins.
+          Wires drive the input pins; the outputs are read back off the nets. */
+  {
+    const rig = (type, drive) => {
+      // pin -> hole, using the part's own leg positions, then a clip on each
+      const parts = [{ k: 'ic', id: 'u1', type, col: 4 }];
+      const p0 = { k: 'ic', id: 'u1', type, col: 4 };
+      const holes = {};
+      for (const h of L.partHoles(p0)) holes[h.pin] = h;
+      const spec = L.ICS[type];
+      const free = (h, i) => ({ r: h.r >= 5 ? 6 + i : 3 - i, c: h.c });
+      parts.push({ k: 'vcc', id: 'v', a: free(holes[spec.vcc], 0) });
+      parts.push({ k: 'gnd', id: 'g', a: free(holes[spec.gnd], 0) });
+      let n = 0;
+      for (const pin in drive) {
+        const h = holes[pin];
+        parts.push(drive[pin]
+          ? { k: 'vcc', id: 'd' + (n++), a: free(h, 1) }
+          : { k: 'gnd', id: 'd' + (n++), a: free(h, 1) });
+      }
+      const board = { cols: 60, parts };
+      const c = L.compileBoard(board);
+      const sim = new L.BoardSim(c);
+      for (let i = 0; i < 30; i++) sim.tick(1000 + i);
+      const read = (pin) => {
+        const net = c.holeNet.get(L.tieKey(holes[pin].r, holes[pin].c));
+        return sim.str[net] === 0 ? 'Z' : sim.val[net];
+      };
+      return { read, sim, board, c, holes, free, parts };
+    };
+    const bits = (read, pins) => pins.map(read).join('');
+
+    /* 7483: 5 + 6 + carry 1 = 12 -> S=1100, C4=0 */
+    {
+      const r = rig('7483', {
+        10: 1, 8: 0, 3: 1, 1: 0,       // A = 0101 = 5
+        11: 0, 7: 1, 4: 1, 16: 0,      // B = 0110 = 6
+        13: 1,                          // carry in
+      });
+      const sum = (r.read(9) ? 1 : 0) + (r.read(6) ? 2 : 0) + (r.read(2) ? 4 : 0)
+        + (r.read(15) ? 8 : 0) + (r.read(14) ? 16 : 0);
+      ok('7483 adds 5 + 6 + 1', sum === 12, sum);
+    }
+    /* 7485: 9 vs 4 */
+    {
+      const r = rig('7485', {
+        10: 1, 12: 0, 13: 0, 15: 1,    // A = 1001 = 9
+        9: 0, 11: 0, 14: 1, 1: 0,      // B = 0100 = 4
+        4: 0, 3: 1, 2: 0,              // cascade: equal
+      });
+      ok('7485 sees 9 > 4', bits(r.read, [5, 6, 7]) === '100', bits(r.read, [5, 6, 7]));
+    }
+    /* 74151: select 5 picks D5 */
+    {
+      const r = rig('74151', {
+        11: 1, 10: 0, 9: 1,            // C B A = 101 = 5
+        7: 0,                           // strobe low = enabled
+        14: 1, 13: 0,                   // D5 high, D6 low
+      });
+      ok('74151 routes the input you select', bits(r.read, [5, 6]) === '10', bits(r.read, [5, 6]));
+    }
+    /* 74157: SELECT low passes A, high passes B */
+    {
+      const a = rig('74157', { 15: 0, 1: 0, 2: 1, 3: 0 });
+      const b = rig('74157', { 15: 0, 1: 1, 2: 1, 3: 0 });
+      ok('74157 switches between its A and B inputs',
+        a.read(4) === 1 && b.read(4) === 0, a.read(4) + '/' + b.read(4));
+    }
+    /* 7448: 3 lights a b c d g, and unlike the 7447 it drives them high */
+    {
+      const r = rig('7448', { 7: 1, 1: 1, 2: 0, 6: 0, 3: 1, 5: 1, 4: 1 });
+      const seg = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+      const pin = { a: 13, b: 12, c: 11, d: 10, e: 9, f: 15, g: 14 };
+      const lit = seg.filter((s) => r.read(pin[s]) === 1).join('');
+      ok('7448 spells a 3 with its outputs high', lit === 'abcdg', lit);
+    }
+    /* 74125: enabled passes through, disabled leaves the wire floating */
+    {
+      const on = rig('74125', { 1: 0, 2: 1 });
+      const off = rig('74125', { 1: 1, 2: 1 });
+      ok('74125 passes through, then lets go of the wire',
+        on.read(3) === 1 && off.read(3) === 'Z', on.read(3) + '/' + off.read(3));
+    }
+    /* 7475: transparent while enabled, holds when the enable drops */
+    {
+      const board = (() => {
+        const p0 = { k: 'ic', id: 'u1', type: '7475', col: 4 };
+        const holes = {}; for (const h of L.partHoles(p0)) holes[h.pin] = h;
+        const free = (h, i) => ({ r: h.r >= 5 ? 6 + i : 3 - i, c: h.c });
+        const parts = [p0,
+          { k: 'vcc', id: 'v', a: free(holes[5], 0) },
+          { k: 'gnd', id: 'g', a: free(holes[12], 0) },
+          { k: 'vcc', id: 'd', a: free(holes[2], 1) },        // 1D high
+          { k: 'vcc', id: 'e', a: free(holes[13], 1) }];      // enable 1-2 high
+        return { parts, holes, free };
+      })();
+      let c = L.compileBoard({ cols: 60, parts: board.parts });
+      let sim = new L.BoardSim(c);
+      for (let i = 0; i < 30; i++) sim.tick(1000 + i);
+      const q = () => {
+        const h = board.holes[16];
+        return sim.val[c.holeNet.get(L.tieKey(h.r, h.c))];
+      };
+      const held1 = q();
+      board.parts = board.parts.filter((p) => p.id !== 'e');   // drop the enable
+      board.parts.push({ k: 'gnd', id: 'e2', a: board.free(board.holes[13], 1) });
+      board.parts = board.parts.filter((p) => p.id !== 'd');   // and change D
+      board.parts.push({ k: 'gnd', id: 'd2', a: board.free(board.holes[2], 1) });
+      const prev = sim;
+      c = L.compileBoard({ cols: 60, parts: board.parts });
+      sim = new L.BoardSim(c, prev);
+      for (let i = 0; i < 30; i++) sim.tick(2000 + i);
+      ok('7475 holds its bit once the enable drops', held1 === 1 && q() === 1, held1 + '/' + q());
+    }
+    /* 74161, 74164, 74595, 7476 all need a clock, so drive one by hand */
+    const clocked = (type, statics, clkPin, steps) => {
+      const p0 = { k: 'ic', id: 'u1', type, col: 4 };
+      const holes = {}; for (const h of L.partHoles(p0)) holes[h.pin] = h;
+      const spec = L.ICS[type];
+      const free = (h, i) => ({ r: h.r >= 5 ? 6 + i : 3 - i, c: h.c });
+      const base = [p0,
+        { k: 'vcc', id: 'v', a: free(holes[spec.vcc], 0) },
+        { k: 'gnd', id: 'g', a: free(holes[spec.gnd], 0) }];
+      let n = 0;
+      for (const pin in statics) {
+        base.push(statics[pin]
+          ? { k: 'vcc', id: 's' + (n++), a: free(holes[pin], 1) }
+          : { k: 'gnd', id: 's' + (n++), a: free(holes[pin], 1) });
+      }
+      let sim = null, c = null;
+      const out = [];
+      for (const step of steps) {
+        const parts = base.concat([step.clk
+          ? { k: 'vcc', id: 'clk', a: free(holes[clkPin], 2) }
+          : { k: 'gnd', id: 'clk', a: free(holes[clkPin], 2) }]);
+        let e = 0;
+        for (const pin in (step.also || {})) {
+          parts.push(step.also[pin]
+            ? { k: 'vcc', id: 'x' + (e++), a: free(holes[pin], 3) }
+            : { k: 'gnd', id: 'x' + (e++), a: free(holes[pin], 3) });
+        }
+        const prev = sim;
+        c = L.compileBoard({ cols: 60, parts });
+        sim = new L.BoardSim(c, prev);
+        for (let i = 0; i < 25; i++) sim.tick(1000 + out.length * 100 + i);
+        const rd = (pin) => {
+          const h = holes[pin];
+          const net = c.holeNet.get(L.tieKey(h.r, h.c));
+          return sim.str[net] === 0 ? 'Z' : sim.val[net];
+        };
+        if (step.read) out.push(step.read.map(rd).join(''));
+      }
+      return out;
+    };
+    /* 74161 counts 0,1,2,3 on rising edges (QD QC QB QA) */
+    {
+      const seq = [];
+      for (let i = 0; i < 5; i++) { seq.push({ clk: 0 }); seq.push({ clk: 1, read: [11, 12, 13, 14] }); }
+      const got = clocked('74161', { 1: 1, 9: 1, 7: 1, 10: 1 }, 2, seq);
+      ok('74161 counts up on each clock edge',
+        got.join(' ') === '0001 0010 0011 0100 0101', got.join(' '));
+    }
+    /* 74164 walks a 1 along its outputs */
+    {
+      const seq = [];
+      for (let i = 0; i < 3; i++) { seq.push({ clk: 0 }); seq.push({ clk: 1, read: [3, 4, 5, 6] }); }
+      const got = clocked('74164', { 9: 1, 1: 1, 2: 1 }, 8, seq);
+      ok('74164 shifts a bit along one place per clock',
+        got.join(' ') === '1000 1100 1110', got.join(' '));
+    }
+    /* 7476 with J=K=1 toggles on each falling edge */
+    {
+      const seq = [];
+      for (let i = 0; i < 4; i++) { seq.push({ clk: 1 }); seq.push({ clk: 0, read: [15] }); }
+      const got = clocked('7476', { 2: 1, 3: 1, 4: 1, 16: 1 }, 1, seq);
+      ok('7476 toggles on the falling edge when J and K are high',
+        got.join('') === '1010', got.join(''));
+    }
+    /* 74595: shift three bits in, then pulse the latch clock */
+    {
+      const shift = [
+        { clk: 0, also: { 12: 0 } }, { clk: 1, also: { 12: 0 } },
+        { clk: 0, also: { 12: 0 } }, { clk: 1, also: { 12: 0 } },
+        { clk: 0, also: { 12: 0 } }, { clk: 1, also: { 12: 0 } },
+        { clk: 0, also: { 12: 0 }, read: [15, 1, 2] },
+      ];
+      const latch = shift.concat([
+        { clk: 0, also: { 12: 1 }, read: [15, 1, 2] },
+      ]);
+      const got = clocked('74595', { 14: 1, 13: 0, 10: 1 }, 11, latch);
+      ok('74595 keeps its outputs still until the latch clock ticks',
+        got[0] === '000' && got[1] === '111', got.join(' then '));
+
+      /* and with output-enable high it drives nothing at all */
+      const off = clocked('74595', { 14: 1, 13: 1, 10: 1 }, 11, latch);
+      ok('74595 lets go of its outputs when disabled', off[1] === 'ZZZ', off.join(' then '));
+    }
+  }
+
   /* 13. short circuit detection */
   {
     const b = { cols: 60, parts: [
@@ -569,7 +768,9 @@ const TESTS = String.raw`
   const clickAt = async (x, y) => { await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); };
   const clickSel = async (sel) => {
     const box = await ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});
-      if(!e) return null; const r=e.getBoundingClientRect();
+      if(!e) return null;
+      e.scrollIntoView({block:'center'});
+      const r=e.getBoundingClientRect();
       return {x:r.left+r.width/2, y:r.top+r.height/2};})()`);
     if (!box) throw new Error('no element ' + sel);
     await clickAt(box.x, box.y);
@@ -691,6 +892,14 @@ const TESTS = String.raw`
     const ic = await ev(`(()=>{const p=LogicLab.S.board.parts.find(x=>x.k==='ic');
       return p ? p.type+'@'+p.col : 'none';})()`);
     report('a 74-series chip drops onto the board', ic === '7400@20', ic);
+
+    const palette = await ev(`(()=>{const L=LogicLab;
+      const names=[...document.querySelectorAll('.pal-item')].map(e=>e.textContent);
+      const missing=Object.keys(L.ICS).filter(k=>!names.includes(L.ICS[k].name));
+      const groups=[...document.querySelectorAll('.pal-group h3')].map(e=>e.textContent);
+      return (missing.join(',')||'none') + '|' + groups[0] + '|' + groups.length;})()`);
+    report('every chip is in the palette, board controls first',
+      /^none\|Board\|[6-9]$/.test(palette), palette);
 
     /* power the rails, drop a DIP switch, throw one of its levers */
     await clickSel('#palette button.btn.danger');            // clear the board...
@@ -1182,6 +1391,10 @@ const TESTS = String.raw`
          L.fitView();
          const n=L.S.work.nodes.find(x=>x.type==='OR');
          L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`],
+      ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#modal .btn.icon').click();
+         document.querySelector('#mode-board').click();
+         L.S.board={cols:60,parts:[]}; L.S.bdirty=true; L.fitView(); return 1;})()`],
       ['board-counter', `(()=>{const L=LogicLab; document.querySelector('#mode-board').click();
          L.S.board = L.examples.BOARD_EXAMPLES[3].make(); L.S.bdirty=true; L.S.bsel=null; L.fitView();
          L.S.bcam.z*=1.9; L.S.bcam.x=-330; L.S.bcam.y=-20; return 1;})()`],

@@ -70,9 +70,19 @@ adder and a counter driving a hex display.
 
 **Breadboard.** A solderless breadboard wired the way a real one is: five-hole
 columns, four rails, a channel down the middle. Drop real 74-series DIP chips
-(7400, 7402, 7404, 7408, 7410, 7411, 7432, 7447, 7474, 7486, 7493, 74138) with
-their actual pinouts, plus jumpers, resistors, LEDs, push buttons, DIP switches
-and a seven-segment display. Nothing works until you power the chips, and the
+with their actual pinouts, plus jumpers, resistors, LEDs, push buttons, DIP
+switches and a seven-segment display. The chips, by family:
+
+| | |
+|---|---|
+| Gates | 7400 NAND · 7402 NOR · 7404 inverter · 7408 AND · 7410/7411 3-input · 7432 OR · 7486 XOR · 74125 three-state buffer |
+| Arithmetic | 7483 4-bit adder · 7485 4-bit comparator |
+| Decoders & selectors | 7447 / 7448 BCD to 7-segment · 74138 3-to-8 decoder · 74151 8-to-1 selector · 74157 quad 2-to-1 selector |
+| Memory & counting | 7474 D flip-flop · 7475 quad latch · 7476 JK flip-flop · 7493 ripple counter · 74161 loadable counter · 74164 shift register · 74595 shift register with latch |
+| Clock | a canned oscillator module |
+
+The 74125 and the 74595's output-enable both leave their pins genuinely
+undriven, which is how several chips share one wire. Nothing works until you power the chips, and the
 failure modes are reported rather than papered over — shorts, floating inputs,
 unpowered chips, an LED with no series resistor. Hover any hole to light up
 every hole it is already connected to.
