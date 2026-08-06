@@ -748,6 +748,79 @@ const TESTS = String.raw`
     await wait(250);
     report('and undo brings the circuit back', (await ev(`LogicLab.S.work.nodes.length`)) === 6);
 
+    /* ---- re-routing a wire by dragging its end ----
+       A -> AND.in0, B -> AND.in1, AND -> OUT, and a spare NOT with nothing in
+       it, so there is somewhere free to drag a connection to. */
+    const rewireSetup = async () => {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('rewire');
+        const a=b.pin('A',0,0), c2=b.pin('B',0,140);
+        const g=b.add('AND',240,20), nt=b.add('NOT',240,240), o=b.out('out',480,36);
+        b.w(a,0,g,0); b.w(c2,0,g,1); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear(); L.S.hover=null;
+        L.S.cam.x=140; L.S.cam.y=150; L.S.cam.z=1; return 1;})()`);
+      await wait(250);
+    };
+    /* where A's wire ends up: which part, which input */
+    const aWire = () => ev(`(()=>{const L=LogicLab;
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const ws=L.S.work.wires.filter(x=>x.a.n===A.id);
+      if(!ws.length) return 'none';
+      return ws.map(w=>{const t=L.S.work.nodes.find(n=>n.id===w.b.n);
+        return (t.type==='CHIP'?'CHIP':t.type)+'.'+w.b.i;}).sort().join(',');})()`);
+    const wireCount = () => ev(`LogicLab.S.work.wires.length`);
+
+    await rewireSetup();
+    report('A starts wired to the first input of the AND', (await aWire()) === 'AND.0', await aWire());
+
+    const ends = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      L.S.selWires.clear(); L.S.selWires.add(w.id);
+      const hs=L.wireHandles(w);
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const hb=L.toScreen(hs.b.x,hs.b.y), pn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {hx:r.left+hb.x, hy:r.top+hb.y, px:r.left+pn.x, py:r.top+pn.y};})()`);
+    await dragAt(ends.hx, ends.hy, ends.px, ends.py);
+    await wait(300);
+    report('dragging a wire end moves the connection', (await aWire()) === 'NOT.0', await aWire());
+    report('re-routing leaves no spare wire behind', (await wireCount()) === 3, await wireCount());
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and the whole re-route is one undo step',
+      (await aWire()) === 'AND.0' && (await wireCount()) === 3, (await aWire()) + '/' + (await wireCount()));
+
+    /* the middle of a wire still branches, so one output can feed two inputs */
+    await rewireSetup();
+    const mid = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      const a=L.S.work.nodes.find(x=>x.id===w.a.n), g=L.S.work.nodes.find(x=>x.id===w.b.n);
+      const ga=L.geom(a), gg=L.geom(g);
+      const m={x:(ga.outs[0].x+gg.ins[0].x)/2, y:(ga.outs[0].y+gg.ins[0].y)/2};
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const sm=L.toScreen(m.x,m.y), sn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {mx:r.left+sm.x, my:r.top+sm.y, ox:r.left+sn.x, oy:r.top+sn.y};})()`);
+    await dragAt(mid.mx, mid.my, mid.ox, mid.oy);
+    await wait(300);
+    report('dragging the middle of a wire still branches it',
+      (await aWire()) === 'AND.0,NOT.0' && (await wireCount()) === 4,
+      (await aWire()) + '/' + (await wireCount()));
+
+    /* pulling the plug out of an input and dropping it somewhere that cannot
+       take it puts the wire back rather than losing it */
+    await rewireSetup();
+    const plug = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const g=L.S.work.nodes.find(x=>x.type==='AND'); const gg=L.geom(g);
+      const s=L.toScreen(gg.ins[0].x,gg.ins[0].y);
+      const b2=L.S.work.nodes.find(x=>x.label==='B'); const gb=L.geom(b2);
+      const s2=L.toScreen(gb.x+gb.w/2, gb.y+gb.h/2);   // an input pin has no inputs
+      return {x:r.left+s.x, y:r.top+s.y, ox:r.left+s2.x, oy:r.top+s2.y};})()`);
+    await dragAt(plug.x, plug.y, plug.ox, plug.oy);
+    await wait(300);
+    report('a plug dropped where it cannot go returns to its socket',
+      (await aWire()) === 'AND.0' && (await wireCount()) === 3, (await aWire()) + '/' + (await wireCount()));
+
     /* ---- "what it's made of" panel ---- */
     await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
       L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
@@ -977,6 +1050,13 @@ const TESTS = String.raw`
          b.w(one,0,hex,1); b.w(one,0,hex,3);
          const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['wire-handles', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true; L.S.sel.clear();
+         L.fitView(); L.S.cam.z*=0.9;
+         const A=L.S.work.nodes.find(x=>x.label==='A');
+         const w=L.S.work.wires.find(x=>x.a.n===A.id);
+         L.S.selWires.clear(); L.S.selWires.add(w.id); L.renderInspector(); return 1;})()`],
       ['made-of', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#mode-editor').click();
          L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView();
