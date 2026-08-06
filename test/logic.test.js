@@ -323,6 +323,50 @@ const TESTS = String.raw`
       ok('the ' + type + ' recipe behaves like a real ' + type, got === want, got + '  vs  ' + want);
     }
 
+    /* the ROM recipe must hold the numbers its caption claims: 1, 2, 3, 0 */
+    {
+      // truth-table rows count with the FIRST pin as the high bit, so read the
+      // address off the input columns rather than assuming row order
+      const t = L.computeTruthTable(L.RECIPES.ROM.make());
+      const words = [0, 0, 0, 0];
+      for (const r of t.rows) words[r.in[0] + r.in[1] * 2] = r.out[0] + r.out[1] * 2;
+      ok('the ROM diagram really stores 1, 2, 3, 0', words.join(',') === '1,2,3,0', words.join(','));
+    }
+
+    /* the RAM-cell recipe must behave like one bit of RAM */
+    {
+      const def = L.RECIPES.RAM.make();
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = c.portNet.get(io.outs[0].id + '.i0');
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const pulse = () => { set({ CLK: 0 }); run(25); set({ CLK: 1 }); run(25); set({ CLK: 0 }); run(25); };
+      // chosen and writing: it takes the 1
+      set({ D: 1, SELECT: 1, WRITE: 1, CLK: 0 }); run(25);
+      pulse();
+      const stored = sim.val(qNet);
+      // writing but not chosen: it must ignore the edge
+      set({ D: 0, SELECT: 0, WRITE: 1 }); pulse();
+      set({ SELECT: 1, WRITE: 0 }); run(25);
+      const ignored = sim.val(qNet);
+      // chosen and writing a 0: it takes that
+      set({ D: 0, WRITE: 1 }); pulse();
+      set({ WRITE: 0 }); run(25);
+      const overwritten = sim.val(qNet);
+      // and an unchosen cell reads back 0 whatever it holds
+      set({ D: 1, WRITE: 1 }); pulse();
+      set({ WRITE: 0 }); run(25);
+      const held = sim.val(qNet);
+      set({ SELECT: 0 }); run(25);
+      const quiet = sim.val(qNet);
+      ok('the RAM-cell diagram behaves like one bit of RAM',
+        stored === 1 && ignored === 1 && overwritten === 0 && held === 1 && quiet === 0,
+        [stored, ignored, overwritten, held, quiet].join(','));
+    }
+
     /* the two with memory need a sequence rather than a table */
     const trace = (def, names, steps) => {
       const io = L.ioOrder(def);
@@ -1657,6 +1701,14 @@ const TESTS = String.raw`
          const A=L.S.work.nodes.find(x=>x.label==='A');
          const w=L.S.work.wires.find(x=>x.a.n===A.id);
          L.S.selWires.clear(); L.S.selWires.add(w.id); L.renderInspector(); return 1;})()`],
+      ['ram-inside', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('ram'); const r=b.add('RAM', 0, 0, {abits:4,dbits:8,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector(); L.fitView();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview'); if(c) c.click();}, 250);
+         return 1;})()`],
       ['stored-program', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
          document.querySelector('#mode-editor').click();

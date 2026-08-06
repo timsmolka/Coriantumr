@@ -2206,14 +2206,7 @@ window.addEventListener('keyup', (ev) => { if (ev.key === ' ') spaceDown = false
 
 function contentBounds() {
   if (S.mode === 'board') return boardBounds();
-  if (!S.work.nodes.length) return null;
-  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
-  for (const n of S.work.nodes) {
-    const g = gm(n);
-    x0 = Math.min(x0, g.x); y0 = Math.min(y0, g.y);
-    x1 = Math.max(x1, g.x + g.w); y1 = Math.max(y1, g.y + g.h);
-  }
-  return { x0, y0, x1, y1 };
+  return contentBoundsOf(S.work.nodes);
 }
 
 function fitView() {
@@ -2657,13 +2650,21 @@ function insertDef(def) {
   toast('Added below your circuit — take it apart and see.');
 }
 
+/** The box a set of parts occupies — including the names printed beside the
+    input and output pins, which sit outside the part itself and would
+    otherwise be sliced off whenever the view is fitted. */
 function contentBoundsOf(nodes) {
   if (!nodes.length) return null;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
   for (const n of nodes) {
     const g = gm(n);
-    x0 = Math.min(x0, g.x); y0 = Math.min(y0, g.y);
-    x1 = Math.max(x1, g.x + g.w); y1 = Math.max(y1, g.y + g.h);
+    let lx = g.x, rx = g.x + g.w;
+    if (n.label && (n.type === 'IN' || n.type === 'OUT')) {
+      const w = textWidth(ctx, n.label, '11px ' + FONT) + 12;
+      if (n.type === 'IN') lx -= w; else rx += w;
+    }
+    x0 = Math.min(x0, lx); y0 = Math.min(y0, g.y);
+    x1 = Math.max(x1, rx); y1 = Math.max(y1, g.y + g.h);
   }
   return { x0, y0, x1, y1 };
 }
@@ -4995,6 +4996,44 @@ function recDLATCH() {
   return b.def;
 }
 
+function recRAMCell() {
+  const b = builder('One bit of RAM');
+  const d = b.pin('D', 0, 0), sel = b.pin('SELECT', 0, 120);
+  const wr = b.pin('WRITE', 0, 240), ck = b.pin('CLK', 0, 360);
+  const gate = b.add('AND', 200, 190, { n: 3 });       // let the edge through only if chosen
+  const ff = b.add('DFF', 400, 40);
+  const readOut = b.add('AND', 610, 70);               // and only speak when chosen
+  const q = b.out('Q', 790, 86);
+  b.w(sel, 0, gate, 0); b.w(wr, 0, gate, 1); b.w(ck, 0, gate, 2);
+  b.w(d, 0, ff, 0); b.w(gate, 0, ff, 1);
+  b.w(ff, 0, readOut, 0); b.w(sel, 0, readOut, 1);
+  b.w(readOut, 0, q, 0);
+  return b.def;
+}
+
+function recROM() {
+  const b = builder('A four-word ROM');
+  const a0 = b.pin('A0', 0, 40), a1 = b.pin('A1', 0, 170);
+  const n0 = b.add('NOT', 160, 30), n1 = b.add('NOT', 160, 160);
+  b.w(a0, 0, n0, 0); b.w(a1, 0, n1, 0);
+  const sel = [];
+  for (let i = 0; i < 4; i++) {                        // one line per address
+    const g = b.add('AND', 340, i * 100);
+    b.w(i & 1 ? a0 : n0, 0, g, 0);
+    b.w(i & 2 ? a1 : n1, 0, g, 1);
+    sel.push(g);
+  }
+  /* And here is the data: a wire from a word's line into a bit's OR gate means
+     that bit is a 1 in that word. Words are 1, 2, 3, 0. */
+  const d0 = b.add('OR', 560, 20);
+  b.w(sel[0], 0, d0, 0); b.w(sel[2], 0, d0, 1);
+  const d1 = b.add('OR', 560, 230);
+  b.w(sel[1], 0, d1, 0); b.w(sel[2], 0, d1, 1);
+  const o0 = b.out('D0', 740, 36), o1 = b.out('D1', 740, 246);
+  b.w(d0, 0, o0, 0); b.w(d1, 0, o1, 0);
+  return b.def;
+}
+
 const RECIPES = {
   NOT: { text: 'Join a NAND’s two inputs together and it simply flips whatever you feed it.', make: recNOT },
   AND: { text: 'A NAND answers “not both”. Flip that answer back and you have “both” — so an AND is a NAND followed by a NOT (which is itself a NAND).', make: recAND },
@@ -5006,6 +5045,14 @@ const RECIPES = {
   BUF: { text: 'Two NOTs back to back. Flipping twice gets you the bit you started with — the point is the delay, not the answer.', make: recBUF },
   DLATCH: { text: 'The two NANDs on the right feed each other, and that loop is what holds the bit. The two on the left let the enable line decide when D is allowed through.', make: recDLATCH },
   DFF: { text: 'Six NANDs. Four of them watch for the moment the clock rises, so D is copied on that edge rather than the whole time the clock is high.', make: () => exNandDFF() },
+  RAM: {
+    text: 'One bit of it — the real thing is a grid of these, one per bit per address, with a decoder switching on the row you asked for. SELECT and WRITE together let the clock edge through, so only the chosen cell stores anything; SELECT on its own guards the way out, so the cells you did not ask for stay at 0 and every cell in a column can be ORed together. Build it, package it as a chip, and a memory is just a lot of copies.',
+    make: recRAMCell,
+  },
+  ROM: {
+    text: 'Four words of two bits. The address is decoded into one line per word — and then the wiring into the OR gates IS the data: a wire where a bit should be 1, nothing where it should be 0. This one holds 1, 2, 3, 0. That is why it is read-only; on a real chip the pattern is baked in when it is made.',
+    make: recROM,
+  },
 };
 
 /* A program, running. A counter walks through the ROM one address at a time
