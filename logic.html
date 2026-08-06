@@ -278,6 +278,20 @@ h4.does{
 }
 .madeof h4{margin:0 0 5px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
 .madeof p{margin:0 0 8px;line-height:1.45}
+.memgrid{
+  display:flex;flex-wrap:wrap;gap:3px;margin:8px 0 2px;max-height:150px;overflow-y:auto;
+  font-family:var(--mono);font-size:11px;
+}
+.memcell{
+  min-width:24px;text-align:center;padding:2px 3px;border-radius:4px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--ink-soft);
+}
+.memcell.now{background:var(--accent);border-color:var(--accent);color:#1a1206;font-weight:700}
+textarea.memtext{
+  width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;
+  padding:6px 8px;font-family:var(--mono);font-size:11.5px;outline:none;resize:vertical;
+}
+textarea.memtext:focus{border-color:var(--select)}
 canvas.preview{
   width:100%;height:140px;display:block;background:var(--panel-2);
   border:1px solid var(--line);border-radius:9px;cursor:zoom-in;
@@ -632,6 +646,74 @@ const PARTS = {
     ins: () => ['8', '4', '2', '1'], outs: () => [], w: 76, h: 92,
     make: () => ({ color: '#ffc247' }),
     tip: 'Shows a 4-bit number as one hex digit, 0–F. Decoding is done for you.',
+  },
+
+  /* ---- memory you can type into ----------------------------------------
+     A computer is a machine that reads its instructions out of memory. These
+     two are what turn a pile of gates into something you can write a program
+     for: a ROM you fill in by hand, and a RAM the circuit can write back to. */
+  ROM: {
+    name: 'ROM', cat: 'seq', group: 'Memory', nick: 'memory you write by hand',
+    plain: 'Put an address in and the value you stored at that address comes out. Nothing else can change it, so this is where a program lives. Type the contents in this panel.',
+    ins: (n) => Array.from({ length: n.abits || 4 }, (_, i) => 'A' + i),
+    outs: (n) => Array.from({ length: n.dbits || 8 }, (_, i) => 'D' + i),
+    make: () => ({ abits: 4, dbits: 8, data: [] }),
+    tip: 'Address in, stored value out. Fill it in and you have written a program.',
+    sim: (p, v, put) => {
+      const n = p.node;
+      let addr = 0;
+      for (let i = 0; i < p.ins.length; i++) if (v[p.ins[i]]) addr |= 1 << i;
+      const word = (n.data && n.data[addr]) | 0;
+      for (let i = 0; i < p.outs.length; i++) put(p.outs[i], (word >> i) & 1);
+      p.st.addr = addr;
+    },
+  },
+  RAM: {
+    name: 'RAM', cat: 'seq', group: 'Memory', nick: 'memory the circuit writes',
+    plain: 'Like the ROM, but the circuit can store into it as well as read: hold WRITE high and it takes what is on the D inputs at the next clock edge. This is where a program keeps its workings — and it forgets everything when you clear it.',
+    ins: (n) => Array.from({ length: n.abits || 4 }, (_, i) => 'A' + i)
+      .concat(Array.from({ length: n.dbits || 8 }, (_, i) => 'D' + i))
+      .concat(['WR', '>']),
+    outs: (n) => Array.from({ length: n.dbits || 8 }, (_, i) => 'Q' + i),
+    make: () => ({ abits: 4, dbits: 8, data: [] }),
+    tip: 'Address in, value out — and it stores a new one on the clock edge when WRITE is high.',
+    sim: (p, v, put) => {
+      const n = p.node;
+      const na = n.abits || 4, nd = n.dbits || 8;
+      let addr = 0;
+      for (let i = 0; i < na; i++) if (v[p.ins[i]]) addr |= 1 << i;
+      const wr = v[p.ins[na + nd]], clk = v[p.ins[na + nd + 1]];
+      if (!n.data) n.data = [];
+      if (clk && !p.st.pc && wr) {
+        let word = 0;
+        for (let i = 0; i < nd; i++) if (v[p.ins[na + i]]) word |= 1 << i;
+        n.data[addr] = word;
+      }
+      p.st.pc = clk;
+      p.st.addr = addr;
+      const out = (n.data[addr]) | 0;
+      for (let i = 0; i < p.outs.length; i++) put(p.outs[i], (out >> i) & 1);
+    },
+  },
+
+  /* ---- numbers, rather than one bit at a time ---- */
+  NUMIN: {
+    name: 'NUMBER IN', cat: 'src', group: 'Signals', shape: 'num', nick: 'type a number',
+    plain: 'Type a number here and it comes out as bits — the small end first. Saves lining up eight input pins by hand.',
+    ins: () => [], outs: (n) => Array.from({ length: n.bits || 8 }, (_, i) => String(i)),
+    make: () => ({ bits: 8, value: 0 }), w: 92,
+    tip: 'A number, broken into bits for you.',
+    sim: (p, v, put) => {
+      const val = p.node.value | 0;
+      for (let i = 0; i < p.outs.length; i++) put(p.outs[i], (val >> i) & 1);
+    },
+  },
+  NUM: {
+    name: 'NUMBER OUT', cat: 'disp', group: 'Displays', shape: 'num', nick: 'read a number',
+    plain: 'Reads its inputs as one number and shows it, so you do not have to add up a row of lamps in your head.',
+    ins: (n) => Array.from({ length: n.bits || 8 }, (_, i) => String(i)), outs: () => [],
+    make: () => ({ bits: 8 }), w: 92,
+    tip: 'Shows its inputs as a single number.',
   },
 
   /* ---- routing ---------------------------------------------------------
@@ -1290,6 +1372,26 @@ function drawNode(node, ghost) {
       ctx.font = `10px ${FONT}`; ctx.fillStyle = C.inkFaint;
       ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
       g.ins.forEach((p) => ctx.fillText(p.name, p.x + 7, p.y));
+      break;
+    }
+    case 'num': {
+      drawPorts();
+      body(C.panel2);
+      const bits = node.bits || 8;
+      let val = 0;
+      if (ghost) val = 0;
+      else if (node.type === 'NUMIN') val = node.value | 0;
+      else for (let i = 0; i < bits; i++) val |= valAt(node.id, 'in', i) << i;
+      const isIn = node.type === 'NUMIN';
+      ctx.fillStyle = C.inkFaint; ctx.font = `9.5px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(isIn ? 'number in' : 'number out', g.x + g.w / 2, g.y + 13);
+      ctx.fillStyle = val ? C.hi : C.inkSoft;
+      ctx.font = `700 20px ${MONO}`;
+      ctx.fillText(String(val), g.x + g.w / 2, g.y + g.h / 2 + 3);
+      ctx.fillStyle = C.inkFaint; ctx.font = `10px ${MONO}`;
+      ctx.fillText('0x' + val.toString(16).toUpperCase().padStart(Math.ceil(bits / 4), '0'),
+        g.x + g.w / 2, g.y + g.h - 13);
       break;
     }
     case 'joint': {
@@ -2378,6 +2480,31 @@ function nodeInspector(node) {
         },
       }))));
   }
+  if (node.type === 'NUMIN' || node.type === 'NUM') {
+    sec.append(h('div', { class: 'row' },
+      h('label', {}, 'How many bits'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'number', min: '1', max: '16', value: String(node.bits || 8),
+        onchange: (e) => {
+          pushUndo();
+          node.bits = clamp(parseInt(e.target.value, 10) || 8, 1, 16);
+          S.work.wires = S.work.wires.filter((w) => !(w.b.n === node.id && w.b.i >= (node.bits)));
+          markDirty(); renderInspector();
+        },
+      }))));
+  }
+  if (node.type === 'NUMIN') {
+    sec.append(h('div', { class: 'row' },
+      h('label', {}, 'Value'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'number', min: '0', value: String(node.value | 0),
+        oninput: (e) => {
+          const max = (1 << (node.bits || 8)) - 1;
+          node.value = clamp(parseInt(e.target.value, 10) || 0, 0, max);
+          scheduleSave();
+        },
+      }))));
+  }
   if (node.type === 'CLOCK') {
     sec.append(h('div', { class: 'row' },
       h('label', {}, 'Rate (Hz)'),
@@ -2402,6 +2529,8 @@ function nodeInspector(node) {
   }
   sec.append(h('div', { class: 'stack', style: 'margin-top:8px' },
     h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete part')));
+
+  if (node.type === 'ROM' || node.type === 'RAM') sec.append(memoryEditor(node));
 
   const rec = RECIPES[node.type];
   if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board'));
@@ -2537,6 +2666,94 @@ function contentBoundsOf(nodes) {
     x1 = Math.max(x1, g.x + g.w); y1 = Math.max(y1, g.y + g.h);
   }
   return { x0, y0, x1, y1 };
+}
+
+/* ---- what is stored in a memory ------------------------------------------
+   Typing a list of numbers into a box is, at bottom, what writing a program
+   is. The grid below shows every address at once and lights up the one being
+   read, so you can watch a program being walked through. */
+
+function memoryEditor(node) {
+  const size = 1 << (node.abits || 4);
+  const nd = node.dbits || 8;
+  const digits = Math.ceil(nd / 4);
+  if (!node.data) node.data = [];
+  const hex = (v) => ((v | 0) & ((1 << nd) - 1)).toString(16).toUpperCase().padStart(digits, '0');
+
+  const sec = h('div', { class: 'madeof' }, h('h4', {}, 'What is stored in it'));
+
+  sec.append(h('div', { class: 'row' },
+    h('label', {}, 'Address bits'),
+    h('span', { class: 'ctl' }, h('input', {
+      type: 'number', min: '1', max: '8', value: String(node.abits || 4),
+      onchange: (e) => {
+        pushUndo();
+        node.abits = clamp(parseInt(e.target.value, 10) || 4, 1, 8);
+        S.work.wires = S.work.wires.filter((w) => !(w.b.n === node.id && w.b.i >= portsOf(node).ins.length));
+        markDirty(); renderInspector();
+      },
+    }))));
+  sec.append(h('div', { class: 'row' },
+    h('label', {}, 'Bits per word'),
+    h('span', { class: 'ctl' }, h('input', {
+      type: 'number', min: '1', max: '16', value: String(nd),
+      onchange: (e) => {
+        pushUndo();
+        node.dbits = clamp(parseInt(e.target.value, 10) || 8, 1, 16);
+        markDirty(); renderInspector();
+      },
+    }))));
+
+  /* the live grid */
+  const grid = h('div', { class: 'memgrid' });
+  const cells = [];
+  for (let i = 0; i < size; i++) {
+    const cell = h('span', { class: 'memcell', title: 'address ' + i }, hex(node.data[i]));
+    cells.push(cell);
+    grid.append(cell);
+  }
+  sec.append(grid);
+  // repaint the highlight as the circuit runs, without rebuilding the panel
+  const tick = () => {
+    if (!grid.isConnected) return;
+    const prim = S.compiled && S.compiled.prims.find((p) => p.node === node);
+    const at = prim && prim.st ? prim.st.addr : -1;
+    for (let i = 0; i < cells.length; i++) {
+      const want = hex(node.data[i]);
+      if (cells[i].textContent !== want) cells[i].textContent = want;
+      cells[i].classList.toggle('now', i === at);
+    }
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+
+  const box = h('textarea', {
+    class: 'memtext', spellcheck: 'false', rows: '4',
+    placeholder: 'One value per space or line, in hex — e.g.  01 02 04 08',
+  });
+  box.value = Array.from({ length: size }, (_, i) => hex(node.data[i])).join(' ');
+  sec.append(h('p', { class: 'muted', style: 'margin:8px 0 4px;font-size:12px' },
+    node.type === 'ROM'
+      ? 'Type the contents here, in hex, and press Load. That is the program.'
+      : 'Type starting contents here and press Load. The circuit writes over them as it runs.'));
+  sec.append(box);
+  sec.append(h('div', { class: 'stack', style: 'margin-top:6px' },
+    h('button', {
+      class: 'btn', onclick: () => {
+        pushUndo();
+        const vals = box.value.trim().split(/[\s,]+/).filter(Boolean)
+          .map((t) => parseInt(t, 16) || 0);
+        node.data = Array.from({ length: size }, (_, i) => vals[i] | 0);
+        markDirty(); renderInspector();
+        toast('Loaded ' + size + ' words.');
+      },
+    }, 'Load into memory'),
+    h('button', {
+      class: 'btn danger', onclick: () => {
+        pushUndo(); node.data = []; markDirty(); renderInspector();
+      },
+    }, 'Wipe it')));
+  return sec;
 }
 
 /* ---- truth table -------------------------------------------------------- */
@@ -4791,6 +5008,35 @@ const RECIPES = {
   DFF: { text: 'Six NANDs. Four of them watch for the moment the clock rises, so D is copied on that edge rather than the whole time the clock is high.', make: () => exNandDFF() },
 };
 
+/* A program, running. A counter walks through the ROM one address at a time
+   and whatever is stored there comes out — which is the whole idea a computer
+   is built on, with the instruction decoding left out. */
+function exStoredProgram() {
+  const b = builder('Stored program', CHIP_COLORS[2]);
+  const clk = b.add('CLOCK', 40, 240, { hz: 3 });
+  const ff = [0, 1, 2, 3].map((i) => b.add('DFF', 170 + i * 150, 180));
+  ff.forEach((f, i) => {
+    b.w(f, 1, f, 0);                                   // toggle
+    if (i === 0) b.w(clk, 0, f, 1); else b.w(ff[i - 1], 1, f, 1);
+  });
+  const rom = b.add('ROM', 800, 40, {
+    abits: 4, dbits: 8,
+    data: [1, 2, 4, 8, 16, 32, 64, 128, 64, 32, 16, 8, 4, 2, 1, 0],
+  });
+  ff.forEach((f, i) => b.w(f, 0, rom, i));             // counter drives the address
+  const num = b.add('NUM', 1010, 40, { bits: 8 });
+  const leds = [];
+  for (let i = 0; i < 8; i++) {
+    const led = b.add('LED', 1160, 30 + i * 34, { color: '#ffc247' });
+    b.w(rom, i, led, 0);
+    b.w(rom, i, num, i);
+    leds.push(led);
+  }
+  const out = [0, 1, 2, 3].map((i) => b.out('addr' + i, 640, 420 + i * 60));
+  ff.forEach((f, i) => b.w(f, 0, out[i], 0));
+  return b.def;
+}
+
 const EDITOR_EXAMPLES = [
   { name: 'Half adder', desc: 'Two bits in, a sum and a carry out. The smallest useful circuit there is.', make: () => ({ work: exHalfAdder() }) },
   { name: 'Full adder', desc: 'Adds a carry in as well, so they can be chained.', make: () => ({ work: exFullAdder() }) },
@@ -4800,6 +5046,11 @@ const EDITOR_EXAMPLES = [
   { name: '2:1 multiplexer', desc: 'Pick one of two inputs with a select line.', make: () => ({ work: exMux() }) },
   { name: 'Ring oscillator', desc: 'Three inverters in a loop. Slow the simulation down to watch it ring.', make: () => ({ work: exRing() }) },
   { name: '4-bit counter', desc: 'Toggle flip-flops driven by a clock, counting on a hex display.', make: () => ({ work: exCounter() }) },
+  {
+    name: 'A stored program',
+    desc: 'A counter walks through a ROM and whatever you put in it comes out. Select the ROM and edit its contents — that is programming, with the instruction decoding left out.',
+    make: () => ({ work: exStoredProgram() }),
+  },
 ];
 
 /* ---- breadboard examples ------------------------------------------------ */

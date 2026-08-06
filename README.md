@@ -68,6 +68,14 @@ and every copy of it updates. There is a truth-table generator, undo/redo, and
 export/import to JSON. Built-in examples run from a half adder up to a four-bit
 adder and a counter driving a hex display.
 
+There is **ROM and RAM you can type into**, which is what turns a pile of gates
+into something you can write a program for: put an address in, get your stored
+value out. The panel shows every word at once and lights up the one being read,
+so you can watch a program being walked through. The "stored program" example
+is a counter walking a ROM — the idea a computer is built on, with the
+instruction decoding left out. **Number in** and **number out** parts save
+lining up eight pins by hand.
+
 **Breadboard.** A solderless breadboard wired the way a real one is: five-hole
 columns, four rails, a channel down the middle. Drop real 74-series DIP chips
 with their actual pinouts, plus jumpers, resistors, LEDs, push buttons, DIP

@@ -192,6 +192,88 @@ const TESTS = String.raw`
     ok('4-bit counter counts up in order', uniq.length > 4 && mono, seq.join(','));
   }
 
+  /* 7b. memory you can type a program into */
+  {
+    /* a ROM reads back exactly what was stored, at every address */
+    const b = L.builder('rom test');
+    const a = [0,1,2,3].map(i => b.pin('A'+i, 0, i*70));
+    const rom = b.add('ROM', 250, 0, { abits: 4, dbits: 8,
+      data: [1,2,4,8,16,32,64,128,255,0,170,85,15,240,3,12] });
+    a.forEach((p, i) => b.w(p, 0, rom, i));
+    const outs = [];
+    for (let i = 0; i < 8; i++) { const o = b.out('D'+i, 600, i*70); b.w(rom, i, o, 0); outs.push(o); }
+    const io = L.ioOrder(b.def);
+    const c = L.compile(b.def);
+    let bad = null;
+    for (let addr = 0; addr < 16; addr++) {
+      io.ins.forEach((p, i) => { p.value = (addr >> i) & 1; });
+      const sim = new L.Sim(c);
+      sim.settle(200, 0);
+      let got = 0;
+      io.outs.forEach((p) => {
+        const bit = +p.label.slice(1);
+        got |= sim.val(c.portNet.get(p.id + '.i0')) << bit;
+      });
+      if (got !== rom.data[addr]) bad = 'addr ' + addr + ' gave ' + got + ' not ' + rom.data[addr];
+    }
+    ok('a ROM gives back what you stored at every address', !bad, bad);
+  }
+  {
+    /* a RAM takes a value on the clock edge, but only while WRITE is high */
+    const b = L.builder('ram test');
+    const a0 = b.pin('A0', 0, 0), a1 = b.pin('A1', 0, 60);
+    const d0 = b.pin('D0', 0, 120), d1 = b.pin('D1', 0, 180);
+    const wr = b.pin('WR', 0, 240), ck = b.pin('CK', 0, 300);
+    const ram = b.add('RAM', 300, 0, { abits: 2, dbits: 2, data: [] });
+    b.w(a0,0,ram,0); b.w(a1,0,ram,1); b.w(d0,0,ram,2); b.w(d1,0,ram,3);
+    b.w(wr,0,ram,4); b.w(ck,0,ram,5);
+    const q0 = b.out('Q0', 700, 0), q1 = b.out('Q1', 700, 60);
+    b.w(ram,0,q0,0); b.w(ram,1,q1,0);
+    const c = L.compile(b.def);
+    const sim = new L.Sim(c);
+    const io = L.ioOrder(b.def);
+    const pin = (nm) => io.ins.find(p => p.label === nm);
+    const nets = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+    const readBack = () => (sim.val(nets[0]) | (sim.val(nets[1]) << 1));
+    // store 3 at address 1
+    set({ A0:1, A1:0, D0:1, D1:1, WR:1, CK:0 }); run(20);
+    set({ CK:1 }); run(20);
+    set({ CK:0, WR:0 }); run(20);
+    const stored = readBack();
+    // a clock edge with WRITE low must not change it
+    set({ D0:0, D1:0, CK:1 }); run(20);
+    set({ CK:0 }); run(20);
+    const untouched = readBack();
+    // and a different address is still empty
+    set({ A0:0 }); run(20);
+    const elsewhere = readBack();
+    ok('a RAM stores on the clock edge, and only when told to',
+      stored === 3 && untouched === 3 && elsewhere === 0,
+      [stored, untouched, elsewhere].join(','));
+  }
+  {
+    /* the stored-program example really does walk its ROM */
+    const def = L.examples.EDITOR_EXAMPLES[8].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const rom = def.nodes.find(n => n.type === 'ROM');
+    const prim = c.prims.find(p => p.node === rom);
+    const seen = [];
+    let t = 0;
+    for (let step = 0; step < 40; step++) {
+      t += 200;
+      for (let i = 0; i < 20; i++) sim.tick(t);
+      let word = 0;
+      for (let i = 0; i < 8; i++) word |= sim.val(prim.outs[i]) << i;
+      if (!seen.length || seen[seen.length-1] !== word) seen.push(word);
+    }
+    const inRom = seen.every(w => rom.data.includes(w));
+    ok('the stored-program example walks through its ROM',
+      seen.length > 4 && inRom, seen.join(','));
+  }
+
   /* 8. tunnels join nets with the same name */
   {
     const b = L.builder('tunnel test');
@@ -1575,6 +1657,13 @@ const TESTS = String.raw`
          const A=L.S.work.nodes.find(x=>x.label==='A');
          const w=L.S.work.wires.find(x=>x.a.n===A.id);
          L.S.selWires.clear(); L.S.selWires.add(w.id); L.renderInspector(); return 1;})()`],
+      ['stored-program', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-editor').click();
+         L.S.work=L.examples.EDITOR_EXAMPLES[8].make().work; L.S.dirty=true;
+         const rom=L.S.work.nodes.find(n=>n.type==='ROM');
+         L.S.sel.clear(); L.S.sel.add(rom.id); L.renderInspector(); L.fitView();
+         return 1;})()`],
       ['made-of', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#mode-editor').click();
          L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView();
