@@ -262,6 +262,18 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .ttable .sep{border-left:1px solid var(--line)}
 .tt-wrap{max-height:260px;overflow:auto;border:1px solid var(--line-soft);border-radius:8px}
 .stack{display:flex;flex-direction:column;gap:6px}
+.madeof{margin-top:14px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.madeof h4{margin:0 0 5px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--accent)}
+.madeof p{margin:0 0 8px;line-height:1.45}
+canvas.preview{
+  width:100%;height:140px;display:block;background:var(--panel-2);
+  border:1px solid var(--line);border-radius:9px;cursor:zoom-in;
+}
+canvas.preview:hover{border-color:var(--select)}
+canvas.preview.big{height:min(58vh,470px);cursor:default}
+.madeof .zoomhint{
+  margin:5px 0 0;font-size:11px;color:var(--ink-faint);text-align:center;
+}
 .pinlist{display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:11.5px}
 .pinlist div{display:flex;justify-content:space-between;gap:8px;padding:1px 0}
 .pinlist .n{color:var(--ink-faint)}
@@ -955,7 +967,9 @@ const S = {
 };
 
 const cv = $('#cv');
-const ctx = cv.getContext('2d');
+/* Not const: the inspector's little "what it's made of" diagrams borrow the
+   drawing code by pointing this at their own canvas for one frame. */
+let ctx = cv.getContext('2d');
 const gm = (n) => geom(n, ctx);
 let VW = 0, VH = 0, DPR = 1;
 
@@ -1264,12 +1278,9 @@ function drawNode(node, ghost) {
   ctx.globalAlpha = 1;
 }
 
-function drawEditor() {
-  const c = S.cam;
-  drawGrid();
-  ctx.save();
-  ctx.translate(c.x, c.y); ctx.scale(c.z, c.z);
-
+/** The circuit itself — wires then parts — with the world transform already
+    applied. Split out so the inspector's diagrams can reuse it. */
+function drawWorld() {
   /* wires */
   ctx.lineCap = 'round';
   for (const w of S.work.wires) {
@@ -1301,6 +1312,14 @@ function drawEditor() {
     const g = armedGhost(S.hover.world);
     if (g) drawNode(g, true);
   }
+}
+
+function drawEditor() {
+  const c = S.cam;
+  drawGrid();
+  ctx.save();
+  ctx.translate(c.x, c.y); ctx.scale(c.z, c.z);
+  drawWorld();
   ctx.restore();
 
   drawDeleteHandle();
@@ -2011,6 +2030,7 @@ function renderPalette() {
 
 function renderInspector() {
   const host = $('#inspector');
+  if (previewObs) previewObs.disconnect();       // the old preview canvases are about to go
   host.innerHTML = '';
   if (S.mode === 'board') { renderBoardInspector(host); return; }
 
@@ -2124,7 +2144,141 @@ function nodeInspector(node) {
   }
   sec.append(h('div', { class: 'stack', style: 'margin-top:8px' },
     h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete part')));
+
+  const rec = RECIPES[node.type];
+  if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board'));
+  else if (node.type === 'CHIP' && part && part.nodes.length) {
+    sec.append(madeOfBlock(`What you drew inside “${part.name}”.`, () => clone(part), 'Copy it onto the board'));
+  }
   return sec;
+}
+
+/* ---- "what it's made of" ------------------------------------------------
+   The diagram is the real circuit, drawn with the same code as the board and
+   simulated for a moment first, so the wires show their actual levels. */
+
+/* One observer for all preview canvases: it fires when a canvas first gets a
+   size, which covers the panel being laid out and the drawer being opened on a
+   phone. renderInspector disconnects it before rebuilding. */
+const previewObs = window.ResizeObserver
+  ? new ResizeObserver((entries) => {
+    for (const e of entries) if (e.target._def) drawDefInto(e.target, e.target._def);
+  })
+  : null;
+
+function madeOfBlock(text, makeDef, buttonLabel) {
+  const canvas = h('canvas', {
+    class: 'preview', title: 'Click to see it bigger',
+    onclick: () => openDiagram(text, makeDef, buttonLabel),
+  });
+  canvas._def = makeDef();
+  if (previewObs) previewObs.observe(canvas);
+  else requestAnimationFrame(() => drawDefInto(canvas, canvas._def));
+  return h('div', { class: 'madeof' },
+    h('h4', {}, 'What it’s made of'),
+    h('p', { class: 'muted' }, text),
+    canvas,
+    h('p', { class: 'zoomhint' }, 'Click the picture to see it bigger'),
+    h('button', {
+      class: 'btn', style: 'margin-top:5px;width:100%',
+      onclick: () => insertDef(makeDef()),
+    }, buttonLabel));
+}
+
+/** The same diagram at a size you can actually read. */
+function openDiagram(text, makeDef, buttonLabel) {
+  const def = makeDef();
+  const canvas = h('canvas', { class: 'preview big' });
+  openModal('What it’s made of',
+    h('div', {}, h('p', { class: 'muted', style: 'margin:0 0 10px' }, text), canvas),
+    h('div', {},
+      h('button', { class: 'btn', onclick: closeModal }, 'Close'),
+      h('button', {
+        class: 'btn primary', style: 'margin-left:8px',
+        onclick: () => { closeModal(); insertDef(makeDef()); },
+      }, buttonLabel)),
+    true);
+  requestAnimationFrame(() => drawDefInto(canvas, def, 1.6));
+}
+
+/** Render a def into a canvas by lending the drawing code our state. */
+function drawDefInto(canvas, def, maxZoom) {
+  const r = canvas.getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  canvas.width = Math.round(r.width * dpr);
+  canvas.height = Math.round(r.height * dpr);
+
+  const keep = {
+    ctx, work: S.work, compiled: S.compiled, sim: S.sim, sel: S.sel,
+    selWires: S.selWires, hover: S.hover, cam: S.cam, armed: S.armed, mode: S.mode,
+  };
+  try {
+    ctx = canvas.getContext('2d');
+    S.work = def; S.mode = 'editor';
+    S.sel = new Set(); S.selWires = new Set(); S.hover = null; S.armed = null;
+    S.compiled = compile(def);
+    S.sim = new Sim(S.compiled);
+    S.sim.settle(120, 0);
+
+    const b = contentBounds();
+    if (!b) return;
+    const pad = 16;
+    const z = clamp(Math.min((r.width - pad * 2) / Math.max(1, b.x1 - b.x0),
+      (r.height - pad * 2) / Math.max(1, b.y1 - b.y0)), 0.08, maxZoom || 0.9);
+    S.cam = { x: r.width / 2 - ((b.x0 + b.x1) / 2) * z, y: r.height / 2 - ((b.y0 + b.y1) / 2) * z, z };
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, r.width, r.height);
+    ctx.save();
+    ctx.translate(S.cam.x, S.cam.y); ctx.scale(z, z);
+    drawWorld();
+    ctx.restore();
+  } finally {
+    ctx = keep.ctx; S.work = keep.work; S.compiled = keep.compiled; S.sim = keep.sim;
+    S.sel = keep.sel; S.selWires = keep.selWires; S.hover = keep.hover;
+    S.cam = keep.cam; S.armed = keep.armed; S.mode = keep.mode;
+  }
+}
+
+/** Drop a copy of a def onto the board, below whatever is already there. */
+function insertDef(def) {
+  pushUndo();
+  const b = contentBounds();
+  const ox = b ? b.x0 : 60, oy = b ? b.y1 + 70 : 60;
+  const map = new Map(), added = [];
+  for (const n of def.nodes) {
+    const c = clone(n);
+    c.id = uid(); c.x = snap(c.x + ox); c.y = snap(c.y + oy);
+    map.set(n.id, c.id); added.push(c);
+  }
+  S.work.nodes.push(...added);
+  for (const w of def.wires) {
+    if (!map.has(w.a.n) || !map.has(w.b.n)) continue;
+    S.work.wires.push({
+      id: uid(),
+      a: { n: map.get(w.a.n), s: w.a.s, i: w.a.i },
+      b: { n: map.get(w.b.n), s: w.b.s, i: w.b.i },
+    });
+  }
+  select(added.map((n) => n.id));
+  const nb = contentBoundsOf(added);
+  if (nb) {
+    S.cam.x = VW / 2 - ((nb.x0 + nb.x1) / 2) * S.cam.z;
+    S.cam.y = VH / 2 - ((nb.y0 + nb.y1) / 2) * S.cam.z;
+  }
+  toast('Added below your circuit — take it apart and see.');
+}
+
+function contentBoundsOf(nodes) {
+  if (!nodes.length) return null;
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const n of nodes) {
+    const g = gm(n);
+    x0 = Math.min(x0, g.x); y0 = Math.min(y0, g.y);
+    x1 = Math.max(x1, g.x + g.w); y1 = Math.max(y1, g.y + g.h);
+  }
+  return { x0, y0, x1, y1 };
 }
 
 /* ---- truth table -------------------------------------------------------- */
@@ -3755,6 +3909,107 @@ function exAdder4() {
   return { work: b.def, chips: [half, full] };
 }
 
+/* ---- what each part is made of ------------------------------------------
+   Every one of these is a real, working circuit — the inspector draws it and
+   can drop a copy on your board to take apart. A NAND is the odd one out: it
+   is where the simulator stops, and every other gate here can be built from
+   NANDs alone, which is why a bag of 7400s will get you anywhere. */
+
+function recNOT() {
+  const b = builder('NOT from a NAND');
+  const a = b.pin('in', 0, 50), g = b.add('NAND', 130, 34), o = b.out('out', 270, 50);
+  b.w(a, 0, g, 0); b.w(a, 0, g, 1); b.w(g, 0, o, 0);
+  return b.def;
+}
+function recAND() {
+  const b = builder('AND from NANDs');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 90);
+  const n1 = b.add('NAND', 130, 34), n2 = b.add('NAND', 270, 34);
+  const o = b.out('out', 410, 50);
+  b.w(x, 0, n1, 0); b.w(y, 0, n1, 1);
+  b.w(n1, 0, n2, 0); b.w(n1, 0, n2, 1); b.w(n2, 0, o, 0);
+  return b.def;
+}
+function recOR() {
+  const b = builder('OR from NANDs');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 150);
+  const i1 = b.add('NAND', 130, 10), i2 = b.add('NAND', 130, 140);
+  const n = b.add('NAND', 280, 74), o = b.out('out', 420, 90);
+  b.w(x, 0, i1, 0); b.w(x, 0, i1, 1);
+  b.w(y, 0, i2, 0); b.w(y, 0, i2, 1);
+  b.w(i1, 0, n, 0); b.w(i2, 0, n, 1); b.w(n, 0, o, 0);
+  return b.def;
+}
+function recNAND() {
+  const b = builder('NAND from an AND and a NOT');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 90);
+  const a = b.add('AND', 130, 34), n = b.add('NOT', 270, 42);
+  const o = b.out('out', 400, 50);
+  b.w(x, 0, a, 0); b.w(y, 0, a, 1); b.w(a, 0, n, 0); b.w(n, 0, o, 0);
+  return b.def;
+}
+function recNOR() {
+  const b = builder('NOR from an OR and a NOT');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 90);
+  const a = b.add('OR', 130, 34), n = b.add('NOT', 270, 42);
+  const o = b.out('out', 400, 50);
+  b.w(x, 0, a, 0); b.w(y, 0, a, 1); b.w(a, 0, n, 0); b.w(n, 0, o, 0);
+  return b.def;
+}
+function recXOR() {
+  const b = builder('XOR from everyday gates');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 190);
+  const or = b.add('OR', 150, 34), an = b.add('AND', 150, 170);
+  const nt = b.add('NOT', 290, 178), out = b.add('AND', 410, 100);
+  const o = b.out('out', 550, 116);
+  b.w(x, 0, or, 0); b.w(y, 0, or, 1);
+  b.w(x, 0, an, 0); b.w(y, 0, an, 1);
+  b.w(an, 0, nt, 0);
+  b.w(or, 0, out, 0); b.w(nt, 0, out, 1); b.w(out, 0, o, 0);
+  return b.def;
+}
+function recXNOR() {
+  const b = builder('XNOR from an XOR and a NOT');
+  const x = b.pin('A', 0, 20), y = b.pin('B', 0, 90);
+  const a = b.add('XOR', 130, 34), n = b.add('NOT', 270, 42);
+  const o = b.out('out', 400, 50);
+  b.w(x, 0, a, 0); b.w(y, 0, a, 1); b.w(a, 0, n, 0); b.w(n, 0, o, 0);
+  return b.def;
+}
+function recBUF() {
+  const b = builder('Buffer from two NOTs');
+  const a = b.pin('in', 0, 40), n1 = b.add('NOT', 120, 32), n2 = b.add('NOT', 250, 32);
+  const o = b.out('out', 380, 40);
+  b.w(a, 0, n1, 0); b.w(n1, 0, n2, 0); b.w(n2, 0, o, 0);
+  return b.def;
+}
+function recDLATCH() {
+  const b = builder('D latch from four NANDs');
+  const d = b.pin('D', 0, 20), e = b.pin('E', 0, 170);
+  const nA = b.add('NAND', 150, 30), nB = b.add('NAND', 150, 150);
+  const nQ = b.add('NAND', 320, 20), nQb = b.add('NAND', 320, 160);
+  const q = b.out('Q', 470, 36), qb = b.out('Q̄', 470, 176);
+  b.w(d, 0, nA, 0); b.w(e, 0, nA, 1);
+  b.w(nA, 0, nB, 0); b.w(e, 0, nB, 1);
+  b.w(nA, 0, nQ, 0); b.w(nQb, 0, nQ, 1);
+  b.w(nB, 0, nQb, 1); b.w(nQ, 0, nQb, 0);
+  b.w(nQ, 0, q, 0); b.w(nQb, 0, qb, 0);
+  return b.def;
+}
+
+const RECIPES = {
+  NOT: { text: 'Join a NAND’s two inputs together and it simply flips whatever you feed it.', make: recNOT },
+  AND: { text: 'A NAND answers “not both”. Flip that answer back and you have “both” — so an AND is a NAND followed by a NOT (which is itself a NAND).', make: recAND },
+  OR: { text: 'Flip both inputs first, then NAND them. If neither input is off, at least one must be on.', make: recOR },
+  NAND: { text: 'An AND with its answer flipped. This is where the simulator stops — and it is the one gate you need, because everything else on this list is built from it.', make: recNAND },
+  NOR: { text: 'An OR with its answer flipped. Like NAND, a NOR on its own is enough to build anything.', make: recNOR },
+  XOR: { text: 'On when the two inputs differ: at least one is on (OR), but not both of them (NOT after an AND). AND those two answers together.', make: recXOR },
+  XNOR: { text: 'An XOR with its answer flipped, so it is on when the two inputs match.', make: recXNOR },
+  BUF: { text: 'Two NOTs back to back. Flipping twice gets you the bit you started with — the point is the delay, not the answer.', make: recBUF },
+  DLATCH: { text: 'The two NANDs on the right feed each other, and that loop is what holds the bit. The two on the left let the enable line decide when D is allowed through.', make: recDLATCH },
+  DFF: { text: 'Six NANDs. Four of them watch for the moment the clock rises, so D is copied on that edge rather than the whole time the clock is high.', make: () => exNandDFF() },
+};
+
 const EDITOR_EXAMPLES = [
   { name: 'Half adder', desc: 'Two bits in, a sum and a carry out. The smallest useful circuit there is.', make: () => ({ work: exHalfAdder() }) },
   { name: 'Full adder', desc: 'Adds a carry in as well, so they can be chained.', make: () => ({ work: exFullAdder() }) },
@@ -3943,6 +4198,17 @@ function openHelp() {
   <li>Editing a chip updates every copy of it already in use.</li>
 </ul>
 
+<h4>Seeing inside a part</h4>
+<p>Click any gate, latch or flip-flop and the panel on the right shows <b>what it is
+made of</b> — the same job done with simpler gates. Click the picture to see it full
+size, or press <b>Build it on the board</b> to drop a working copy next to your circuit
+and take it apart. Every one of those diagrams is a real circuit, not an illustration.</p>
+<p>A <b>NAND</b> is where it stops: that one is built into the simulator, and every other
+gate here can be made from NANDs alone. That is why a bag of 7400s can build anything —
+and why the breadboard has so many of them.</p>
+<p>The same panel works on your own chips, so you can look inside something you built
+last week without opening it for editing.</p>
+
 <h4>Breadboard</h4>
 <ul>
   <li>The copper is real: five holes in a column are one strip, the four rails run the
@@ -4107,8 +4373,8 @@ window.LogicLab = {
   S, PARTS, ICS, MODULES, BB,
   compile, Sim, compileBoard, BoardSim, computeTruthTable,
   newDef, makeNode, ioOrder, builder, tieKey, partHoles,
-  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle,
-  examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES },
+  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector,
+  examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES }, RECIPES,
   get lib() { return LIB; },
 };
 

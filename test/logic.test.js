@@ -218,6 +218,71 @@ const TESTS = String.raw`
     ok('conflicting drivers flagged', sim.clash[c.portNet.get(o.id + '.i0')] === 1);
   }
 
+  /* 9b. every "what it's made of" recipe must really behave like the part it
+         claims to explain — a wrong one would teach the wrong thing */
+  {
+    const sig = (def) => {
+      const t = L.computeTruthTable(def);
+      return t.error ? 'ERR:' + t.error : t.rows.map(r => r.in.join('') + '>' + r.out.join('')).join(' ');
+    };
+    const reference = (type, n) => {
+      const b = L.builder('ref');
+      const pins = [];
+      for (let i = 0; i < n; i++) pins.push(b.pin(String.fromCharCode(65 + i), 0, i * 100));
+      const g = b.add(type, 200, 0), o = b.out('out', 420, 0);
+      pins.forEach((p, i) => b.w(p, 0, g, i));
+      b.w(g, 0, o, 0);
+      return b.def;
+    };
+    for (const [type, n] of [['NOT', 1], ['BUF', 1], ['AND', 2], ['OR', 2],
+    ['NAND', 2], ['NOR', 2], ['XOR', 2], ['XNOR', 2]]) {
+      const rec = L.RECIPES[type];
+      const got = sig(rec.make()), want = sig(reference(type, n));
+      ok('the ' + type + ' recipe behaves like a real ' + type, got === want, got + '  vs  ' + want);
+    }
+
+    /* the two with memory need a sequence rather than a table */
+    const trace = (def, names, steps) => {
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pins = names.map(nm => io.ins.find(p => p.label === nm));
+      const net = c.portNet.get(io.outs[0].id + '.i0');
+      let s = '';
+      for (const step of steps) {
+        pins.forEach((p, i) => { p.value = step[i]; });
+        for (let k = 0; k < 60; k++) sim.tick(0);
+        s += sim.val(net);
+      }
+      return s;
+    };
+    const latchRef = (() => {
+      const b = L.builder('ref latch');
+      const d = b.pin('D', 0, 0), e = b.pin('E', 0, 100);
+      const g = b.add('DLATCH', 200, 0), q = b.out('Q', 420, 0);
+      b.w(d, 0, g, 0); b.w(e, 0, g, 1); b.w(g, 0, q, 0);
+      return b.def;
+    })();
+    const latchSteps = [[1, 1], [1, 0], [0, 0], [0, 1], [1, 0], [1, 1]];
+    const gotL = trace(L.RECIPES.DLATCH.make(), ['D', 'E'], latchSteps);
+    const wantL = trace(latchRef, ['D', 'E'], latchSteps);
+    ok('the D latch recipe follows D while enabled and holds after',
+      gotL === wantL && gotL === '111001', gotL + ' vs ' + wantL);
+
+    const ffRef = (() => {
+      const b = L.builder('ref ff');
+      const d = b.pin('D', 0, 0), c2 = b.pin('CLK', 0, 100);
+      const g = b.add('DFF', 200, 0), q = b.out('Q', 420, 0);
+      b.w(d, 0, g, 0); b.w(c2, 0, g, 1); b.w(g, 0, q, 0);
+      return b.def;
+    })();
+    const ffSteps = [[1, 0], [1, 1], [0, 1], [0, 0], [1, 0], [0, 0], [0, 1], [1, 1]];
+    const gotF = trace(L.RECIPES.DFF.make(), ['D', 'CLK'], ffSteps);
+    const wantF = trace(ffRef, ['D', 'CLK'], ffSteps);
+    ok('the D flip-flop recipe copies D only on the clock edge',
+      gotF === wantF && gotF === '01111100', gotF + ' vs ' + wantF);
+  }
+
   /* ---------- breadboard ---------- */
   const boardRun = (board, ticks) => {
     const c = L.compileBoard(board);
@@ -683,6 +748,61 @@ const TESTS = String.raw`
     await wait(250);
     report('and undo brings the circuit back', (await ev(`LogicLab.S.work.nodes.length`)) === 6);
 
+    /* ---- "what it's made of" panel ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
+    await wait(200);
+    const xorSel = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await clickAt(xorSel.x, xorSel.y);
+    await wait(400);
+    const panel = await ev(`(()=>{const b=document.querySelector('#inspector .madeof');
+      if(!b) return 'missing';
+      const cv2=b.querySelector('canvas.preview');
+      return (b.textContent.includes('What it') ? 'titled' : 'untitled')
+        + '|' + (cv2 && cv2.width > 100 ? 'sized' : 'blank');})()`);
+    report('selecting a gate explains what it is made of', panel === 'titled|sized', panel);
+
+    /* the diagram must actually have been painted, not left empty */
+    const painted = await ev(`(()=>{const c=document.querySelector('#inspector canvas.preview');
+      const g=c.getContext('2d'); const d=g.getImageData(0,0,c.width,c.height).data;
+      let first=null, varied=false;
+      for(let i=0;i<d.length;i+=4){ const k=d[i]+','+d[i+1]+','+d[i+2];
+        if(first===null) first=k; else if(k!==first){ varied=true; break; } }
+      return varied;})()`);
+    report('the diagram is actually drawn', painted === true, painted);
+
+    /* clicking the thumbnail opens a readable version */
+    await ev(`document.querySelector('#inspector canvas.preview').click()`);
+    await wait(400);
+    const big = await ev(`(()=>{const c=document.querySelector('#modal canvas.preview.big');
+      if(!c) return 'no dialog';
+      const g=c.getContext('2d'); const d=g.getImageData(0,0,c.width,c.height).data;
+      let first=null, varied=false;
+      for(let i=0;i<d.length;i+=4){ const k=d[i]+','+d[i+1]+','+d[i+2];
+        if(first===null) first=k; else if(k!==first){ varied=true; break; } }
+      return (c.width>400?'wide':'narrow') + '|' + varied;})()`);
+    report('clicking the diagram opens a readable copy', big === 'wide|true', big);
+    await clickSel('#modal header .btn');
+    await wait(250);
+
+    const beforeBuild = await ev(`LogicLab.S.work.nodes.length`);
+    await ev(`(()=>{const b=[...document.querySelectorAll('#inspector .madeof button')][0];
+      b.click(); return 1;})()`);
+    await wait(300);
+    const afterBuild = await ev(`LogicLab.S.work.nodes.length`);
+    report('"build it on the board" drops the recipe in',
+      afterBuild === beforeBuild + 7, beforeBuild + ' -> ' + afterBuild);
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and that is one undo step', (await ev(`LogicLab.S.work.nodes.length`)) === beforeBuild);
+
+    /* the main canvas must still be intact after lending itself to a preview */
+    const mainOK = await ev(`(()=>{const L=LogicLab;
+      return L.S.work.nodes.length + '|' + (L.S.mode==='editor') + '|' + (L.S.sim!=null);})()`);
+    report('borrowing the renderer leaves the board unharmed', mainOK === beforeBuild + '|true|true', mainOK);
+
     /* ---- delete shortcuts ---- */
     const partCount = () => ev(`LogicLab.S.work.nodes.length`);
     const firstGate = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
@@ -857,6 +977,12 @@ const TESTS = String.raw`
          b.w(one,0,hex,1); b.w(one,0,hex,3);
          const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['made-of', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView();
+         const n=L.S.work.nodes.find(x=>x.type==='DFF');
+         L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector(); return 1;})()`],
+      ['made-of-big', `(()=>{document.querySelector('#inspector canvas.preview').click(); return 1;})()`],
       ['delete-handle', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#mode-editor').click();
          L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work; L.S.dirty=true;
