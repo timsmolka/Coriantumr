@@ -459,6 +459,130 @@ const TESTS = String.raw`
       gotF === wantF && gotF === '01111100', gotF + ' vs ' + wantF);
   }
 
+  /* 9b. taking a whole circuit apart a layer at a time. The claim the button
+         makes is that the picture is still the same circuit, so the tests are
+         about behaviour, not about part counts. */
+  {
+    const types = (def) => {
+      const k = {};
+      for (const n of def.nodes) if (n.type !== 'IN' && n.type !== 'OUT') k[n.type] = (k[n.type] || 0) + 1;
+      return k;
+    };
+
+    /* a 4 x 2 RAM, broken down, must still be a 4 x 2 RAM */
+    {
+      const flat = L.expandOnce(L.ramArray(2, 2));
+      const io = L.ioOrder(flat);
+      const c = L.compile(flat);
+      ok('the broken-down RAM still wires up cleanly', c.errors.length === 0, JSON.stringify(c.errors));
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const read = () => sim.val(qNet[0]) | (sim.val(qNet[1]) << 1);
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(120);
+        set({ CLK: 1 }); run(120); set({ CLK: 0, WRITE: 0 }); run(120);
+      };
+      store(0, 3); store(1, 1); store(2, 2); store(3, 0);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(120); back.push(read()); }
+      ok('a RAM broken down into NANDs still stores four separate words',
+        back.join(',') === '3,1,2,0', back.join(','));
+      store(1, 3);
+      const after = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(120); after.push(read()); }
+      ok('the broken-down RAM keeps the words it was not asked to change',
+        after.join(',') === '3,3,2,0', after.join(','));
+      const k = types(flat);
+      ok('one press turns the whole RAM into nothing but NANDs',
+        Object.keys(k).join(',') === 'NAND' && !L.anySimpler(flat), JSON.stringify(k));
+      ok('and it is bigger than what it replaced, as it should be',
+        k.NAND > L.ramArray(2, 2).nodes.length, k.NAND + ' NANDs');
+    }
+
+    /* pressing it repeatedly has to stop, and stop at NANDs */
+    {
+      const seed = L.builder('a bit of everything');
+      const sa = seed.pin('A', 0, 0), sb = seed.pin('B', 0, 100), sc = seed.pin('CLK', 0, 200);
+      const sx = seed.add('XNOR', 200, 0), sn = seed.add('NOT', 380, 0);
+      const sf = seed.add('DFF', 540, 0), so = seed.add('OR', 720, 0, { n: 3 });
+      const sq = seed.out('Q', 900, 0);
+      seed.w(sa, 0, sx, 0); seed.w(sb, 0, sx, 1); seed.w(sx, 0, sn, 0);
+      seed.w(sn, 0, sf, 0); seed.w(sc, 0, sf, 1);
+      seed.w(sf, 0, so, 0); seed.w(sf, 1, so, 1); seed.w(sa, 0, so, 2);
+      seed.w(so, 0, sq, 0);
+      let def = seed.def;
+      let rounds = 0, sizes = [def.nodes.length];
+      while (rounds < 12) {
+        const next = L.expandOnce(def);
+        if (!next) break;
+        def = next; rounds++; sizes.push(def.nodes.length);
+      }
+      ok('breaking a circuit down keeps going until there is nothing left to break',
+        rounds > 0 && rounds < 12 && !L.anySimpler(def), rounds + ' rounds: ' + sizes.join(' → '));
+      ok('what it bottoms out at is NANDs and nothing else',
+        Object.keys(types(def)).join(',') === 'NAND', JSON.stringify(types(def)));
+      ok('every round is bigger than the last', sizes.every((n, i) => !i || n > sizes[i - 1]), sizes.join(','));
+    }
+
+    /* the adder still adds after it has been taken apart */
+    {
+      const b = L.builder('one bit of adding');
+      const A = b.pin('A', 0, 0), B = b.pin('B', 0, 100), Ci = b.pin('Cin', 0, 200);
+      const x1 = b.add('XOR', 200, 0), x2 = b.add('XOR', 380, 60);
+      const a1 = b.add('AND', 200, 200), a2 = b.add('AND', 380, 260);
+      const or = b.add('OR', 560, 240);
+      const S = b.out('S', 740, 60), Co = b.out('C', 740, 250);
+      b.w(A, 0, x1, 0); b.w(B, 0, x1, 1);
+      b.w(x1, 0, x2, 0); b.w(Ci, 0, x2, 1); b.w(x2, 0, S, 0);
+      b.w(A, 0, a1, 0); b.w(B, 0, a1, 1);
+      b.w(x1, 0, a2, 0); b.w(Ci, 0, a2, 1);
+      b.w(a1, 0, or, 0); b.w(a2, 0, or, 1); b.w(or, 0, Co, 0);
+      const row = (def) => L.computeTruthTable(def).rows
+        .map(r => r.in.join('') + '=' + r.out.join('')).join(' ');
+      const want = row(b.def);
+      let def = b.def, depth = 0, same = true;
+      for (;;) {
+        const next = L.expandOnce(def);
+        if (!next) break;
+        def = next; depth++;
+        if (row(def) !== want) { same = false; break; }
+      }
+      ok('a full adder adds the same at every level it is broken down to',
+        same && depth === 2, depth + ' levels, ' + want);
+    }
+
+    /* the floor, and the things it must not touch */
+    {
+      const b = L.builder('all NANDs already');
+      const x = b.pin('A', 0, 0), y = b.pin('B', 0, 100);
+      const g = b.add('NAND', 200, 0), o = b.out('out', 400, 0);
+      b.w(x, 0, g, 0); b.w(y, 0, g, 1); b.w(g, 0, o, 0);
+      ok('a circuit that is already NANDs cannot be broken down further',
+        L.expandOnce(b.def) === null && !L.anySimpler(b.def));
+
+      const w = L.builder('wide XOR');
+      const p = [0, 1, 2].map(i => w.pin('P' + i, 0, i * 100));
+      const gx = w.add('XOR', 200, 0, { n: 3 }), oo = w.out('out', 400, 0);
+      p.forEach((q, i) => w.w(q, 0, gx, i)); w.w(gx, 0, oo, 0);
+      ok('a three-input XOR is left alone rather than silently losing an input',
+        L.expandOnce(w.def) === null && !L.anySimpler(w.def));
+    }
+
+    /* the census has to add up to the total the caption quotes, pins included */
+    {
+      const flat = L.expandOnce(L.ramArray(2, 1));
+      const line = L.partsCensus(flat);
+      const sum = [...line.matchAll(/(\d+) ×/g)].reduce((t, m) => t + +m[1], 0);
+      ok('the census adds up to the number of parts it is describing',
+        sum === flat.nodes.length && /^\d+ × NAND/.test(line),
+        line + ' vs ' + flat.nodes.length + ' parts');
+    }
+  }
+
   /* ---------- breadboard ---------- */
   const boardRun = (board, ticks) => {
     const c = L.compileBoard(board);
@@ -1593,6 +1717,37 @@ const TESTS = String.raw`
     await ev(`document.querySelector('.diagtrail button').click()`);
     await wait(350);
     report('the trail jumps back to the top in one click', (await depth()) === 1, await depth());
+
+    /* the other direction: instead of going into one part, break the whole
+       picture down at once, over and over, until it is all NANDs */
+    const simpler = () => ev(`(()=>{const b=[...document.querySelectorAll('#modal footer .btn')]
+      .find(x=>x.textContent.includes('Simpler')); if(!b) return 'gone'; b.click(); return 'ok';})()`);
+    const census = () => ev(`(()=>{const L=LogicLab; const k={};
+      for(const n of L.__diagDef.nodes) if(n.type!=='IN'&&n.type!=='OUT') k[n.type]=(k[n.type]||0)+1;
+      return Object.keys(k).sort().join('+') + '|' + L.__diagDef.nodes.length;})()`);
+    const wasMadeOf = await census();
+    await simpler();
+    await wait(400);
+    const nowMadeOf = await census();
+    report('the whole RAM breaks down into NANDs in one press',
+      (await depth()) === 2 && /^NAND\|/.test(nowMadeOf)
+      && +nowMadeOf.split('|')[1] > +wasMadeOf.split('|')[1], wasMadeOf + ' → ' + nowMadeOf);
+    const label = await ev(`(()=>{const b=[...document.querySelectorAll('#modal footer .btn')]
+      .find(x=>/Simpler|All NANDs/.test(x.textContent)); return b.textContent+'|'+b.disabled;})()`);
+    report('and the button then says there is nowhere further to go',
+      label === 'All NANDs|true', label);
+    const trailTitle = await ev(`LogicLab.__diagTrail()[1].title`);
+    report('the trail counts what you are now looking at', /^simpler · \d+ parts$/.test(trailTitle), trailTitle);
+    /* having just been told a NAND is the floor, the NANDs must not be doors
+       back up into "an AND and a NOT" */
+    const floor = await ev(`(()=>{const L=LogicLab;
+      return L.__diagDef.nodes.filter(n=>n.type==='NAND').some(n=>L.__descendable(n))
+        + '|' + document.querySelector('#modal .zoomhint').textContent;})()`);
+    report('after breaking it all down, nothing on screen claims to go further',
+      /^false\|Nothing here goes any simpler/.test(floor), floor);
+    await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
+    await wait(350);
+    report('backing out of a breakdown returns to the whole part', (await depth()) === 1, await depth());
     await clickSel('#modal header .btn');
     await wait(250);
 
@@ -1848,6 +2003,21 @@ const TESTS = String.raw`
              c.dispatchEvent(new MouseEvent('click',{bubbles:true,
                clientX:rect.left+(g.x+g.w/2)*cam.z+cam.x,
                clientY:rect.top+(g.y+g.h/2)*cam.z+cam.y}));
+           }, 300);
+         }, 200);
+         return 1;})()`],
+      ['simpler-whole-ram', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('simpler'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const s=[...document.querySelectorAll('#modal footer .btn')]
+               .find(z=>z.textContent.includes('Simpler'));
+             if(s) s.click();
            }, 300);
          }, 200);
          return 1;})()`],

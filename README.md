@@ -84,6 +84,15 @@ is what stops the obvious circle — an AND is made of NANDs, and a NAND is an A
 with the answer flipped. It bottoms out at the NAND; below that are transistors,
 and those live on the breadboard.
 
+**Simpler ↓** does the same thing to the whole picture at once instead of to one
+part of it. Every part that has a simpler form is swapped for that form, wired
+into the same place, and the caption says what you now have: a 4 × 2 RAM is 40
+parts, and one press turns it into 100 NAND gates. Press it again where anything
+is left — a full adder takes two, because its XORs become ORs and ANDs and NOTs
+first — until there is nothing left that goes any simpler. It is the same circuit
+at every level, which is a claim the tests check by running the truth table and
+the store-and-read-back at each step rather than by counting gates.
+
 **Breadboard.** A solderless breadboard wired the way a real one is: five-hole
 columns, four rails, a channel down the middle. Drop real 74-series DIP chips
 with their actual pinouts, plus jumpers, resistors, LEDs, push buttons, DIP

@@ -303,7 +303,10 @@ canvas.preview{
   border:1px solid var(--line);border-radius:9px;cursor:zoom-in;
 }
 canvas.preview:hover{border-color:var(--select)}
-canvas.preview.big{height:min(58vh,470px);cursor:default}
+/* short enough that the caption, the picture and the line under it all fit
+   between the sticky header and footer, even when the caption runs to two
+   lines */
+canvas.preview.big{height:min(54vh,470px);cursor:default}
 .diagtrail{
   margin:0 0 8px;font-size:12px;color:var(--ink-faint);
 }
@@ -2611,6 +2614,134 @@ function madeOfBlock(text, makeDef, buttonLabel, title, forType) {
    circle — an AND is made of NANDs, and a NAND is an AND with the answer
    flipped — from going round for ever. */
 
+/* ---- taking a whole circuit apart, a layer at a time ---------------------
+   Not "look inside this one part" but "replace every part with what it is made
+   of, and show me the result". Do it repeatedly and a memory becomes a field of
+   NAND gates, which is what it honestly is. */
+
+/** An AND of any width: a NAND, then that NAND's answer flipped. */
+function gateFromNands(kind, n) {
+  const b = builder(kind + ' from NANDs');
+  const pins = [];
+  for (let i = 0; i < n; i++) pins.push(b.pin('A' + i, 0, i * 90));
+  const invert = kind === 'OR' || kind === 'NOR';
+  const feed = pins.map((p, i) => {
+    if (!invert) return p;
+    const g = b.add('NAND', 180, i * 90, { n: 2 });
+    b.w(p, 0, g, 0); b.w(p, 0, g, 1);
+    return g;
+  });
+  const mid = b.add('NAND', 380, (n - 1) * 45, { n: Math.max(2, n) });
+  feed.forEach((f, i) => b.w(f, 0, mid, i));
+  if (n === 1) b.w(feed[0], 0, mid, 1);
+  let last = mid;
+  if (kind === 'AND' || kind === 'NOR') {            // NAND -> AND, OR -> NOR
+    last = b.add('NAND', 550, (n - 1) * 45, { n: 2 });
+    b.w(mid, 0, last, 0); b.w(mid, 0, last, 1);
+  }
+  const o = b.out('out', 720, (n - 1) * 45 + 8);
+  b.w(last, 0, o, 0);
+  return { def: b.def, ins: pins.map((p) => p.label), outs: ['out'] };
+}
+
+/* Which recipe stands in for a part when the whole circuit is broken down, and
+   which of its pins line up with which of the part's ports — by name, because
+   a recipe's pins are not always in the same order as the part's. NAND is
+   missing on purpose: it is the floor. A builder that returns null means "leave
+   this one alone", which is how a three-input XOR stays put: the recipe for it
+   only knows two. */
+const EXPANSIONS = {
+  NOT: () => ({ def: recNOT(), ins: ['in'], outs: ['out'] }),
+  BUF: () => ({ def: recBUF(), ins: ['in'], outs: ['out'] }),
+  XOR: (node) => ((node.n || 2) === 2 ? { def: recXOR(), ins: ['A', 'B'], outs: ['out'] } : null),
+  XNOR: (node) => ((node.n || 2) === 2 ? { def: recXNOR(), ins: ['A', 'B'], outs: ['out'] } : null),
+  DLATCH: () => ({ def: recDLATCH(), ins: ['D', 'E'], outs: ['Q', 'Q̄'] }),
+  DFF: () => ({ def: exNandDFF(), ins: ['D', 'CLK'], outs: ['Q', 'Q̄'] }),
+  AND: (node) => gateFromNands('AND', node.n || 2),
+  OR: (node) => gateFromNands('OR', node.n || 2),
+  NOR: (node) => gateFromNands('NOR', node.n || 2),
+};
+
+/** Is there anything in here that a press of "Simpler" would actually change? */
+function anySimpler(def) {
+  return def.nodes.some((n) => EXPANSIONS[n.type] && EXPANSIONS[n.type](n));
+}
+
+/** Replace every part that has a simpler form with that form, wired up in its
+    place. Returns null when there is nothing left to replace. */
+function expandOnce(def) {
+  const SPREAD = 2.6;
+  const out = newDef(def.name);
+  out.color = def.color;
+  const kept = new Map();                            // parts left as they were
+  const inMap = new Map(), outMap = new Map();       // how a replaced part's ports map inwards
+  let changed = false;
+
+  for (const node of def.nodes) {
+    const build = EXPANSIONS[node.type];
+    const recipe = build && build(node);
+    if (!recipe) {
+      const c = clone(node); c.id = uid();
+      c.x = node.x * SPREAD; c.y = node.y * SPREAD;
+      out.nodes.push(c); kept.set(node.id, c.id);
+      continue;
+    }
+    changed = true;
+    const { def: sub, ins: inNames, outs: outNames } = recipe;
+    const inner = new Map();
+    const box = contentBoundsOf(sub.nodes) || { x0: 0, y0: 0, x1: 1, y1: 1 };
+    const k = Math.min(0.85, 340 / Math.max(1, box.x1 - box.x0));
+    for (const n of sub.nodes) {
+      if (n.type === 'IN' || n.type === 'OUT') continue;
+      const c = clone(n); c.id = uid();
+      c.x = node.x * SPREAD + (n.x - box.x0) * k;
+      c.y = node.y * SPREAD + (n.y - box.y0) * k;
+      out.nodes.push(c); inner.set(n.id, c.id);
+    }
+    for (const w of sub.wires) {
+      if (inner.has(w.a.n) && inner.has(w.b.n)) {
+        out.wires.push({
+          id: uid(),
+          a: { n: inner.get(w.a.n), s: w.a.s, i: w.a.i },
+          b: { n: inner.get(w.b.n), s: w.b.s, i: w.b.i },
+        });
+      }
+    }
+    const pinNamed = (name, type) => sub.nodes.find((n) => n.type === type && n.label === name);
+    inMap.set(node.id, inNames.map((nm) => {
+      const pin = pinNamed(nm, 'IN');
+      if (!pin) return [];
+      return sub.wires.filter((w) => w.a.n === pin.id && inner.has(w.b.n))
+        .map((w) => ({ n: inner.get(w.b.n), s: w.b.s, i: w.b.i }));
+    }));
+    outMap.set(node.id, outNames.map((nm) => {
+      const pin = pinNamed(nm, 'OUT');
+      const w = pin && sub.wires.find((x) => x.b.n === pin.id && inner.has(x.a.n));
+      return w ? { n: inner.get(w.a.n), s: 'out', i: w.a.i } : null;
+    }));
+  }
+
+  for (const w of def.wires) {
+    const srcs = outMap.has(w.a.n)
+      ? [outMap.get(w.a.n)[w.a.i]].filter(Boolean)
+      : kept.has(w.a.n) ? [{ n: kept.get(w.a.n), s: 'out', i: w.a.i }] : [];
+    const dsts = inMap.has(w.b.n)
+      ? (inMap.get(w.b.n)[w.b.i] || [])
+      : kept.has(w.b.n) ? [{ n: kept.get(w.b.n), s: 'in', i: w.b.i }] : [];
+    for (const a of srcs) for (const b of dsts) out.wires.push({ id: uid(), a: { ...a }, b: { ...b } });
+  }
+  return changed ? out : null;
+}
+
+/** A one-line census of what a circuit is currently made of. Pins are counted
+    too, so the numbers add up to the total the caption quotes. */
+function partsCensus(def) {
+  const counts = {};
+  for (const n of def.nodes) counts[n.type] = (counts[n.type] || 0) + 1;
+  const names = Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
+  return names.map((t) => `${counts[t]} × ${(PARTS[t] || {}).name || t}`).join(', ') || 'nothing';
+}
+
 let diagTrail = [];
 
 function openDiagram(text, makeDef, buttonLabel, title, type) {
@@ -2621,7 +2752,12 @@ function openDiagram(text, makeDef, buttonLabel, title, type) {
 function descendable(node) {
   const rec = RECIPES[node.type];
   if (!rec || !rec.make) return false;
-  return !diagTrail.some((lvl) => lvl.type === node.type);
+  /* On a broken-down level the NAND has just been called the floor, so it must
+     not also be a door back up to "an AND and a NOT". Only the parts that
+     another press of Simpler would replace are worth opening. */
+  const lvl = diagTrail[diagTrail.length - 1];
+  if (lvl && lvl.type === '__level' && !(EXPANSIONS[node.type] && EXPANSIONS[node.type](node))) return false;
+  return !diagTrail.some((l) => l.type === node.type);
 }
 
 function renderDiagram() {
@@ -2648,6 +2784,7 @@ function renderDiagram() {
         ? 'Click any part with a ⌄ on it to see what that is made of'
         : 'Nothing here goes any simpler. Below a NAND are transistors — the breadboard has those.'));
 
+  const canSimplify = anySimpler(lvl.def);
   const foot = h('div', {},
     diagTrail.length > 1
       ? h('button', {
@@ -2655,6 +2792,30 @@ function renderDiagram() {
         onclick: () => { diagTrail.pop(); renderDiagram(); },
       }, '← Back up')
       : null,
+    h('button', {
+      class: 'btn', style: 'float:left', disabled: !canSimplify,
+      title: canSimplify
+        ? 'Replace every part with what it is made of'
+        : 'Everything here is already a NAND gate or a pin',
+      onclick: () => {
+        const next = expandOnce(lvl.def);
+        if (!next) return;
+        if (next.nodes.length > 1600) {
+          toast(`That would come to ${next.nodes.length} parts — too many to draw at once.`, true);
+          return;
+        }
+        /* The line under the canvas already says whether this is the bottom, so
+           the caption only has to say what just happened. */
+        diagTrail.push({
+          title: `simpler · ${next.nodes.length} parts`,
+          text: `Every part with a simpler form has been swapped for it, wired into the same place. `
+            + `${lvl.def.nodes.length} parts became ${next.nodes.length}: ${partsCensus(next)}.`
+            + (anySimpler(next) ? ' Press Simpler again to go further.' : ''),
+          def: next, make: () => next, button: 'Build it on the board', type: '__level',
+        });
+        renderDiagram();
+      },
+    }, canSimplify ? 'Simpler ↓' : 'All NANDs'),
     h('button', { class: 'btn', onclick: closeModal }, 'Close'),
     h('button', {
       class: 'btn primary', style: 'margin-left:8px',
@@ -5758,6 +5919,7 @@ window.LogicLab = {
   __diagTrail: () => diagTrail,
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
+  expandOnce, anySimpler, partsCensus,
   get lib() { return LIB; },
 };
 
