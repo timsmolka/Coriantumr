@@ -894,12 +894,38 @@ const TESTS = String.raw`
     report('a 74-series chip drops onto the board', ic === '7400@20', ic);
 
     const palette = await ev(`(()=>{const L=LogicLab;
-      const names=[...document.querySelectorAll('.pal-item')].map(e=>e.textContent);
+      const names=[...document.querySelectorAll('.pal-item')].map(e=>{
+        const top=e.querySelector('.top'); return (top||e).textContent.trim();});
       const missing=Object.keys(L.ICS).filter(k=>!names.includes(L.ICS[k].name));
       const groups=[...document.querySelectorAll('.pal-group h3')].map(e=>e.textContent);
       return (missing.join(',')||'none') + '|' + groups[0] + '|' + groups.length;})()`);
     report('every chip is in the palette, board controls first',
       /^none\|Board\|[6-9]$/.test(palette), palette);
+
+    /* every chip carries a plain-English name and an explanation */
+    const plainness = await ev(`(()=>{const L=LogicLab;
+      const bad=Object.keys(L.ICS).filter(k=>{const c=L.ICS[k];
+        return !c.nick || !c.plain || c.plain.length < 40;});
+      const shown=[...document.querySelectorAll('.pal-item.named .sub')].map(e=>e.textContent);
+      return (bad.join(',')||'none') + '|' + shown.length;})()`);
+    report('every chip has a plain name and an explanation, shown in the palette',
+      plainness === 'none|' + (await ev(`Object.keys(LogicLab.ICS).length`)), plainness);
+
+    /* selecting one explains it on the side */
+    const explains = await ev(`(()=>{const L=LogicLab;
+      L.S.board={cols:60,parts:[{k:'ic',id:'z',type:'74595',col:6}]};
+      L.S.bsel='z'; L.S.bdirty=true; L.renderInspector();
+      const t=document.querySelector('#inspector').textContent;
+      return t.includes('What it does') + '|' + t.includes('eight outputs from three wires')
+        + '|' + t.includes('Watch out');})()`);
+    report('selecting a chip explains it on the side', explains === 'true|true|true', explains);
+
+    const explainsPart = await ev(`(()=>{const L=LogicLab;
+      L.S.board={cols:60,parts:[{k:'res',id:'r1',a:{r:0,c:2},b:{r:0,c:9},ohms:220}]};
+      L.S.bsel='r1'; L.S.bdirty=true; L.renderInspector();
+      const t=document.querySelector('#inspector').textContent;
+      return t.includes('What it does') + '|' + t.includes('Holds current back');})()`);
+    report('selecting a resistor explains it too', explainsPart === 'true|true', explainsPart);
 
     /* power the rails, drop a DIP switch, throw one of its levers */
     await clickSel('#palette button.btn.danger');            // clear the board...
@@ -1394,7 +1420,8 @@ const TESTS = String.raw`
       ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          document.querySelector('#modal .btn.icon').click();
          document.querySelector('#mode-board').click();
-         L.S.board={cols:60,parts:[]}; L.S.bdirty=true; L.fitView(); return 1;})()`],
+         L.S.board={cols:60,parts:[{k:'ic',id:'z',type:'74595',col:8}]};
+         L.S.bsel='z'; L.S.bdirty=true; L.renderInspector(); L.fitView(); return 1;})()`],
       ['board-counter', `(()=>{const L=LogicLab; document.querySelector('#mode-board').click();
          L.S.board = L.examples.BOARD_EXAMPLES[3].make(); L.S.bdirty=true; L.S.bsel=null; L.fitView();
          L.S.bcam.z*=1.9; L.S.bcam.x=-330; L.S.bcam.y=-20; return 1;})()`],
