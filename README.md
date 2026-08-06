@@ -76,6 +76,14 @@ is a counter walking a ROM — the idea a computer is built on, with the
 instruction decoding left out. **Number in** and **number out** parts save
 lining up eight pins by hand.
 
+Selecting a part shows **what it is made of**, and the diagram goes down as far
+as you care to follow: click a flip-flop inside a RAM and you get its six NANDs,
+click one of those and you get the gates it is described by. A trail across the
+top says where you are. Anything already on that trail is not clickable, which
+is what stops the obvious circle — an AND is made of NANDs, and a NAND is an AND
+with the answer flipped. It bottoms out at the NAND; below that are transistors,
+and those live on the breadboard.
+
 **Breadboard.** A solderless breadboard wired the way a real one is: five-hole
 columns, four rails, a channel down the middle. Drop real 74-series DIP chips
 with their actual pinouts, plus jumpers, resistors, LEDs, push buttons, DIP

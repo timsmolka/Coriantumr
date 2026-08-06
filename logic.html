@@ -154,6 +154,12 @@ button,input,select{font:inherit;color:inherit}
   min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
 }
 #crumbs .chipname{color:var(--ink);font-weight:600}
+#crumbs .crumb-name{
+  background:none;border:0;padding:2px 4px;border-radius:6px;cursor:pointer;
+  color:var(--ink);font-weight:600;font-size:12.5px;
+}
+#crumbs .crumb-name:hover{background:var(--panel-2);color:var(--select)}
+#crumbs .crumb-name .pen{color:var(--ink-faint);font-weight:400}
 #crumbs button{background:none;border:0;color:var(--select);cursor:pointer;padding:0;font-size:12.5px}
 .tools{display:flex;gap:6px;align-items:center;flex:0 0 auto}
 .btn{
@@ -298,6 +304,15 @@ canvas.preview{
 }
 canvas.preview:hover{border-color:var(--select)}
 canvas.preview.big{height:min(58vh,470px);cursor:default}
+.diagtrail{
+  margin:0 0 8px;font-size:12px;color:var(--ink-faint);
+}
+.diagtrail button{
+  background:none;border:0;padding:0;color:var(--select);cursor:pointer;font-size:12px;
+}
+.diagtrail button:hover{text-decoration:underline}
+.diagtrail .sep{color:var(--ink-faint)}
+.diagtrail b{color:var(--ink)}
 .madeof .zoomhint{
   margin:5px 0 0;font-size:11px;color:var(--ink-faint);text-align:center;
 }
@@ -2526,7 +2541,7 @@ function nodeInspector(node) {
   if (node.type === 'ROM' || node.type === 'RAM') sec.append(memoryEditor(node));
 
   const rec = RECIPES[node.type];
-  if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board'));
+  if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board', null, node.type));
 
   /* The diagram above is a small one so it can be read. This builds the array
      at the size this part is actually set to, which is the honest answer to
@@ -2547,7 +2562,7 @@ function nodeInspector(node) {
       h('button', {
         class: 'btn', onclick: () => openDiagram(
           'One cell on its own. SELECT and WRITE together let the clock edge through, so only the chosen cell stores anything; SELECT alone guards the way out.',
-          rec.cell, 'Build one cell'),
+          rec.cell, 'Build one cell', 'One RAM cell', 'RAM'),
       }, 'Show just one cell')));
   }
   else if (node.type === 'CHIP' && part && part.nodes.length) {
@@ -2569,10 +2584,10 @@ const previewObs = window.ResizeObserver
   })
   : null;
 
-function madeOfBlock(text, makeDef, buttonLabel, title) {
+function madeOfBlock(text, makeDef, buttonLabel, title, forType) {
   const canvas = h('canvas', {
     class: 'preview', title: 'Click to see it bigger',
-    onclick: () => openDiagram(text, makeDef, buttonLabel),
+    onclick: () => openDiagram(text, makeDef, buttonLabel, title, forType),
   });
   canvas._def = makeDef();
   if (previewObs) previewObs.observe(canvas);
@@ -2588,24 +2603,96 @@ function madeOfBlock(text, makeDef, buttonLabel, title) {
     }, buttonLabel) : null);
 }
 
-/** The same diagram at a size you can actually read. */
-function openDiagram(text, makeDef, buttonLabel) {
-  const def = makeDef();
+/* ---- going down a level at a time ----------------------------------------
+   A RAM is made of flip-flops and gates; a flip-flop is made of NANDs; a NAND
+   is where this simulator stops and transistors begin. Clicking a part inside
+   a diagram opens what THAT is made of, keeping a trail behind you. Anything
+   already on the trail is not clickable, which is what stops the obvious
+   circle — an AND is made of NANDs, and a NAND is an AND with the answer
+   flipped — from going round for ever. */
+
+let diagTrail = [];
+
+function openDiagram(text, makeDef, buttonLabel, title, type) {
+  diagTrail = [{ title: title || 'What it’s made of', text, make: makeDef, button: buttonLabel, type }];
+  renderDiagram();
+}
+
+function descendable(node) {
+  const rec = RECIPES[node.type];
+  if (!rec || !rec.make) return false;
+  return !diagTrail.some((lvl) => lvl.type === node.type);
+}
+
+function renderDiagram() {
+  const lvl = diagTrail[diagTrail.length - 1];
+  if (!lvl.def) lvl.def = lvl.make();
+
   const canvas = h('canvas', { class: 'preview big' });
-  openModal('What it’s made of',
-    h('div', {}, h('p', { class: 'muted', style: 'margin:0 0 10px' }, text), canvas),
-    h('div', {},
-      h('button', { class: 'btn', onclick: closeModal }, 'Close'),
-      h('button', {
-        class: 'btn primary', style: 'margin-left:8px',
-        onclick: () => { closeModal(); insertDef(makeDef()); },
-      }, buttonLabel)),
-    true);
-  requestAnimationFrame(() => drawDefInto(canvas, def, 1.6));
+  const trail = h('p', { class: 'diagtrail' });
+  diagTrail.forEach((step, i) => {
+    if (i) trail.append(h('span', { class: 'sep' }, ' › '));
+    trail.append(i === diagTrail.length - 1
+      ? h('b', {}, step.title)
+      : h('button', {
+        onclick: () => { diagTrail.length = i + 1; renderDiagram(); },
+      }, step.title));
+  });
+
+  const body = h('div', {},
+    diagTrail.length > 1 ? trail : null,
+    h('p', { class: 'muted', style: 'margin:0 0 10px' }, lvl.text),
+    canvas,
+    h('p', { class: 'zoomhint' },
+      lvl.def.nodes.some(descendable)
+        ? 'Click any part with a ⌄ on it to see what that is made of'
+        : 'Nothing here goes any simpler. Below a NAND are transistors — the breadboard has those.'));
+
+  const foot = h('div', {},
+    diagTrail.length > 1
+      ? h('button', {
+        class: 'btn', style: 'margin-right:auto;float:left',
+        onclick: () => { diagTrail.pop(); renderDiagram(); },
+      }, '← Back up')
+      : null,
+    h('button', { class: 'btn', onclick: closeModal }, 'Close'),
+    h('button', {
+      class: 'btn primary', style: 'margin-left:8px',
+      onclick: () => { closeModal(); insertDef(lvl.make()); },
+    }, lvl.button || 'Build it on the board'));
+
+  openModal('What it’s made of', body, foot, true);
+  requestAnimationFrame(() => drawDefInto(canvas, lvl.def, 1.6, true));
+
+  const at = (ev) => {
+    const r = canvas.getBoundingClientRect();
+    const cam = canvas._cam;
+    if (!cam) return null;
+    const w = { x: (ev.clientX - r.left - cam.x) / cam.z, y: (ev.clientY - r.top - cam.y) / cam.z };
+    for (let i = lvl.def.nodes.length - 1; i >= 0; i--) {
+      const n = lvl.def.nodes[i], g = gm(n);
+      if (w.x >= g.x && w.x <= g.x + g.w && w.y >= g.y && w.y <= g.y + g.h) return n;
+    }
+    return null;
+  };
+  canvas.onmousemove = (ev) => {
+    const n = at(ev);
+    canvas.style.cursor = n && descendable(n) ? 'zoom-in' : 'default';
+  };
+  canvas.onclick = (ev) => {
+    const n = at(ev);
+    if (!n || !descendable(n)) return;
+    const rec = RECIPES[n.type];
+    diagTrail.push({
+      title: portsOf(n).label, text: rec.text, make: rec.make,
+      button: 'Build it on the board', type: n.type,
+    });
+    renderDiagram();
+  };
 }
 
 /** Render a def into a canvas by lending the drawing code our state. */
-function drawDefInto(canvas, def, maxZoom) {
+function drawDefInto(canvas, def, maxZoom, markDeeper) {
   const r = canvas.getBoundingClientRect();
   if (!r.width || !r.height) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -2636,7 +2723,20 @@ function drawDefInto(canvas, def, maxZoom) {
     ctx.save();
     ctx.translate(S.cam.x, S.cam.y); ctx.scale(z, z);
     drawWorld();
+    /* a chevron on anything you can open up further */
+    if (markDeeper) {
+      for (const n of def.nodes) {
+        if (!descendable(n)) continue;
+        const g = gm(n);
+        const x = g.x + g.w - 7 / z, y = g.y + g.h - 6 / z, k = 4 / z;
+        ctx.strokeStyle = C.sel; ctx.lineWidth = 2 / z; ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(x - k, y - k * 0.6); ctx.lineTo(x, y + k * 0.5); ctx.lineTo(x + k, y - k * 0.6);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
+    canvas._cam = { x: S.cam.x, y: S.cam.y, z };
   } finally {
     ctx = keep.ctx; S.work = keep.work; S.compiled = keep.compiled; S.sim = keep.sim;
     S.sel = keep.sel; S.selWires = keep.selWires; S.hover = keep.hover;
@@ -3029,8 +3129,34 @@ function renderCrumbs() {
       h('button', { onclick: openMakeChip }, 'save'), h('span', {}, ' / '),
       h('button', { onclick: () => leaveChipEdit(false) }, 'discard'));
   } else {
-    c.append(h('span', { class: 'chipname' }, S.work.name || 'Untitled'));
+    /* It used to show the bare name, which told you nothing about what it was.
+       Now it says what it is and invites you to change it. */
+    const named = (S.work.name || '').trim() && S.work.name !== 'Untitled';
+    c.append(h('span', {}, 'Circuit: '));
+    c.append(h('button', {
+      class: 'crumb-name', title: 'Rename this circuit',
+      onclick: renameCircuit,
+    }, named ? S.work.name : 'Untitled — click to name it', h('span', { class: 'pen' }, ' ✎')));
   }
+}
+
+function renameCircuit() {
+  const input = h('input', { type: 'text', value: S.work.name || '', spellcheck: 'false' });
+  const go = () => {
+    S.work.name = input.value.trim() || 'Untitled';
+    closeModal(); renderCrumbs(); renderInspector(); scheduleSave();
+  };
+  input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+  openModal('Name this circuit',
+    h('div', {},
+      h('p', { class: 'muted', style: 'margin:0 0 10px' },
+        'Just a label for what you are building, so you can tell one from another. '
+        + 'It becomes the chip’s name if you package this circuit up.'),
+      h('div', { class: 'row' }, h('label', {}, 'Name'), h('span', { class: 'ctl' }, input))),
+    h('div', {},
+      h('button', { class: 'btn', onclick: closeModal }, 'Cancel'),
+      h('button', { class: 'btn primary', style: 'margin-left:8px', onclick: go }, 'Rename')));
+  setTimeout(() => { input.focus(); input.select(); }, 30);
 }
 
 /* ==========================================================================
@@ -4783,7 +4909,7 @@ function renderBoardInspector(host) {
       s2.append(madeOfBlock(
         `Inside the package are ${n} separate ${kind} gates, each with its own pins. `
         + `One of them, built from simpler gates: ${rec.text}`,
-        rec.make, null, 'What’s inside'));
+        rec.make, null, 'What’s inside', kind));
       s2.append(h('p', { class: 'muted', style: 'margin:6px 0 0;font-size:12px' },
         'And each of those gates is a couple of transistors and a resistor. '
         + 'There are transistors in the parts list — try Examples → “NAND gate, from two transistors”.'));
@@ -5626,9 +5752,12 @@ window.LogicLab = {
   S, PARTS, ICS, MODULES, BB,
   compile, Sim, compileBoard, BoardSim, computeTruthTable,
   newDef, makeNode, ioOrder, builder, tieKey, partHoles, ramArray, ramArraySize,
-  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector, renderPalette,
+  geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector, renderPalette, renderCrumbs,
   wireHandles,
   examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES }, RECIPES,
+  __diagTrail: () => diagTrail,
+  get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
+  __descendable: descendable,
   get lib() { return LIB; },
 };
 

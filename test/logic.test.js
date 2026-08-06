@@ -1543,6 +1543,79 @@ const TESTS = String.raw`
     await clickSel('#modal header .btn');
     await wait(250);
 
+    /* drilling down: RAM -> flip-flop -> NAND, and back up again */
+    await ev(`(()=>{const L=LogicLab;
+      const b=L.builder('drill'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+      L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+      L.renderInspector(); return 1;})()`);
+    await wait(350);
+    await ev(`document.querySelector('#inspector canvas.preview').click()`);
+    await wait(400);
+    const clickInside = async (type) => {
+      const pt = await ev(`(()=>{const L=LogicLab;
+        const c=document.querySelector('#modal canvas.preview.big');
+        const r=c.getBoundingClientRect(), cam=c._cam;
+        const def=c._def || null;
+        const nodes=L.S.diagNodes || [];
+        return {x:r.left, y:r.top, w:r.width, h:r.height, cx:cam.x, cy:cam.y, cz:cam.z};})()`);
+      const target = await ev(`(()=>{const L=LogicLab;
+        const c=document.querySelector('#modal canvas.preview.big');
+        const cam=c._cam; const def=L.__diagDef;
+        const n=def.nodes.find(x=>x.type===${JSON.stringify(type)});
+        if(!n) return null; const g=L.geom(n);
+        return {x:(g.x+g.w/2)*cam.z+cam.x, y:(g.y+g.h/2)*cam.z+cam.y};})()`);
+      if (!target) return false;
+      await clickAt(pt.x + target.x, pt.y + target.y);
+      await wait(400);
+      return true;
+    };
+    const depth = () => ev(`LogicLab.__diagTrail().length`);
+    report('the diagram opens at the top level', (await depth()) === 1, await depth());
+    await clickInside('DFF');
+    report('clicking a flip-flop inside the RAM goes a level down', (await depth()) === 2, await depth());
+    const secondTitle = await ev(`LogicLab.__diagTrail()[1].title`);
+    report('and the trail names where you are', secondTitle === 'D FLIP-FLOP', secondTitle);
+    await clickInside('NAND');
+    report('clicking a NAND inside the flip-flop goes down again', (await depth()) === 3, await depth());
+    /* an AND is made of NANDs and a NAND is described as an AND with the answer
+       flipped — the obvious circle. Going one more step must not offer it. */
+    await clickInside('AND');
+    report('and once more, into the AND', (await depth()) === 4, await depth());
+    const loop = await ev(`(()=>{const L=LogicLab; const def=L.__diagDef;
+      const nands=def.nodes.filter(n=>n.type==='NAND');
+      return nands.length + '|' + nands.some(n=>L.__descendable(n));})()`);
+    report('the NANDs in there are not clickable, so it cannot go round in a circle',
+      /^[1-9]\d*\|false$/.test(loop), loop);
+    await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
+    await wait(350);
+    report('back up returns a level', (await depth()) === 3, await depth());
+    /* and the trail itself jumps straight back to where you started */
+    await ev(`document.querySelector('.diagtrail button').click()`);
+    await wait(350);
+    report('the trail jumps back to the top in one click', (await depth()) === 1, await depth());
+    await clickSel('#modal header .btn');
+    await wait(250);
+
+    /* the top bar says what "Untitled" is, and lets you change it */
+    await ev(`(()=>{const L=LogicLab; L.S.work.name='Untitled'; L.renderCrumbs(); return 1;})()`);
+    await wait(150);
+    const crumb = await ev(`document.querySelector('#crumbs').textContent`);
+    report('the top bar explains the circuit name', /Circuit:.*click to name it/.test(crumb), crumb);
+    await ev(`document.querySelector('#crumbs .crumb-name').click()`);
+    await wait(300);
+    await ev(`(()=>{const i=document.querySelector('#modal input[type=text]');
+      i.value='My Machine'; return 1;})()`);
+    await clickSel('#modal footer .primary');
+    await wait(300);
+    const renamed = await ev(`LogicLab.S.work.name + '|' + document.querySelector('#crumbs').textContent`);
+    report('renaming from the top bar works', /^My Machine\|Circuit: My Machine/.test(renamed), renamed);
+
+    /* put the half adder back for the checks that follow */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; const n=L.S.work.nodes.find(x=>x.type==='XOR');
+      L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector(); return 1;})()`);
+    await wait(350);
+
     const beforeBuild = await ev(`LogicLab.S.work.nodes.length`);
     await ev(`(()=>{const b=[...document.querySelectorAll('#inspector .madeof button')][0];
       b.click(); return 1;})()`);
@@ -1758,6 +1831,25 @@ const TESTS = String.raw`
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
          L.renderInspector(); L.fitView();
          setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview'); if(c) c.click();}, 250);
+         return 1;})()`],
+      ['drilldown', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('drill'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const c=document.querySelector('#modal canvas.preview.big');
+             const cam=c._cam, def=L.__diagDef;
+             const n=def.nodes.find(z=>z.type==='DFF'); const g=L.geom(n);
+             const rect=c.getBoundingClientRect();
+             c.dispatchEvent(new MouseEvent('click',{bubbles:true,
+               clientX:rect.left+(g.x+g.w/2)*cam.z+cam.x,
+               clientY:rect.top+(g.y+g.h/2)*cam.z+cam.y}));
+           }, 300);
+         }, 200);
          return 1;})()`],
       ['ram-array-built', `(()=>{const L=LogicLab;
          const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
