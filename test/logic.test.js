@@ -503,6 +503,46 @@ const TESTS = String.raw`
         k.NAND > L.ramArray(2, 2).nodes.length, k.NAND + ' NANDs');
     }
 
+    /* opening up one kind of part at a time — all eight flip-flops inside a
+       RAM as NANDs, with the decoder around them left standing */
+    {
+      const ram = L.ramArray(2, 2);
+      const only = L.expandOnce(ram, 'DFF');
+      const k = types(only);
+      ok('opening up just the flip-flops leaves everything else alone',
+        k.DFF === undefined && k.NAND === 48 && k.AND === types(ram).AND
+        && k.OR === types(ram).OR && k.NOT === types(ram).NOT, JSON.stringify(k));
+
+      /* and the RAM has to still be a RAM afterwards */
+      const io = L.ioOrder(only);
+      const c = L.compile(only);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const key in o) pin(key).value = o[key]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(100);
+        set({ CLK: 1 }); run(100); set({ CLK: 0, WRITE: 0 }); run(100);
+      };
+      store(0, 2); store(1, 3); store(2, 0); store(3, 1);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(100); back.push(sim.val(qNet[0]) | (sim.val(qNet[1]) << 1)); }
+      ok('a RAM with only its flip-flops opened up still works as a RAM',
+        back.join(',') === '2,3,0,1', back.join(','));
+
+      /* the buttons that offer this have to name what is really in there */
+      const offered = L.openableTypes(ram).map(([t, n]) => t + ':' + n).join(' ');
+      ok('the "open up every…" buttons count what is really in the picture',
+        offered === 'AND:16 DFF:8 OR:6 NOT:2', offered);
+      ok('and once a kind is opened up it is no longer offered',
+        !L.openableTypes(only).some(([t]) => t === 'DFF'),
+        L.openableTypes(only).map(([t, n]) => t + ':' + n).join(' '));
+      ok('asking for a kind that is not there changes nothing',
+        L.expandOnce(ram, 'XOR') === null);
+    }
+
     /* pressing it repeatedly has to stop, and stop at NANDs */
     {
       const seed = L.builder('a bit of everything');
@@ -1744,10 +1784,52 @@ const TESTS = String.raw`
       return L.__diagDef.nodes.filter(n=>n.type==='NAND').some(n=>L.__descendable(n))
         + '|' + document.querySelector('#modal .zoomhint').textContent;})()`);
     report('after breaking it all down, nothing on screen claims to go further',
-      /^false\|Nothing here goes any simpler/.test(floor), floor);
+      /^false\|/.test(floor) && /Nothing here goes any simpler/.test(floor), floor);
+    /* a hundred gates fitted into one box are unreadable, so the picture moves */
+    const cam = () => ev(`(()=>{const c=LogicLab.__diagTrail().slice(-1)[0].cam;
+      return c ? [Math.round(c.x), Math.round(c.y), +c.z.toFixed(3)].join(',') : 'none';})()`);
+    const restCam = await cam();
+    const canvasBox = await ev(`(()=>{const r=document.querySelector('#modal canvas.preview.big')
+      .getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2};})()`);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseWheel', x: canvasBox.x, y: canvasBox.y, deltaX: 0, deltaY: -240,
+    });
+    await wait(250);
+    const zoomed = await cam();
+    report('scrolling on the diagram zooms it in',
+      zoomed !== restCam && +zoomed.split(',')[2] > +restCam.split(',')[2], restCam + ' → ' + zoomed);
+    await mouse('mousePressed', canvasBox.x, canvasBox.y);
+    await mouse('mouseMoved', canvasBox.x - 60, canvasBox.y + 25);
+    await mouse('mouseReleased', canvasBox.x - 60, canvasBox.y + 25);
+    await wait(250);
+    const panned = await cam();
+    report('dragging the diagram moves it rather than opening a part',
+      +panned.split(',')[0] === +zoomed.split(',')[0] - 60
+      && +panned.split(',')[1] === +zoomed.split(',')[1] + 25
+      && (await depth()) === 2, zoomed + ' → ' + panned + ' at depth ' + (await depth()));
+    await ev(`document.querySelector('#modal .zoomhint .linky').click()`);
+    await wait(300);
+    report('"fit it all in" puts it back', (await cam()) === restCam, (await cam()) + ' vs ' + restCam);
+
     await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
     await wait(350);
     report('backing out of a breakdown returns to the whole part', (await depth()) === 1, await depth());
+
+    /* opening up one kind of part at a time, through its button */
+    const chips = () => ev(`[...document.querySelectorAll('#modal .openups button')]
+      .map(b=>b.textContent).join(' · ')`);
+    report('the diagram offers each kind of part it could open up',
+      (await chips()) === 'AND (16) · D FLIP-FLOP (8) · OR (6) · NOT (2)', await chips());
+    await ev(`[...document.querySelectorAll('#modal .openups button')]
+      .find(b=>b.textContent.startsWith('D FLIP-FLOP')).click()`);
+    await wait(400);
+    const opened = await ev(`(()=>{const L=LogicLab; const k={};
+      for(const n of L.__diagDef.nodes) k[n.type]=(k[n.type]||0)+1;
+      return L.__diagTrail().slice(-1)[0].title + '|' + k.NAND + '|' + k.AND + '|' + (k.DFF||0);})()`);
+    report('opening up every flip-flop leaves the rest of the RAM standing',
+      opened === 'D FLIP-FLOP opened up · 80 parts|48|16|0', opened);
+    report('and the flip-flop is no longer on offer',
+      !(await chips()).includes('D FLIP-FLOP'), await chips());
     await clickSel('#modal header .btn');
     await wait(250);
 
@@ -2018,6 +2100,31 @@ const TESTS = String.raw`
              const s=[...document.querySelectorAll('#modal footer .btn')]
                .find(z=>z.textContent.includes('Simpler'));
              if(s) s.click();
+           }, 300);
+         }, 200);
+         return 1;})()`],
+      ['open-up-flipflops', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('open up'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const s=[...document.querySelectorAll('#modal .openups button')]
+               .find(z=>z.textContent.startsWith('D FLIP-FLOP'));
+             if(s) s.click();
+             /* zoom onto the grid of cells, so the clumps of six NANDs that
+                each used to be one flip-flop are legible */
+             setTimeout(()=>{
+               const t=L.__diagTrail().slice(-1)[0];
+               t.cam={x:-1020, y:30, z:0.56};
+               const c=document.querySelector('#modal canvas.preview.big');
+               c.dispatchEvent(new WheelEvent('wheel',{deltaY:0,bubbles:true,cancelable:true,
+                 clientX:c.getBoundingClientRect().left+400,
+                 clientY:c.getBoundingClientRect().top+180}));
+             }, 300);
            }, 300);
          }, 200);
          return 1;})()`],

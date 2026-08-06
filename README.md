@@ -89,9 +89,19 @@ part of it. Every part that has a simpler form is swapped for that form, wired
 into the same place, and the caption says what you now have: a 4 × 2 RAM is 40
 parts, and one press turns it into 100 NAND gates. Press it again where anything
 is left — a full adder takes two, because its XORs become ORs and ANDs and NOTs
-first — until there is nothing left that goes any simpler. It is the same circuit
-at every level, which is a claim the tests check by running the truth table and
-the store-and-read-back at each step rather than by counting gates.
+first — until there is nothing left that goes any simpler.
+
+Doing the lot at once is often too much, so there is also a row of **open up
+every…** buttons, one per kind of part in the picture, with how many of each
+there are. Press *D FLIP-FLOP (8)* on that RAM and all eight flip-flops become
+their six NANDs apiece — 48 of them — while the decoder around them is still
+recognisably ANDs and inverters, so you can see which clump of six used to be
+which bit. The picture scrolls to zoom and drags to move, because a hundred gates
+fitted into one box are too small to read.
+
+It is the same circuit at every level, which is a claim the tests check by
+running the truth table and the store-and-read-back at each step rather than by
+counting gates.
 
 **Breadboard.** A solderless breadboard wired the way a real one is: five-hole
 columns, four rails, a channel down the middle. Drop real 74-series DIP chips

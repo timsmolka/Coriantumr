@@ -303,10 +303,10 @@ canvas.preview{
   border:1px solid var(--line);border-radius:9px;cursor:zoom-in;
 }
 canvas.preview:hover{border-color:var(--select)}
-/* short enough that the caption, the picture and the line under it all fit
-   between the sticky header and footer, even when the caption runs to two
-   lines */
-canvas.preview.big{height:min(54vh,470px);cursor:default}
+/* short enough that the caption, the picture, the line under it and the
+   "open up every…" row all fit between the sticky header and footer, even
+   when the caption runs to two lines */
+canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
 .diagtrail{
   margin:0 0 8px;font-size:12px;color:var(--ink-faint);
 }
@@ -319,6 +319,20 @@ canvas.preview.big{height:min(54vh,470px);cursor:default}
 .madeof .zoomhint{
   margin:5px 0 0;font-size:11px;color:var(--ink-faint);text-align:center;
 }
+.zoomhint .linky{
+  font:inherit;background:none;border:0;padding:0;color:var(--select);cursor:pointer;
+}
+.zoomhint .linky:hover{text-decoration:underline}
+/* "open up every D FLIP-FLOP" — one chip per kind of part in the picture */
+.openups{
+  display:flex;flex-wrap:wrap;align-items:center;justify-content:center;
+  gap:6px;margin:9px 0 0;font-size:11px;color:var(--ink-faint);
+}
+.openups button{
+  font:inherit;padding:3px 9px;border-radius:999px;cursor:pointer;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--ink);
+}
+.openups button:hover{border-color:var(--select);color:var(--select)}
 .pinlist{display:flex;flex-direction:column;gap:3px;font-family:var(--mono);font-size:11.5px}
 .pinlist div{display:flex;justify-content:space-between;gap:8px;padding:1px 0}
 .pinlist .n{color:var(--ink-faint)}
@@ -2662,14 +2676,29 @@ const EXPANSIONS = {
   NOR: (node) => gateFromNands('NOR', node.n || 2),
 };
 
+/** Can this particular part be swapped for something simpler? */
+const hasRecipe = (node) => !!(EXPANSIONS[node.type] && EXPANSIONS[node.type](node));
+
 /** Is there anything in here that a press of "Simpler" would actually change? */
 function anySimpler(def) {
-  return def.nodes.some((n) => EXPANSIONS[n.type] && EXPANSIONS[n.type](n));
+  return def.nodes.some(hasRecipe);
+}
+
+/** Every kind of part in here that could be opened up, commonest first, with
+    how many of each there are. This is what the "open up just one kind"
+    buttons are made from. */
+function openableTypes(def) {
+  const counts = new Map();
+  for (const n of def.nodes) if (hasRecipe(n)) counts.set(n.type, (counts.get(n.type) || 0) + 1);
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
 }
 
 /** Replace every part that has a simpler form with that form, wired up in its
-    place. Returns null when there is nothing left to replace. */
-function expandOnce(def) {
+    place. Pass a type name as `only` to open up just that one kind and leave
+    the rest of the circuit standing — which is how you see all eight flip-flops
+    inside a RAM as NANDs while the decoder around them is still recognisable.
+    Returns null when there is nothing left to replace. */
+function expandOnce(def, only) {
   const SPREAD = 2.6;
   const out = newDef(def.name);
   out.color = def.color;
@@ -2678,7 +2707,7 @@ function expandOnce(def) {
   let changed = false;
 
   for (const node of def.nodes) {
-    const build = EXPANSIONS[node.type];
+    const build = only && node.type !== only ? null : EXPANSIONS[node.type];
     const recipe = build && build(node);
     if (!recipe) {
       const c = clone(node); c.id = uid();
@@ -2775,16 +2804,55 @@ function renderDiagram() {
       }, step.title));
   });
 
+  /* Open up every part, or every part of one kind. Opening one kind at a time
+     is the useful one: all eight flip-flops in a RAM become NANDs while the
+     decoder around them stays as ANDs, so you can still see which clump of six
+     NANDs is which flip-flop. */
+  const openUp = (only) => {
+    const next = expandOnce(lvl.def, only);
+    if (!next) return;
+    if (next.nodes.length > 1600) {
+      toast(`That would come to ${next.nodes.length} parts — too many to draw at once.`, true);
+      return;
+    }
+    const nameOf = (t) => (PARTS[t] || {}).name || t;
+    const many = only ? lvl.def.nodes.filter((n) => n.type === only).length : 0;
+    /* The line under the canvas already says whether this is the bottom, so the
+       caption only has to say what just happened. */
+    diagTrail.push({
+      title: only ? `${nameOf(only)} opened up · ${next.nodes.length} parts`
+        : `simpler · ${next.nodes.length} parts`,
+      text: (only
+        ? `All ${many} of the ${nameOf(only)}s have been swapped for what they are made of, each one wired into its own place. Everything else is exactly as it was. `
+        : `Every part with a simpler form has been swapped for it, wired into the same place. `)
+        + `${lvl.def.nodes.length} parts became ${next.nodes.length}: ${partsCensus(next)}.`,
+      def: next, make: () => next, button: 'Build it on the board', type: '__level',
+    });
+    renderDiagram();
+  };
+
+  const kinds = openableTypes(lvl.def);
   const body = h('div', {},
     diagTrail.length > 1 ? trail : null,
     h('p', { class: 'muted', style: 'margin:0 0 10px' }, lvl.text),
     canvas,
     h('p', { class: 'zoomhint' },
+      'Scroll to zoom, drag to move. ',
+      h('button', {
+        class: 'linky',
+        onclick: () => { lvl.cam = null; renderDiagram(); },
+      }, 'Fit it all in'),
       lvl.def.nodes.some(descendable)
-        ? 'Click any part with a ⌄ on it to see what that is made of'
-        : 'Nothing here goes any simpler. Below a NAND are transistors — the breadboard has those.'));
+        ? ' · Click any part with a ⌄ on it to see what that is made of'
+        : ' · Nothing here goes any simpler. Below a NAND are transistors — the breadboard has those.'),
+    kinds.length ? h('div', { class: 'openups' },
+      h('span', {}, 'Open up every…'),
+      ...kinds.map(([type, n]) => h('button', {
+        title: `Replace all ${n} of them with what they are made of, and leave the rest alone`,
+        onclick: () => openUp(type),
+      }, `${(PARTS[type] || {}).name || type} (${n})`))) : null);
 
-  const canSimplify = anySimpler(lvl.def);
+  const canSimplify = kinds.length > 0;
   const foot = h('div', {},
     diagTrail.length > 1
       ? h('button', {
@@ -2795,26 +2863,9 @@ function renderDiagram() {
     h('button', {
       class: 'btn', style: 'float:left', disabled: !canSimplify,
       title: canSimplify
-        ? 'Replace every part with what it is made of'
+        ? 'Replace every part at once with what it is made of'
         : 'Everything here is already a NAND gate or a pin',
-      onclick: () => {
-        const next = expandOnce(lvl.def);
-        if (!next) return;
-        if (next.nodes.length > 1600) {
-          toast(`That would come to ${next.nodes.length} parts — too many to draw at once.`, true);
-          return;
-        }
-        /* The line under the canvas already says whether this is the bottom, so
-           the caption only has to say what just happened. */
-        diagTrail.push({
-          title: `simpler · ${next.nodes.length} parts`,
-          text: `Every part with a simpler form has been swapped for it, wired into the same place. `
-            + `${lvl.def.nodes.length} parts became ${next.nodes.length}: ${partsCensus(next)}.`
-            + (anySimpler(next) ? ' Press Simpler again to go further.' : ''),
-          def: next, make: () => next, button: 'Build it on the board', type: '__level',
-        });
-        renderDiagram();
-      },
+      onclick: () => openUp(null),
     }, canSimplify ? 'Simpler ↓' : 'All NANDs'),
     h('button', { class: 'btn', onclick: closeModal }, 'Close'),
     h('button', {
@@ -2823,24 +2874,66 @@ function renderDiagram() {
     }, lvl.button || 'Build it on the board'));
 
   openModal('What it’s made of', body, foot, true);
-  requestAnimationFrame(() => drawDefInto(canvas, lvl.def, 1.6, true));
+  const draw = () => drawDefInto(canvas, lvl.def, 1.6, true, { cam: lvl.cam, cache: lvl });
+  requestAnimationFrame(() => {
+    draw();
+    if (!lvl.cam && canvas._cam) lvl.cam = { ...canvas._cam };   // remember where it started
+  });
 
-  const at = (ev) => {
-    const r = canvas.getBoundingClientRect();
-    const cam = canvas._cam;
+  const world = (ev) => {
+    const r = canvas.getBoundingClientRect(), cam = canvas._cam;
     if (!cam) return null;
-    const w = { x: (ev.clientX - r.left - cam.x) / cam.z, y: (ev.clientY - r.top - cam.y) / cam.z };
+    return { x: (ev.clientX - r.left - cam.x) / cam.z, y: (ev.clientY - r.top - cam.y) / cam.z };
+  };
+  const at = (ev) => {
+    const w = world(ev);
+    if (!w) return null;
     for (let i = lvl.def.nodes.length - 1; i >= 0; i--) {
       const n = lvl.def.nodes[i], g = gm(n);
       if (w.x >= g.x && w.x <= g.x + g.w && w.y >= g.y && w.y <= g.y + g.h) return n;
     }
     return null;
   };
-  canvas.onmousemove = (ev) => {
-    const n = at(ev);
-    canvas.style.cursor = n && descendable(n) ? 'zoom-in' : 'default';
+
+  /* Fitting a hundred gates into one box makes them too small to read, so the
+     picture can be pushed around and zoomed like the board itself. A drag that
+     moves is a pan; a drag that does not is a click on whatever is under it. */
+  let drag = null, panned = 0;
+  canvas.onpointerdown = (ev) => {
+    if (!lvl.cam) return;
+    canvas.setPointerCapture(ev.pointerId);
+    panned = 0;
+    drag = { x: ev.clientX, y: ev.clientY, cx: lvl.cam.x, cy: lvl.cam.y, moved: 0 };
   };
+  canvas.onpointermove = (ev) => {
+    if (!drag) {
+      const n = at(ev);
+      canvas.style.cursor = n && descendable(n) ? 'zoom-in' : 'grab';
+      return;
+    }
+    const dx = ev.clientX - drag.x, dy = ev.clientY - drag.y;
+    drag.moved = Math.max(drag.moved, Math.abs(dx) + Math.abs(dy));
+    lvl.cam.x = drag.cx + dx; lvl.cam.y = drag.cy + dy;
+    canvas.style.cursor = 'grabbing';
+    draw();
+  };
+  /* the click comes after the pointerup, so how far it moved has to outlive it */
+  const endDrag = () => { if (drag) panned = drag.moved; drag = null; canvas.style.cursor = 'grab'; };
+  canvas.onpointerup = endDrag;
+  canvas.onpointercancel = endDrag;
+  canvas.addEventListener('wheel', (ev) => {
+    if (!lvl.cam) return;
+    ev.preventDefault();
+    const w = world(ev);
+    if (!w) return;
+    const z = clamp(lvl.cam.z * Math.exp(-ev.deltaY * 0.0015), 0.05, 3);
+    const r = canvas.getBoundingClientRect();
+    lvl.cam = { z, x: ev.clientX - r.left - w.x * z, y: ev.clientY - r.top - w.y * z };
+    draw();
+  }, { passive: false });
+
   canvas.onclick = (ev) => {
+    if (panned > 4) { panned = 0; return; }             // that was a pan, not a click
     const n = at(ev);
     if (!n || !descendable(n)) return;
     const rec = RECIPES[n.type];
@@ -2852,8 +2945,14 @@ function renderDiagram() {
   };
 }
 
-/** Render a def into a canvas by lending the drawing code our state. */
-function drawDefInto(canvas, def, maxZoom, markDeeper) {
+/** Render a def into a canvas by lending the drawing code our state.
+ *
+ * `opts.cam` draws from that camera instead of fitting the whole thing in —
+ * that is what lets the big diagram be scrolled and zoomed. `opts.cache` is an
+ * object to hang the compiled netlist and settled simulator on, so panning a
+ * thousand-gate picture does not re-settle it on every frame. */
+function drawDefInto(canvas, def, maxZoom, markDeeper, opts) {
+  const { cam: given, cache } = opts || {};
   const r = canvas.getBoundingClientRect();
   if (!r.width || !r.height) return;
   const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -2868,16 +2967,23 @@ function drawDefInto(canvas, def, maxZoom, markDeeper) {
     ctx = canvas.getContext('2d');
     S.work = def; S.mode = 'editor';
     S.sel = new Set(); S.selWires = new Set(); S.hover = null; S.armed = null;
-    S.compiled = compile(def);
-    S.sim = new Sim(S.compiled);
-    S.sim.settle(120, 0);
+    if (cache && cache._compiled && cache._sim) {
+      S.compiled = cache._compiled; S.sim = cache._sim;
+    } else {
+      S.compiled = compile(def);
+      S.sim = new Sim(S.compiled);
+      S.sim.settle(120, 0);
+      if (cache) { cache._compiled = S.compiled; cache._sim = S.sim; }
+    }
 
     const b = contentBounds();
     if (!b) return;
     const pad = 16;
-    const z = clamp(Math.min((r.width - pad * 2) / Math.max(1, b.x1 - b.x0),
+    const fit = clamp(Math.min((r.width - pad * 2) / Math.max(1, b.x1 - b.x0),
       (r.height - pad * 2) / Math.max(1, b.y1 - b.y0)), 0.08, maxZoom || 0.9);
-    S.cam = { x: r.width / 2 - ((b.x0 + b.x1) / 2) * z, y: r.height / 2 - ((b.y0 + b.y1) / 2) * z, z };
+    const z = given ? given.z : fit;
+    S.cam = given ? { x: given.x, y: given.y, z }
+      : { x: r.width / 2 - ((b.x0 + b.x1) / 2) * z, y: r.height / 2 - ((b.y0 + b.y1) / 2) * z, z };
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, r.width, r.height);
@@ -5919,7 +6025,7 @@ window.LogicLab = {
   __diagTrail: () => diagTrail,
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
-  expandOnce, anySimpler, partsCensus,
+  expandOnce, anySimpler, partsCensus, openableTypes,
   get lib() { return LIB; },
 };
 
