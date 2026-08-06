@@ -333,9 +333,59 @@ const TESTS = String.raw`
       ok('the ROM diagram really stores 1, 2, 3, 0', words.join(',') === '1,2,3,0', words.join(','));
     }
 
+    /* the generated array must behave like the RAM part it explains: write to
+       one address, read it back, and check the others were left alone */
+    {
+      const def = L.ramArray(2, 2);
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const read = () => sim.val(qNet[0]) | (sim.val(qNet[1]) << 1);
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(40);
+        set({ CLK: 1 }); run(40); set({ CLK: 0, WRITE: 0 }); run(40);
+      };
+      store(0, 3); store(1, 1); store(2, 2); store(3, 0);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(40); back.push(read()); }
+      ok('the generated RAM array stores and reads back four separate words',
+        back.join(',') === '3,1,2,0', back.join(','));
+      // a write to one address must not disturb its neighbours
+      store(1, 3);
+      const after = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(40); after.push(read()); }
+      ok('writing one word leaves the others alone', after.join(',') === '3,3,2,0', after.join(','));
+      ok('the array is the three regions it claims', (() => {
+        const kinds = {};
+        for (const n of def.nodes) kinds[n.type] = (kinds[n.type] || 0) + 1;
+        // 4 words x 2 bits: 2 inverters, 4 decode ANDs, 4 write gates,
+        // 8 flip-flops, 8 read gates, 2 x 3 collecting ORs
+        return kinds.NOT === 2 && kinds.DFF === 8 && kinds.OR === 6 && kinds.AND === 16;
+      })(), JSON.stringify((() => { const k = {}; for (const n of def.nodes) k[n.type] = (k[n.type] || 0) + 1; return k; })()));
+    }
+    /* a bigger one still adds up, and stays inside what the editor can run */
+    {
+      const big = L.ramArray(4, 8);
+      const c = L.compile(big);
+      ok('a 16 x 8 array is buildable', big.nodes.length > 400 && big.nodes.length < 700
+        && c.errors.length === 0, big.nodes.length + ' parts, ' + c.prims.length + ' primitives');
+      // the count shown on the button has to be the count you actually get
+      let sizeBad = null;
+      for (const [ab, db] of [[1, 1], [2, 2], [3, 4], [4, 8], [2, 16]]) {
+        const n = L.ramArray(ab, db).nodes.length, said = L.ramArraySize(ab, db);
+        if (n !== said) sizeBad = ab + 'x' + db + ': built ' + n + ', promised ' + said;
+      }
+      ok('the part count on the button is the real one', !sizeBad, sizeBad);
+    }
+
     /* the RAM-cell recipe must behave like one bit of RAM */
     {
-      const def = L.RECIPES.RAM.make();
+      const def = L.RECIPES.RAM.cell();
       const io = L.ioOrder(def);
       const c = L.compile(def);
       const sim = new L.Sim(c);
@@ -1708,6 +1758,14 @@ const TESTS = String.raw`
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
          L.renderInspector(); L.fitView();
          setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview'); if(c) c.click();}, 250);
+         return 1;})()`],
+      ['ram-array-built', `(()=>{const L=LogicLab;
+         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const b=L.builder('array'); L.S.work=b.def;
+         L.S.work.nodes.push(...L.ramArray(3,4).nodes);
+         L.S.work.wires.push(...L.ramArray(3,4).wires);
+         L.S.work = L.ramArray(3,4);
+         L.S.dirty=true; L.S.sel.clear(); L.renderInspector(); L.fitView();
          return 1;})()`],
       ['stored-program', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal .btn.icon'); if(x) x.click();

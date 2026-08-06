@@ -2527,6 +2527,29 @@ function nodeInspector(node) {
 
   const rec = RECIPES[node.type];
   if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board'));
+
+  /* The diagram above is a small one so it can be read. This builds the array
+     at the size this part is actually set to, which is the honest answer to
+     "how much is in there" — and usually a surprise. */
+  if (node.type === 'RAM' && rec) {
+    const words = 1 << (node.abits || 4), nd = node.dbits || 8;
+    const est = ramArraySize(node.abits || 4, node.dbits || 8);
+    sec.append(h('div', { class: 'stack', style: 'margin-top:6px' },
+      h('button', {
+        class: 'btn', onclick: () => {
+          if (est > 2500) {
+            toast(`${words} × ${nd} comes to ${est} parts — too many to draw at once. Try fewer address bits.`, true);
+            return;
+          }
+          insertDef(ramArray(node.abits || 4, node.dbits || 8));
+        },
+      }, `Build all ${words} × ${nd} of it (~${est} parts)`),
+      h('button', {
+        class: 'btn', onclick: () => openDiagram(
+          'One cell on its own. SELECT and WRITE together let the clock edge through, so only the chosen cell stores anything; SELECT alone guards the way out.',
+          rec.cell, 'Build one cell'),
+      }, 'Show just one cell')));
+  }
   else if (node.type === 'CHIP' && part && part.nodes.length) {
     sec.append(madeOfBlock(`What you drew inside “${part.name}”.`, () => clone(part), 'Copy it onto the board'));
   }
@@ -4996,6 +5019,75 @@ function recDLATCH() {
   return b.def;
 }
 
+/* A whole memory, generated at whatever size you ask for. Three regions, and
+   every memory chip ever made is these three: a decoder turning the address
+   into one live line, a grid of one-bit cells, and an OR per bit collecting
+   the column — safe to join because unselected cells sit at 0. */
+/** Exactly how many parts an array of this size comes to, without building it. */
+function ramArraySize(abits, dbits) {
+  abits = clamp(abits | 0, 1, 8); dbits = clamp(dbits | 0, 1, 16);
+  const words = 1 << abits;
+  const decode = abits + (abits === 1 ? 0 : words);      // inverters + one AND per word
+  const cells = words * dbits * 2;                        // a flip-flop and a read gate each
+  const collect = (words - 1) * dbits;                    // the OR chain down each column
+  const pins = abits + dbits * 2 + 2;
+  return decode + words + cells + collect + pins;
+}
+
+function ramArray(abits, dbits, name) {
+  abits = clamp(abits | 0, 1, 8);
+  dbits = clamp(dbits | 0, 1, 16);
+  const words = 1 << abits;
+  const b = builder(name || `RAM · ${words} × ${dbits}`, CHIP_COLORS[3]);
+  const ROW = 130, CELL_W = 260;
+
+  const addr = [];
+  for (let i = 0; i < abits; i++) addr.push(b.pin('A' + i, 0, i * 90));
+  const din = [];
+  for (let i = 0; i < dbits; i++) din.push(b.pin('D' + i, 0, (abits + 1 + i) * 90));
+  const wr = b.pin('WRITE', 0, (abits + dbits + 2) * 90);
+  const ck = b.pin('CLK', 0, (abits + dbits + 3) * 90);
+
+  /* address decoder */
+  const inv = addr.map((a, i) => { const n = b.add('NOT', 170, i * 90); b.w(a, 0, n, 0); return n; });
+  const sel = [];
+  for (let w = 0; w < words; w++) {
+    if (abits === 1) { sel.push(w & 1 ? addr[0] : inv[0]); continue; }
+    const g = b.add('AND', 340, w * ROW, { n: abits });
+    for (let i = 0; i < abits; i++) b.w((w >> i) & 1 ? addr[i] : inv[i], 0, g, i);
+    sel.push(g);
+  }
+
+  /* one write gate per word, then the grid of cells */
+  const readOf = [];
+  for (let w = 0; w < words; w++) {
+    const we = b.add('AND', 540, w * ROW + 20, { n: 3 });
+    b.w(sel[w], 0, we, 0); b.w(wr, 0, we, 1); b.w(ck, 0, we, 2);
+    for (let d = 0; d < dbits; d++) {
+      const x = 740 + d * CELL_W;
+      const ff = b.add('DFF', x, w * ROW);
+      b.w(din[d], 0, ff, 0); b.w(we, 0, ff, 1);
+      const rd = b.add('AND', x + 130, w * ROW + 10);
+      b.w(ff, 0, rd, 0); b.w(sel[w], 0, rd, 1);
+      (readOf[d] || (readOf[d] = [])).push(rd);
+    }
+  }
+
+  /* collect each column */
+  const outX = 740 + dbits * CELL_W + 60;
+  for (let d = 0; d < dbits; d++) {
+    let acc = readOf[d][0];
+    for (let w = 1; w < words; w++) {
+      const o = b.add('OR', outX + w * 90, d * ROW * 2);
+      b.w(acc, 0, o, 0); b.w(readOf[d][w], 0, o, 1);
+      acc = o;
+    }
+    const q = b.out('Q' + d, outX + words * 90 + 120, d * ROW * 2 + 16);
+    b.w(acc, 0, q, 0);
+  }
+  return b.def;
+}
+
 function recRAMCell() {
   const b = builder('One bit of RAM');
   const d = b.pin('D', 0, 0), sel = b.pin('SELECT', 0, 120);
@@ -5046,8 +5138,9 @@ const RECIPES = {
   DLATCH: { text: 'The two NANDs on the right feed each other, and that loop is what holds the bit. The two on the left let the enable line decide when D is allowed through.', make: recDLATCH },
   DFF: { text: 'Six NANDs. Four of them watch for the moment the clock rises, so D is copied on that edge rather than the whole time the clock is high.', make: () => exNandDFF() },
   RAM: {
-    text: 'One bit of it — the real thing is a grid of these, one per bit per address, with a decoder switching on the row you asked for. SELECT and WRITE together let the clock edge through, so only the chosen cell stores anything; SELECT on its own guards the way out, so the cells you did not ask for stay at 0 and every cell in a column can be ORed together. Build it, package it as a chip, and a memory is just a lot of copies.',
-    make: recRAMCell,
+    text: 'A whole one, four words of two bits. Three regions, left to right: the address goes into a decoder that switches on exactly one line; that line lets the clock edge through to its own row of flip-flops, so only the chosen word can store anything; and each column of cells is guarded by the same line and then ORed together, which is safe precisely because the cells you did not ask for sit at 0. Every memory chip ever made is those three things, only wider.',
+    make: () => ramArray(2, 2, 'RAM · 4 × 2'),
+    cell: recRAMCell,
   },
   ROM: {
     text: 'Four words of two bits. The address is decoded into one line per word — and then the wiring into the OR gates IS the data: a wire where a bit should be 1, nothing where it should be 0. This one holds 1, 2, 3, 0. That is why it is read-only; on a real chip the pattern is baked in when it is made.',
@@ -5532,7 +5625,7 @@ function boot() {
 window.LogicLab = {
   S, PARTS, ICS, MODULES, BB,
   compile, Sim, compileBoard, BoardSim, computeTruthTable,
-  newDef, makeNode, ioOrder, builder, tieKey, partHoles,
+  newDef, makeNode, ioOrder, builder, tieKey, partHoles, ramArray, ramArraySize,
   geom: (n) => geom(n, ctx), toScreen, holeX, holeY, fitView, deleteHandle, renderInspector, renderPalette,
   wireHandles,
   examples: { EDITOR_EXAMPLES, BOARD_EXAMPLES }, RECIPES,
