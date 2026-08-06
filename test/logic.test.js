@@ -1,0 +1,805 @@
+/* ===========================================================================
+   Checks for logic.html.
+
+     node test/logic.test.js               # run the checks
+     SHOT=1 node test/logic.test.js        # ...and save screenshots as well
+
+   It opens the real page in headless Chromium and then does two things: calls
+   the simulator directly through `window.LogicLab` (truth tables, latches,
+   breadboard netlists), and drives the actual interface with synthetic mouse
+   events (place a part, drag a wire, lay a jumper, package a chip, reload).
+
+   No dependencies — it talks to the browser over the DevTools protocol using
+   the WebSocket and fetch built into Node 22. Set CHROME=/path/to/chrome if it
+   cannot find a browser on its own.
+   =========================================================================== */
+const { spawn, execSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const PAGE = 'file://' + path.resolve(process.argv[2] || path.join(__dirname, '..', 'logic.html'));
+const SHOT_DIR = process.env.SHOT_DIR || path.join(os.tmpdir(), 'logic-lab-shots');
+
+function findChrome() {
+  if (process.env.CHROME) {
+    try { fs.statSync(process.env.CHROME); } catch (e) {
+      console.error('CHROME is set to ' + process.env.CHROME + ', which does not exist.');
+      process.exit(2);
+    }
+    return process.env.CHROME;
+  }
+  const guesses = [
+    '/opt/pw-browsers/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  ];
+  for (const g of guesses) { try { if (fs.statSync(g).isFile()) return g; } catch (e) { /* next */ } }
+  for (const name of ['google-chrome', 'chromium', 'chromium-browser', 'chrome']) {
+    try { return execSync('command -v ' + name, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
+    catch (e) { /* next */ }
+  }
+  return null;
+}
+const CHROME = findChrome();
+
+const TESTS = String.raw`
+(async () => {
+  const L = window.LogicLab;
+  const out = [];
+  const ok = (name, cond, extra) => out.push({ name, pass: !!cond, extra: extra === undefined ? '' : String(extra) });
+
+  /* ---------- helper: run a def's truth table ---------- */
+  const tt = (def) => L.computeTruthTable(def);
+  const rowStr = (r) => r.in.join('') + '->' + r.out.join('');
+
+  /* 1. half adder */
+  {
+    const t = tt(L.examples.EDITOR_EXAMPLES[0].make().work);
+    const got = t.rows.map(rowStr).join(' ');
+    ok('half adder truth table', got === '00->00 01->10 10->10 11->01', got + ' | ins=' + t.ins + ' outs=' + t.outs);
+  }
+
+  /* 2. full adder */
+  {
+    const t = tt(L.examples.EDITOR_EXAMPLES[1].make().work);
+    let good = t.rows.length === 8;
+    for (const r of t.rows) {
+      const sum = r.in[0] + r.in[1] + r.in[2];
+      if (r.out[0] !== (sum & 1) || r.out[1] !== (sum > 1 ? 1 : 0)) good = false;
+    }
+    ok('full adder arithmetic', good, t.rows.map(rowStr).join(' '));
+  }
+
+  /* 3. 4-bit adder (exercises chip flattening two levels deep) */
+  {
+    const ex = L.examples.EDITOR_EXAMPLES[2].make();
+    for (const c of ex.chips) L.lib[c.id] = c;
+    const def = ex.work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    ok('4-bit adder compiles clean', c.errors.length === 0, c.errors.join(';'));
+    // 4 full adders x 5 gates each, expanded out of the chip instances
+    const gates = c.prims.filter(p => ['XOR', 'AND', 'OR'].includes(p.type)).length;
+    ok('4-bit adder flattens to 20 gates', gates === 20, gates + ' of ' + c.prims.length);
+    let bad = null;
+    for (const [a, b] of [[0, 0], [1, 1], [5, 3], [9, 7], [15, 15], [8, 8], [12, 5]]) {
+      io.ins.forEach((p) => {
+        const m = p.label.match(/^([AB])(\d)$/);
+        const v = m[1] === 'A' ? a : b;
+        p.value = (v >> +m[2]) & 1;
+      });
+      const sim = new L.Sim(c);
+      const settled = sim.settle(300, 0);
+      let s = 0;
+      io.outs.forEach((p) => {
+        const bit = sim.val(c.portNet.get(p.id + '.i0'));
+        const w = p.label === 'Cout' ? 4 : +p.label.slice(1);
+        s |= bit << w;
+      });
+      if (!settled || s !== a + b) bad = a + '+' + b + '=' + s;
+    }
+    ok('4-bit adder adds', !bad, bad);
+  }
+
+  /* 4. SR latch holds state */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[3].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const S = io.ins.find(p => p.label === 'S'), R = io.ins.find(p => p.label === 'R');
+    const Q = io.outs.find(p => p.label === 'Q');
+    const qNet = c.portNet.get(Q.id + '.i0');
+    const sim = new L.Sim(c);
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    S.value = 1; R.value = 0; run(20);
+    const setQ = sim.val(qNet);
+    S.value = 0; run(20);
+    const heldQ = sim.val(qNet);
+    R.value = 1; run(20);
+    const resetQ = sim.val(qNet);
+    R.value = 0; run(20);
+    const heldQ2 = sim.val(qNet);
+    ok('SR latch sets, holds, resets, holds', setQ === 1 && heldQ === 1 && resetQ === 0 && heldQ2 === 0,
+       [setQ, heldQ, resetQ, heldQ2].join(','));
+  }
+
+  /* 4b. an idle latch must settle rather than ring — the metastability case */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[3].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const io = L.ioOrder(def);
+    io.ins.forEach(p => { p.value = 0; });
+    const settled = sim.settle(200, 0);
+    const q = sim.val(c.portNet.get(io.outs[0].id + '.i0'));
+    const qb = sim.val(c.portNet.get(io.outs[1].id + '.i0'));
+    ok('idle SR latch settles instead of oscillating', settled && q !== qb, 'settled=' + settled + ' Q=' + q + ' Qb=' + qb);
+  }
+
+  /* 5. six-NAND D flip-flop behaves like an edge-triggered flip-flop */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[4].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const D = io.ins.find(p => p.label === 'D'), CK = io.ins.find(p => p.label === 'CLK');
+    const Q = io.outs.find(p => p.label === 'Q');
+    const qNet = c.portNet.get(Q.id + '.i0');
+    const sim = new L.Sim(c);
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    const pulse = () => { CK.value = 0; run(30); CK.value = 1; run(30); };
+    D.value = 1; CK.value = 0; run(40);
+    const before = sim.val(qNet);
+    pulse();
+    const afterHigh = sim.val(qNet);
+    D.value = 0; run(40);
+    const stillHigh = sim.val(qNet);      // D changed but no clock edge yet
+    pulse();
+    const afterLow = sim.val(qNet);
+    ok('NAND D flip-flop latches on the edge only',
+       afterHigh === 1 && stillHigh === 1 && afterLow === 0,
+       'before=' + before + ' afterHigh=' + afterHigh + ' stillHigh=' + stillHigh + ' afterLow=' + afterLow);
+  }
+
+  /* 6. ring oscillator actually oscillates */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[6].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const o = L.ioOrder(def).outs[0];
+    const net = c.portNet.get(o.id + '.i0');
+    const seen = new Set();
+    for (let i = 0; i < 40; i++) { sim.tick(0); seen.add(sim.val(net)); }
+    ok('ring oscillator toggles', seen.size === 2 && !sim.settle(20, 0), [...seen].join(','));
+  }
+
+  /* 7. counter counts */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[7].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const nets = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+    const sim = new L.Sim(c);
+    const clk = c.prims.find(p => p.type === 'CLOCK');
+    const read = () => nets.reduce((a, n, i) => a | (sim.val(n) << i), 0);
+    // drive the clock by hand through simulated time
+    let t = 0, seq = [];
+    for (let e = 0; e < 20; e++) { t += 400; for (let i = 0; i < 12; i++) sim.tick(t); seq.push(read()); }
+    const uniq = [...new Set(seq)];
+    let mono = true;
+    for (let i = 1; i < seq.length; i++) if (seq[i] !== (seq[i - 1] + 1) % 16 && seq[i] !== seq[i - 1]) mono = false;
+    ok('4-bit counter counts up in order', uniq.length > 4 && mono, seq.join(','));
+  }
+
+  /* 8. tunnels join nets with the same name */
+  {
+    const b = L.builder('tunnel test');
+    const a = b.pin('a', 0, 0), o = b.out('o', 400, 0);
+    const t1 = b.add('TUNNEL', 100, 0, { label: 'bus' });
+    const t2 = b.add('TUNNEL', 250, 0, { label: 'BUS' });   // case-insensitive
+    b.w(a, 0, t1, 0); b.w(t2, 0, o, 0);
+    const t = L.computeTruthTable(b.def);
+    ok('tunnels connect by name', t.rows.map(r => r.in[0] + '' + r.out[0]).join(' ') === '00 11',
+       JSON.stringify(t.rows));
+  }
+
+  /* 9. two outputs on one net is reported as a clash */
+  {
+    const b = L.builder('clash');
+    const c0 = b.add('CONST', 0, 0, { value: 0 });
+    const c1 = b.add('CONST', 0, 100, { value: 1 });
+    const o = b.out('o', 300, 50);
+    b.def.wires.push({ id: 'w1', a: { n: c0.id, s: 'out', i: 0 }, b: { n: o.id, s: 'in', i: 0 } });
+    b.def.wires.push({ id: 'w2', a: { n: c1.id, s: 'out', i: 0 }, b: { n: o.id, s: 'in', i: 0 } });
+    const c = L.compile(b.def);
+    const sim = new L.Sim(c);
+    sim.tick(0);
+    ok('conflicting drivers flagged', sim.clash[c.portNet.get(o.id + '.i0')] === 1);
+  }
+
+  /* ---------- breadboard ---------- */
+  const boardRun = (board, ticks) => {
+    const c = L.compileBoard(board);
+    const sim = new L.BoardSim(c);
+    for (let i = 0; i < (ticks || 40); i++) sim.tick(1000 + i);
+    return { c, sim };
+  };
+  const findPart = (board, k, type) => board.parts.find(p => p.k === k && (!type || p.type === type));
+
+  /* 10. board copper: a column ties five holes, rails run the length,
+         and the two halves of a column are separate */
+  {
+    const b = { cols: 60, parts: [] };
+    const c = L.compileBoard(b);
+    const n = (r, col) => c.holeNet.get(L.tieKey(r, col));
+    ok('column A-E is one net', n(0, 7) === n(4, 7));
+    ok('column F-J is one net', n(5, 7) === n(9, 7));
+    ok('the channel separates the halves', n(4, 7) !== n(5, 7));
+    ok('a rail runs the whole length', n(100, 0) === n(100, 59));
+    ok('the two + rails are separate strips', n(100, 0) !== n(103, 0));
+    ok('+ and − rails are separate', n(100, 0) !== n(101, 0));
+    ok('neighbouring columns are separate', n(0, 7) !== n(0, 8));
+  }
+
+  /* 11. an unpowered chip does nothing */
+  {
+    const b = { cols: 60, parts: [{ k: 'ic', id: 'x', type: '7400', col: 5 }] };
+    const { sim } = boardRun(b, 10);
+    ok('unpowered chip is reported', sim.unpowered.length === 1, sim.unpowered.join(','));
+  }
+
+  /* 12. a powered 7400 NANDs, and a floating input reads high */
+  {
+    const P = (r, c2) => ({ r, c: c2 });
+    const parts = [
+      { k: 'vcc', id: 'v1', a: P(100, 0) }, { k: 'gnd', id: 'g1', a: P(101, 0) },
+      { k: 'ic', id: 'ic', type: '7400', col: 5 },     // pin 14 -> (4,5), pin 7 -> (5,11)
+      { k: 'wire', id: 'w1', a: P(2, 5), b: P(100, 5) },
+      { k: 'wire', id: 'w2', a: P(7, 11), b: P(101, 11) },
+    ];
+    const b = { cols: 60, parts };
+    let { c, sim } = boardRun(b, 20);
+    const hn = (r, col) => c.holeNet.get(L.tieKey(r, col));
+    // gate 1: 1A pin1 (5,5), 1B pin2 (5,6), 1Y pin3 (5,7)
+    ok('7400 is powered', sim.unpowered.length === 0, sim.unpowered.join(','));
+    ok('floating inputs NAND to 0', sim.val[hn(5, 7)] === 0 && sim.str[hn(5, 7)] === 2,
+       'y=' + sim.val[hn(5, 7)] + ' str=' + sim.str[hn(5, 7)]);
+    // now tie 1A to ground -> output must go high
+    parts.push({ k: 'wire', id: 'w3', a: P(7, 5), b: P(101, 5) });
+    ({ c, sim } = boardRun(b, 20));
+    const hn2 = (r, col) => c.holeNet.get(L.tieKey(r, col));
+    ok('7400 with one input low outputs 1', sim.val[hn2(5, 7)] === 1, sim.val[hn2(5, 7)]);
+  }
+
+  /* 13. short circuit detection */
+  {
+    const b = { cols: 60, parts: [
+      { k: 'vcc', id: 'v', a: { r: 0, c: 3 } },
+      { k: 'gnd', id: 'g', a: { r: 1, c: 3 } },      // same column: dead short
+    ] };
+    const { sim } = boardRun(b, 5);
+    ok('short circuit caught', sim.shorts === 1, sim.shorts);
+  }
+
+  /* 14. a resistor passes a weak level, and a strong driver overrides it */
+  {
+    const b = { cols: 60, parts: [
+      { k: 'vcc', id: 'v', a: { r: 100, c: 0 } },
+      { k: 'res', id: 'r', a: { r: 100, c: 4 }, b: { r: 0, c: 8 }, ohms: 10000 },
+    ] };
+    let { c, sim } = boardRun(b, 5);
+    const net = c.holeNet.get(L.tieKey(0, 8));
+    ok('pull-up gives a weak 1', sim.val[net] === 1 && sim.str[net] === 1, sim.val[net] + '/' + sim.str[net]);
+    b.parts.push({ k: 'gnd', id: 'g', a: { r: 2, c: 8 } });
+    ({ c, sim } = boardRun(b, 5));
+    const net2 = c.holeNet.get(L.tieKey(0, 8));
+    ok('a strong driver beats the pull-up', sim.val[net2] === 0 && sim.str[net2] === 2 && sim.shorts === 0,
+       sim.val[net2] + '/' + sim.str[net2] + ' shorts=' + sim.shorts);
+  }
+
+  /* 15. the blinking-LED example blinks */
+  {
+    const board = L.examples.BOARD_EXAMPLES[0].make();
+    const c = L.compileBoard(board);
+    const sim = new L.BoardSim(c);
+    const led = board.parts.find(p => p.k === 'led');
+    const seen = new Set();
+    let t = 0;
+    for (let i = 0; i < 40; i++) { t += 130; for (let j = 0; j < 4; j++) sim.tick(t); seen.add(!!led._lit); }
+    ok('blinking LED example blinks', seen.size === 2 && sim.shorts === 0, [...seen].join(',') + ' shorts=' + sim.shorts);
+  }
+
+  /* 16. button / pull-down / inverter example */
+  {
+    const board = L.examples.BOARD_EXAMPLES[1].make();
+    const btn = board.parts.find(p => p.k === 'btn');
+    const led = board.parts.find(p => p.k === 'led');
+    let r = boardRun(board, 30);
+    const idle = led._lit;
+    btn.pressed = true;
+    r = boardRun(board, 30);
+    const pressed = led._lit;
+    ok('pull-down example inverts the button', idle === true && pressed === false,
+       'idle=' + idle + ' pressed=' + pressed + ' shorts=' + r.sim.shorts);
+    ok('pull-down example has no shorts', r.sim.shorts === 0, r.sim.shorts);
+    btn.pressed = false;
+  }
+
+  /* 17. NAND latch on a 7400 — pressing a button re-cuts the netlist, exactly
+         as it does in the app, so this also checks that state survives that */
+  {
+    const board = L.examples.BOARD_EXAMPLES[2].make();
+    const [set, reset] = board.parts.filter(p => p.k === 'btn');
+    const [ledQ, ledQb] = board.parts.filter(p => p.k === 'led');
+    let prev = null, r = null;
+    const step = (n) => {
+      const c = L.compileBoard(board);
+      const sim = new L.BoardSim(c, prev);
+      for (let i = 0; i < (n || 40); i++) sim.tick(1000 + i);
+      prev = sim;
+      return (r = { c, sim });
+    };
+    step();
+    set.pressed = true; step();
+    const s1 = ledQ._lit, s1b = ledQb._lit;
+    set.pressed = false; step();
+    const h1 = ledQ._lit;
+    reset.pressed = true; step();
+    const r1 = ledQ._lit;
+    reset.pressed = false; step();
+    const h2 = ledQ._lit;
+    ok('7400 latch: set, hold, reset, hold',
+       s1 === true && s1b === false && h1 === true && r1 === false && h2 === false,
+       [s1, s1b, h1, r1, h2].join(','));
+    // and the same metastability check on the bench: one LED on, one off
+    const fresh = boardRun(L.examples.BOARD_EXAMPLES[2].make(), 60);
+    const board2 = L.examples.BOARD_EXAMPLES[2].make();
+    const c2 = L.compileBoard(board2);
+    const sim2 = new L.BoardSim(c2);
+    for (let i = 0; i < 80; i++) sim2.tick(1000 + i);
+    const l2 = board2.parts.filter(p => p.k === 'led');
+    const a1 = l2[0]._lit, b1 = l2[1]._lit;
+    for (let i = 0; i < 9; i++) sim2.tick(1100 + i);
+    ok('idle 7400 latch settles into one state',
+       a1 !== b1 && l2[0]._lit === a1 && l2[1]._lit === b1, a1 + '/' + b1 + ' then ' + l2[0]._lit + '/' + l2[1]._lit);
+
+    ok('7400 latch has no shorts and no unpowered chips',
+       r.sim.shorts === 0 && r.sim.unpowered.length === 0, r.sim.shorts + '/' + r.sim.unpowered.join(','));
+  }
+
+  /* 18. counter -> 7493 -> 7447 -> display */
+  {
+    const board = L.examples.BOARD_EXAMPLES[3].make();
+    const c = L.compileBoard(board);
+    const sim = new L.BoardSim(c);
+    const seg = board.parts.find(p => p.k === 'seg');
+    const digits = [];
+    let t = 0;
+    for (let i = 0; i < 60; i++) { t += 130; for (let j = 0; j < 6; j++) sim.tick(t); digits.push(seg._bits); }
+    const uniq = [...new Set(digits)];
+    const SEGS = [63, 6, 91, 79, 102, 109, 124, 7, 127, 103, 88, 76, 98, 105, 120, 0];
+    const allValid = uniq.every(b => SEGS.includes(b));
+    ok('counting digit shows real digits', uniq.length > 3 && allValid, uniq.join(' '));
+    ok('counting digit has no shorts / unpowered chips',
+       sim.shorts === 0 && sim.unpowered.length === 0, sim.shorts + '/' + [...new Set(sim.unpowered)].join(','));
+    const order = digits.filter((d, i) => i === 0 || d !== digits[i - 1]).map(b => SEGS.indexOf(b));
+    let seqOK = true;
+    for (let i = 1; i < order.length; i++) if (order[i] !== (order[i - 1] + 1) % 16) seqOK = false;
+    ok('counting digit counts in order', seqOK && order.length > 3, order.join(','));
+  }
+
+  /* 19. 7447 drives a common-cathode display dark (right chip, wrong display) */
+  {
+    const board = L.examples.BOARD_EXAMPLES[3].make();
+    board.parts.find(p => p.k === 'seg').anode = false;
+    const c = L.compileBoard(board);
+    const sim = new L.BoardSim(c);
+    let t = 0;
+    for (let i = 0; i < 30; i++) { t += 130; sim.tick(t); }
+    const seg = board.parts.find(p => p.k === 'seg');
+    ok('common-cathode display stays dark behind a 7447', seg._bits === 0, seg._bits);
+  }
+
+  /* 20. UI smoke: the app booted, drew, and has a library */
+  {
+    ok('app state exists', !!L.S && !!L.S.work && !!L.S.board);
+    ok('canvas has a size', document.querySelector('#cv').width > 0);
+    ok('palette rendered', document.querySelectorAll('.pal-item').length > 5,
+       document.querySelectorAll('.pal-item').length);
+  }
+
+  return out;
+})()
+`;
+
+/* ---- drive Chromium over CDP, with no npm dependencies ---- */
+(async () => {
+  if (!CHROME) {
+    console.error('No Chrome or Chromium found. Set CHROME=/path/to/chrome and try again.');
+    process.exit(2);
+  }
+  const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'logiclab-cdp-'));
+  const chrome = spawn(CHROME, [
+    '--headless=new', '--disable-gpu', '--no-sandbox', '--remote-debugging-port=0',
+    '--user-data-dir=' + userDir, '--window-size=1440,900', '--hide-scrollbars',
+    '--allow-file-access-from-files', 'about:blank',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let stderr = '';
+  chrome.stderr.on('data', (d) => { stderr += d; });
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /* Chrome writes the port it actually picked into the profile directory. */
+  let port = null;
+  for (let i = 0; i < 80 && !port; i++) {
+    await wait(150);
+    try { port = fs.readFileSync(path.join(userDir, 'DevToolsActivePort'), 'utf8').split('\n')[0].trim(); }
+    catch (e) { /* not written yet */ }
+  }
+  if (!port) { console.error('chrome never came up\n' + stderr); process.exit(1); }
+
+  let target = null;
+  for (let i = 0; i < 40 && !target; i++) {
+    await wait(150);
+    try {
+      const list = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
+      target = list.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+    } catch (e) { /* not up yet */ }
+  }
+  if (!target) { console.error('no debuggable page\n' + stderr); process.exit(1); }
+
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  let id = 0;
+  const pending = new Map();
+  const logs = [];
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.method === 'Runtime.consoleAPICalled') {
+      logs.push(m.params.type + ': ' + m.params.args.map((a) => a.value || a.description || '').join(' '));
+    }
+    if (m.method === 'Page.javascriptDialogOpening') {
+      ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: true } }));
+    }
+    if (m.method === 'Runtime.exceptionThrown') {
+      logs.push('EXCEPTION: ' + (m.params.exceptionDetails.exception
+        ? m.params.exceptionDetails.exception.description
+        : m.params.exceptionDetails.text));
+    }
+  };
+  const send = (method, params) => new Promise((res) => {
+    const mid = ++id;
+    pending.set(mid, res);
+    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+  });
+  await new Promise((r) => { ws.onopen = r; });
+  await send('Runtime.enable');
+  await send('Page.enable');
+  /* Install the error collector before the page's own script runs, so a boot
+     failure or a throw inside the animation loop is caught, not missed. */
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `window.__errs = [];
+      window.addEventListener('error', (e) => window.__errs.push(String(e.message) + ' @ ' + (e.filename||'') + ':' + e.lineno));
+      window.addEventListener('unhandledrejection', (e) => window.__errs.push('rejection: ' + e.reason));`,
+  });
+  await send('Page.navigate', { url: PAGE });
+  await wait(2000);
+
+  const ev = async (expr) => {
+    const res = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+    if (res.result.exceptionDetails) {
+      throw new Error('eval failed: ' + JSON.stringify(res.result.exceptionDetails.exception || res.result.exceptionDetails.text)
+        + '\nexpr: ' + expr.slice(0, 200));
+    }
+    return res.result.result.value;
+  };
+  const mouse = async (type, x, y, extra) => {
+    await send('Input.dispatchMouseEvent', Object.assign({
+      type, x: Math.round(x), y: Math.round(y), button: 'left', clickCount: 1,
+      buttons: type === 'mouseReleased' ? 0 : 1,
+    }, extra || {}));
+    await wait(45);
+  };
+  const clickAt = async (x, y) => { await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); };
+  const clickSel = async (sel) => {
+    const box = await ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});
+      if(!e) return null; const r=e.getBoundingClientRect();
+      return {x:r.left+r.width/2, y:r.top+r.height/2};})()`);
+    if (!box) throw new Error('no element ' + sel);
+    await clickAt(box.x, box.y);
+  };
+  const dragAt = async (x0, y0, x1, y1) => {
+    await mouse('mousePressed', x0, y0);
+    await mouse('mouseMoved', (x0 + x1) / 2, (y0 + y1) / 2);
+    await mouse('mouseMoved', x1, y1);
+    await mouse('mouseReleased', x1, y1);
+  };
+
+  const r = await send('Runtime.evaluate', {
+    expression: TESTS, awaitPromise: true, returnByValue: true,
+  });
+
+  if (r.result.exceptionDetails) {
+    console.error('TEST HARNESS THREW:\n', JSON.stringify(r.result.exceptionDetails, null, 1));
+    console.error('page logs:\n' + logs.join('\n'));
+    chrome.kill(); process.exit(1);
+  }
+  const results = r.result.result.value || [];
+  let fails = 0;
+  const report = (name, pass, extra) => {
+    results.push({ name, pass, extra: extra === undefined ? '' : String(extra) });
+  };
+
+  /* ---------- UI: drive the real thing with real mouse events ---------- */
+  try {
+    /* a clean editor with a predictable camera, so screen maths is easy */
+    await ev(`(()=>{const L=LogicLab;
+      L.S.work = L.newDef('ui'); L.S.editing=null; L.S.sel.clear(); L.S.selWires.clear();
+      L.S.dirty=true; L.S.cam.x=380; L.S.cam.y=300; L.S.cam.z=1; return 1;})()`);
+    await wait(200);
+
+    /* place a NOT gate from the palette */
+    await clickSel('.pal-item[data-type="NOT"]');
+    const armed = await ev('!!LogicLab.S.armed && LogicLab.S.armed.type');
+    report('palette click arms a part', armed === 'NOT', armed);
+
+    const cvBox = await ev(`(()=>{const r=document.querySelector('#cv').getBoundingClientRect();
+      return {l:r.left, t:r.top, w:r.width, h:r.height};})()`);
+    const world = (wx, wy) => ev(`(()=>{const s=LogicLab.toScreen(${wx},${wy});
+      const r=document.querySelector('#cv').getBoundingClientRect();
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+
+    let pt = await world(200, 0);
+    await clickAt(pt.x, pt.y);
+    const placed = await ev(`LogicLab.S.work.nodes.map(n=>n.type).join(',')`);
+    report('clicking the board places the armed part', placed === 'NOT', placed);
+    report('placing disarms the palette', !(await ev('!!LogicLab.S.armed')));
+
+    /* place an input pin, then wire it to the NOT gate by dragging */
+    await clickSel('.pal-item[data-type="IN"]');
+    pt = await world(0, 0);
+    await clickAt(pt.x, pt.y);
+    const two = await ev(`LogicLab.S.work.nodes.length`);
+    report('second part placed', two === 2, two);
+
+    const ports = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const inn=L.S.work.nodes.find(n=>n.type==='IN'), not=L.S.work.nodes.find(n=>n.type==='NOT');
+      const a=L.geom(inn).outs[0], b=L.geom(not).ins[0];
+      const sa=L.toScreen(a.x,a.y), sb=L.toScreen(b.x,b.y);
+      return {ax:r.left+sa.x, ay:r.top+sa.y, bx:r.left+sb.x, by:r.top+sb.y};})()`);
+    await dragAt(ports.ax, ports.ay, ports.bx, ports.by);
+    const wires = await ev(`LogicLab.S.work.wires.length`);
+    report('dragging port to port makes a wire', wires === 1, wires);
+
+    /* clicking the input pin toggles it, and the NOT gate follows */
+    const pinPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='IN'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2, g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    const v0 = await ev(`LogicLab.S.work.nodes.find(n=>n.type==='IN').value`);
+    await clickAt(pinPt.x, pinPt.y);
+    await wait(200);
+    const v1 = await ev(`LogicLab.S.work.nodes.find(n=>n.type==='IN').value`);
+    report('clicking an input pin flips it', !!v1 !== !!v0, v0 + '->' + v1);
+    const notOut = await ev(`(()=>{const L=LogicLab, c=L.S.compiled, s=L.S.sim;
+      const n=L.S.work.nodes.find(x=>x.type==='NOT');
+      return s.val(c.portNet.get(n.id+'.o0'));})()`);
+    report('the wired NOT gate inverts the live signal', notOut === (v1 ? 0 : 1), notOut);
+
+    /* undo takes the wire back */
+    await clickSel('#btn-undo');
+    await wait(150);
+    report('undo removes the wire', (await ev('LogicLab.S.work.wires.length')) === 0);
+
+    /* ---- breadboard: place a jumper with two clicks ---- */
+    await clickSel('#mode-board');
+    await wait(300);
+    await ev(`(()=>{const L=LogicLab; L.S.board={cols:60,parts:[]}; L.S.bdirty=true;
+      L.S.bcam.x=40; L.S.bcam.y=60; L.S.bcam.z=1; return 1;})()`);
+    await wait(200);
+    const hole = (r2, c2) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const s=L.toScreen(L.holeX(${c2}), L.holeY(${r2}));
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await clickSel('.pal-item[data-type="wire"]');
+    const h1 = await hole(0, 3), h2 = await hole(2, 8);
+    await clickAt(h1.x, h1.y);
+    await clickAt(h2.x, h2.y);
+    const jump = await ev(`(()=>{const p=LogicLab.S.board.parts[0];
+      return p ? p.k+':'+p.a.r+','+p.a.c+'-'+p.b.r+','+p.b.c : 'none';})()`);
+    report('two clicks lay a jumper between the right holes', jump === 'wire:0,3-2,8', jump);
+    const joined = await ev(`(()=>{const L=LogicLab; L.S.bdirty=true;
+      const c=L.compileBoard(L.S.board);
+      return c.holeNet.get(L.tieKey(4,3)) === c.holeNet.get(L.tieKey(0,8));})()`);
+    report('the jumper actually joins the two columns', joined === true, joined);
+
+    /* a chip needs a legal column and lands across the channel */
+    await clickSel('.pal-item[data-chip="7400"]');
+    const h3 = await hole(5, 20);
+    await clickAt(h3.x, h3.y);
+    const ic = await ev(`(()=>{const p=LogicLab.S.board.parts.find(x=>x.k==='ic');
+      return p ? p.type+'@'+p.col : 'none';})()`);
+    report('a 74-series chip drops onto the board', ic === '7400@20', ic);
+
+    /* power the rails, drop a DIP switch, throw one of its levers */
+    await clickSel('#palette button.btn.danger');            // clear the board
+    await wait(200);
+    await ev(`(()=>{const b=[...document.querySelectorAll('#palette button')]
+      .find(x=>x.textContent==='Power the rails'); b.click(); return 1;})()`);
+    await wait(300);
+    const powered = await ev(`(()=>{const L=LogicLab; L.S.bdirty=true;
+      const c=L.compileBoard(L.S.board); const s=new L.BoardSim(c);
+      for(let i=0;i<6;i++) s.tick(1000+i);
+      const plus=c.holeNet.get('rail100'), minus=c.holeNet.get('rail101');
+      return L.S.board.parts.length + '|' + s.val[plus] + s.str[plus] + '|' + s.val[minus] + s.str[minus];})()`);
+    report('"power the rails" energises both + and − rails', powered === '4|12|02', powered);
+
+    await clickSel('.pal-item[data-type="dip"]');
+    const h4 = await hole(5, 30);
+    await clickAt(h4.x, h4.y);
+    const dipPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const p=L.S.board.parts.find(x=>x.k==='dip');
+      const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await clickAt(dipPt.x, dipPt.y);
+    await wait(250);
+    const dip = await ev(`(()=>{const L=LogicLab; const p=L.S.board.parts.find(x=>x.k==='dip');
+      if(!p) return 'none';
+      const c=L.compileBoard(L.S.board);
+      const joined = c.holeNet.get(L.tieKey(9,p.col+1))===c.holeNet.get(L.tieKey(0,p.col+1));
+      return p.on.map(Number).join('') + '|' + joined;})()`);
+    report('a DIP switch lever closes its own contact', dip === '0100|true', dip);
+
+    /* ---- load an example through the real dialog ---- */
+    await clickSel('#mode-editor');
+    await wait(200);
+    await clickSel('#btn-examples');
+    await wait(250);
+    const cards = await ev(`document.querySelectorAll('#modal .card').length`);
+    report('the examples dialog lists circuits', cards >= 8, cards);
+    await clickSel('#modal .card:nth-child(3)');       // 4-bit adder, which installs chips
+    await wait(500);
+    const loaded = await ev(`(()=>{const L=LogicLab;
+      return L.S.work.name + '|' + Object.keys(L.lib).length + '|' + L.S.work.nodes.length;})()`);
+    report('loading an example installs its chips too', /^4-bit adder\|[2-9]/.test(loaded), loaded);
+    report('the examples dialog closed', (await ev(`!document.querySelector('#modal').classList.contains('open')`)));
+    report('the palette shows the new chips',
+      (await ev(`[...document.querySelectorAll('.pal-item')].some(e=>e.textContent==='Full adder')`)));
+
+    /* loading it again must not stack up a second copy of the same chips */
+    const libBefore = await ev(`Object.keys(LogicLab.lib).length`);
+    await clickSel('#btn-examples');
+    await wait(250);
+    await clickSel('#modal .card:nth-child(3)');
+    await wait(500);
+    const reload = await ev(`(()=>{const L=LogicLab;
+      const names=Object.values(L.lib).map(d=>d.name);
+      const used=new Set(L.S.work.nodes.filter(n=>n.type==='CHIP').map(n=>n.chip));
+      const live=[...used].every(id=>!!L.lib[id]);
+      return names.length + '|' + new Set(names).size + '|' + live;})()`);
+    report('re-loading an example reuses the chips it already installed',
+      reload === libBefore + '|' + libBefore + '|true', reload + ' was ' + libBefore);
+
+    /* ---- truth table ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work;
+      L.S.dirty=true; L.S.ttable=null; return 1;})()`);
+    await wait(200);
+    const tt = await ev(`(()=>{const b=[...document.querySelectorAll('#inspector button')]
+      .find(x=>x.textContent==='Truth table'); b.click();
+      const rows=document.querySelectorAll('.ttable tbody tr');
+      return rows.length + '|' + (rows[7] ? rows[7].textContent : '');})()`);
+    // last row of a full adder: 1+1+1 = sum 1, carry 1
+    report('the truth table renders every row', tt === '8|11111', tt);
+
+    /* ---- package the current circuit as a chip, through the dialog ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.ttable=null; return 1;})()`);
+    await wait(150);
+    await clickSel('#btn-chip');
+    await wait(250);
+    await ev(`(()=>{const i=document.querySelector('#modal input[type=text]');
+      i.value='My Adder'; return 1;})()`);
+    const before = await ev(`Object.keys(LogicLab.lib).length`);
+    await clickSel('#modal footer .primary');
+    await wait(350);
+    const after = await ev(`(()=>{const L=LogicLab;
+      return Object.keys(L.lib).length + '|' + L.S.work.nodes.length + '|'
+        + Object.values(L.lib).some(d=>d.name==='My Adder');})()`);
+    report('packaging adds the chip and clears the board', after === (before + 1) + '|0|true', after);
+
+    /* the new chip works when placed and wired */
+    const chipWorks = await ev(`(()=>{const L=LogicLab;
+      const id=Object.keys(L.lib).find(k=>L.lib[k].name==='My Adder');
+      const b=L.builder('use'); const a=b.pin('a',0,0), c2=b.pin('b',0,90);
+      const chip=b.add('CHIP',200,20,{chip:id});
+      const s=b.out('s',400,0), co=b.out('c',400,90);
+      b.w(a,0,chip,0); b.w(c2,0,chip,1); b.w(chip,0,s,0); b.w(chip,1,co,0);
+      const t=L.computeTruthTable(b.def);
+      return t.rows.map(r=>r.in.join('')+'>'+r.out.join('')).join(' ');})()`);
+    report('a packaged chip behaves like the circuit inside it',
+      chipWorks === '00>00 01>10 10>10 11>01', chipWorks);
+
+    /* ---- persistence across a reload ---- */
+    await ev(`LogicLab.S.work.name='persist me'; LogicLab.S.dirty=true;`);
+    await ev(`(()=>{const L=LogicLab; L.S.board={cols:60,parts:[{k:'ic',id:'zz',type:'7486',col:9}]};
+      L.S.bdirty=true; return 1;})()`);
+    await ev(`window.__saveProbe = 1`);
+    await wait(900);                                   // let the debounced save land
+    await send('Page.reload');
+    await wait(2200);
+    const restored = await ev(`(()=>{const L=window.LogicLab; if(!L) return 'no app';
+      return L.S.work.name + '|' + Object.values(L.lib).some(d=>d.name==='My Adder')
+        + '|' + (L.S.board.parts[0]||{}).type;})()`);
+    report('everything comes back after a reload', restored === 'persist me|true|7486', restored);
+    report('the reloaded page still runs', (await ev(`window.__errs.length===0 && LogicLab.S.sim!=null`)));
+  } catch (e) {
+    report('UI walkthrough completed', false, e.message);
+  }
+
+  for (const t of results) {
+    if (!t.pass) fails++;
+    console.log((t.pass ? '  ok  ' : 'FAIL  ') + t.name + (t.pass ? '' : '   [' + t.extra + ']'));
+  }
+  console.log('\n' + (results.length - fails) + '/' + results.length + ' passed');
+
+  const pageErrs = (await ev('window.__errs || []')) || [];
+  const errs = logs.filter((l) => l.startsWith('EXCEPTION') || l.startsWith('error')).concat(pageErrs);
+  if (errs.length) { console.log('\nPAGE ERRORS:\n' + errs.join('\n')); fails++; }
+
+  /* screenshots, so the look can be checked too */
+  if (process.env.SHOT) {
+    const shots = [
+      ['gallery', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         const b=L.builder('gallery');
+         const types=['IN','OUT','CONST','CLOCK','AND','OR','NAND','NOR','XOR','XNOR','NOT','BUF',
+                      'DFF','DLATCH','LED','HEX','SEG7','JOINT','TUNNEL'];
+         types.forEach((t,i)=>{ const n=b.add(t, (i%5)*230, Math.floor(i/5)*210); if(t==='IN') n.value=1; });
+         const one=b.add('CONST', 1160, 40, {value:1});
+         const seg=b.def.nodes.find(n=>n.type==='SEG7');
+         for(let i=0;i<8;i++) b.w(one,0,seg,i);
+         const hex=b.def.nodes.find(n=>n.type==='HEX');
+         b.w(one,0,hex,1); b.w(one,0,hex,3);
+         const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['board-counter', `(()=>{const L=LogicLab; document.querySelector('#mode-board').click();
+         L.S.board = L.examples.BOARD_EXAMPLES[3].make(); L.S.bdirty=true; L.S.bsel=null; L.fitView();
+         L.S.bcam.z*=1.9; L.S.bcam.x=-330; L.S.bcam.y=-20; return 1;})()`],
+      ['board-latch', `(()=>{const L=LogicLab; L.S.board = L.examples.BOARD_EXAMPLES[2].make();
+         L.S.bdirty=true; L.fitView(); L.S.bcam.z*=1.8; L.S.bcam.x=-60; L.S.bcam.y=-30; return 1;})()`],
+      ['editor-dark', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         document.querySelector('#mode-editor').click();
+         const ex=L.examples.EDITOR_EXAMPLES[2].make();
+         for(const c of ex.chips) L.lib[c.id]=c;
+         L.S.work=ex.work; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['editor-counter', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView(); return 1;})()`],
+    ];
+    fs.mkdirSync(SHOT_DIR, { recursive: true });
+    const grab = async (name) => {
+      const shot = await send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(SHOT_DIR, name + '.png'), Buffer.from(shot.result.data, 'base64'));
+    };
+    for (const [name, setup] of shots) {
+      await ev(setup);
+      await wait(1200);
+      await grab(name);
+    }
+    /* phone layout: the rails become drawers */
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390, height: 780, deviceScaleFactor: 2, mobile: true,
+    });
+    await ev(`(()=>{const L=LogicLab; document.querySelector('#mode-editor').click();
+      L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true; L.fitView(); return 1;})()`);
+    await wait(1000);
+    await grab('phone');
+    await ev(`document.querySelector('#btn-pal').click()`);
+    await wait(600);
+    await grab('phone-drawer');
+    await send('Emulation.clearDeviceMetricsOverride');
+    console.log('screenshots in ' + SHOT_DIR);
+  }
+
+  chrome.kill();
+  try { fs.rmSync(userDir, { recursive: true, force: true }); } catch (e) { /* leave it */ }
+  process.exit(fails ? 1 : 0);
+})();

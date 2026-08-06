@@ -1,9 +1,9 @@
 /* =========================================================================
-   Service worker for the Chernobyl page.
+   Service worker for the self-contained pages.
 
-   Purpose: make chernobyl.html and its icons readable with no connection.
-   The page pulls in nothing external — no fonts, no scripts, no CDN — so
-   caching four files is enough to make the whole thing work offline.
+   Purpose: make chernobyl.html and logic.html usable with no connection.
+   Neither pulls in anything external — no fonts, no scripts, no CDN — so
+   caching a handful of files is enough to make them work offline.
 
    IMPORTANT — scope. This file sits at the site root, so its scope is the
    whole project site, which means it also controls index.html (Science
@@ -13,15 +13,16 @@
    calling respondWith() for everything else, leaving those requests to the
    browser exactly as if no worker were installed.
 
-   Updating: bump CACHE when the page or icons change. The old cache is
+   Updating: bump CACHE when a cached page or icon changes. The old cache is
    deleted on activation, and stale-while-revalidate means a visit while
    online refreshes the copy for next time.
    ========================================================================= */
 
-const CACHE = 'chernobyl-v1';
+const CACHE = 'coriantumr-v2';
 
 const ASSETS = [
   'chernobyl.html',
+  'logic.html',
   'icon-180.png',
   'icon-192.png',
   'favicon-32.png',
