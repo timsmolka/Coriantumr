@@ -1969,6 +1969,49 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- the decoder behind a hex digit ---- */
+    {
+      /* The claim is that this circuit lights the same bars the display does.
+         So drive it with all sixteen numbers and compare against the very
+         table the display draws from — nothing else is proof. */
+      const got = await ev(`(()=>{const L=LogicLab;
+        const def=L.RECIPES.HEX.make();
+        const io=L.ioOrder(def), c=L.compile(def);
+        if(c.errors.length) return 'errors: '+JSON.stringify(c.errors);
+        const sim=new L.Sim(c);
+        const nets=io.outs.map(p=>c.portNet.get(p.id+'.i0'));
+        const order=io.outs.map(p=>p.label).join('');
+        const out=[];
+        for(let n=0;n<16;n++){
+          io.ins.forEach(p=>{
+            const w={'8':8,'4':4,'2':2,'1':1}[p.label];
+            p.value=(n & w)?1:0;});
+          for(let t=0;t<40;t++) sim.tick(0);
+          let bits=0;
+          io.outs.forEach((p,i)=>{ if(sim.val(nets[i])) bits |= 1<<'abcdefg'.indexOf(p.label); });
+          out.push(bits);
+        }
+        return order+'|'+out.join(',');})()`);
+      const want = await ev(`'abcdefg|' + LogicLab.SEG_BITS.join(',')`);
+      report('the hex decoder lights exactly the bars the display draws',
+        got === want, got + '  vs  ' + want);
+
+      const size = await ev(`(()=>{const L=LogicLab; const d=L.RECIPES.HEX.make(); const k={};
+        for(const n of d.nodes) k[n.type]=(k[n.type]||0)+1;
+        return JSON.stringify(k);})()`);
+      report('and it is one AND per number, shared between all seven bars',
+        /"AND":16/.test(size) && /"NOT":4/.test(size), size);
+
+      /* and it goes all the way down like everything else */
+      const down = await ev(`(()=>{const L=LogicLab;
+        let d=L.RECIPES.HEX.make(), rounds=0;
+        while(rounds<8){ const nx=L.expandOnce(d); if(!nx) break; d=nx; rounds++; }
+        const k={}; for(const n of d.nodes) if(n.type!=='IN'&&n.type!=='OUT') k[n.type]=(k[n.type]||0)+1;
+        return rounds+':'+Object.keys(k).join(',');})()`);
+      report('the decoder breaks down into NANDs like the rest of it',
+        /^[12]:NAND$/.test(down), down);
+    }
+
     /* ---- naming a part where it stands ---- */
     {
       await ev(`(()=>{const L=LogicLab;
@@ -2768,6 +2811,15 @@ const TESTS = String.raw`
              }, 300);
            }, 300);
          }, 200);
+         return 1;})()`],
+      ['hex-decoder', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         const b=L.builder('digit'); const h=b.add('HEX',0,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(h.id);
+         L.renderInspector();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview');
+           if(c) c.click();}, 250);
          return 1;})()`],
       ['named-modules', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();

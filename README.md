@@ -84,8 +84,15 @@ whatever you like. A chain of four identical adders is four things all called
 "Full adder", and telling them apart is the job real schematics give U1, U2, U3.
 Every copy of a chip carries its own name, and it saves with the circuit.
 
-**Are the displays made of gates?** Half of one is, and the app now says which
-half. An **LED** is not gates at all: a real one is a diode, and light comes out
+**Are the displays made of gates?** Half of one is, and you can now open that
+half up. Select a **hex digit** and "what it's made of" is the decoder itself:
+four bits in, seven bars out, one AND per number wired to be on for exactly that
+number, then each bar an OR of every number it appears in. Sixteen ANDs shared
+between all seven bars — thirty gates, not two hundred. It is generated from
+`SEG_BITS`, the same table the display draws from, so the picture cannot drift
+away from the part it explains; a test drives all sixteen numbers through it and
+compares. And it goes down like everything else: **Simpler ↓** twice and it is
+NANDs. An **LED** is not gates at all: a real one is a diode, and light comes out
 because electrons crossing a junction give up energy as photons — below it is
 physics, not logic, which is why it has no "what it's made of". A **7-segment**
 display is seven of those lamps in a package; it decides nothing. What decides

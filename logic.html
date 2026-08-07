@@ -6379,6 +6379,52 @@ function ramArray(abits, dbits, name) {
   return b.def;
 }
 
+/* The decoder a hex digit needs: four bits in, seven bars out. Built straight
+   from SEG_BITS, the same table the display itself draws from, so the picture
+   cannot drift away from the thing it explains.
+
+   It is the plainest way there is — one AND per number, wired so it is on for
+   exactly that number and nothing else, then each bar is an OR of the numbers
+   it appears in. Sixteen ANDs shared between all seven bars, which is why this
+   comes to about thirty gates and not two hundred. A real 7447 does the same
+   job with fewer, by spotting patterns; this one is meant to be read. */
+function recSevenSeg() {
+  const b = builder('Working out which bars to light', CHIP_COLORS[4]);
+  const BARS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'];
+  const pin = ['8', '4', '2', '1'].map((nm, i) => b.pin(nm, 0, i * 90));
+  const inv = pin.map((p, i) => { const g = b.add('NOT', 170, i * 90); b.w(p, 0, g, 0); return g; });
+
+  /* one AND per number, on for that number alone */
+  const forNumber = [];
+  for (let n = 0; n < 16; n++) {
+    const g = b.add('AND', 360, n * 74, { n: 4 });
+    for (let k = 0; k < 4; k++) b.w(((n >> (3 - k)) & 1) ? pin[k] : inv[k], 0, g, k);
+    forNumber.push(g);
+  }
+
+  /* each bar is an OR of every number it appears in — in trees of eight,
+     because a gate here takes at most eight inputs */
+  BARS.forEach((nm, s) => {
+    let level = [];
+    for (let n = 0; n < 16; n++) if ((SEG_BITS[n] >> s) & 1) level.push(forNumber[n]);
+    let col = 0;
+    while (level.length > 1) {
+      const next = [];
+      for (let i = 0; i < level.length; i += 8) {
+        const chunk = level.slice(i, i + 8);
+        if (chunk.length === 1) { next.push(chunk[0]); continue; }
+        const g = b.add('OR', 640 + col * 190, s * 190 + next.length * 84, { n: chunk.length });
+        chunk.forEach((c, k) => b.w(c, 0, g, k));
+        next.push(g);
+      }
+      level = next; col++;
+    }
+    const o = b.out(nm, 640 + (col + 1) * 190, s * 190 + 8);
+    if (level[0]) b.w(level[0], 0, o, 0);
+  });
+  return b.def;
+}
+
 function recRAMCell() {
   const b = builder('One bit of RAM');
   const d = b.pin('D', 0, 0), sel = b.pin('SELECT', 0, 120);
@@ -6432,6 +6478,10 @@ const RECIPES = {
     text: 'A whole one, four words of two bits. Three regions, left to right: the address goes into a decoder that switches on exactly one line; that line lets the clock edge through to its own row of flip-flops, so only the chosen word can store anything; and each column of cells is guarded by the same line and then ORed together, which is safe precisely because the cells you did not ask for sit at 0. Every memory chip ever made is those three things, only wider.',
     make: () => ramArray(2, 2, 'RAM · 4 × 2'),
     cell: recRAMCell,
+  },
+  HEX: {
+    text: 'Two halves, and only one of them is gates. This is that half: four bits in, seven bars out, working out which of the bars draws which number. One AND per number, on for exactly that number and nothing else, then each bar is an OR of every number it appears in — sixteen ANDs shared between all seven bars, which is why this is thirty gates and not two hundred. The bars themselves are not in here: they are seven lamps, and a lamp is a diode, which is physics rather than logic. This is the job a 7447 does on the breadboard.',
+    make: recSevenSeg,
   },
   ROM: {
     text: 'Four words of two bits. The address is decoded into one line per word — and then the wiring into the OR gates IS the data: a wire where a bit should be 1, nothing where it should be 0. This one holds 1, 2, 3, 0. That is why it is read-only; on a real chip the pattern is baked in when it is made.',
@@ -6977,7 +7027,7 @@ window.LogicLab = {
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
-  addJointToSelection, spliceJoint, hitTest, wireHops,
+  addJointToSelection, spliceJoint, hitTest, wireHops, recSevenSeg, SEG_BITS,
   get lib() { return LIB; },
 };
 
