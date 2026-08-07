@@ -202,6 +202,13 @@ button,input,select{font:inherit;color:inherit}
 .pal-item:hover{border-color:var(--select)}
 .pal-item.armed{border-color:var(--accent);background:var(--panel-3);box-shadow:0 0 0 1px var(--accent) inset}
 .pal-item .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto;background:var(--chip)}
+/* the gate's real schematic shape, in place of the coloured square */
+.pal-item .symwrap{display:flex;flex:0 0 auto}
+.typeval{display:inline-flex;align-items:center;gap:7px}
+.symsw{width:20px;height:13px;display:block}
+.symsw path,.symsw circle{fill:var(--chip);stroke:var(--ink-faint);stroke-width:1.1}
+.symsw path[fill="none"]{fill:none}
+.pal-item.armed .symsw path,.pal-item.armed .symsw circle{stroke:var(--accent)}
 /* Chips get their part number and a plain-English name underneath, because
    "74151" tells a beginner nothing on its own. */
 .pal-item.named{
@@ -1311,6 +1318,57 @@ function drawSevenSeg(x, y, w, h, bits, dot, color) {
   ctx.fill(); ctx.globalAlpha = 1;
 }
 
+/* ---- the drawn shapes of the gates ---------------------------------------
+   The distinctive shapes every schematic in the world uses: a D for AND, a
+   shield with a pointed nose for OR, a triangle for a plain pass-through, an
+   extra curved back for XOR, and a small circle on the nose for the inverting
+   half of each pair. The name stays written inside, because a beginner reading
+   this has not learned the shapes yet — that is the whole point of showing
+   both. The box the shape is drawn in is exactly the box that was there
+   before, so ports, wires and hit-testing are untouched. */
+const GATE_SHAPE = {
+  AND: 'and', NAND: 'and',
+  OR: 'or', NOR: 'or',
+  XOR: 'xor', XNOR: 'xor',
+  NOT: 'tri', BUF: 'tri',
+};
+
+/** Trace a gate outline into the current path. `bw` is how much of the width
+    the body may use; the rest is left for the inverting circle. */
+function gateSymbolPath(c, kind, x, y, w, h, bubble) {
+  const bw = w - (bubble ? 7 : 0);
+  const my = y + h / 2;
+  c.beginPath();
+  if (kind === 'and') {
+    const flat = x + bw * 0.42;
+    c.moveTo(x, y);
+    c.lineTo(flat, y);
+    c.bezierCurveTo(flat + bw * 0.78, y, flat + bw * 0.78, y + h, flat, y + h);
+    c.lineTo(x, y + h);
+    c.closePath();
+    return;
+  }
+  if (kind === 'tri') {
+    c.moveTo(x, y); c.lineTo(bw + x, my); c.lineTo(x, y + h);
+    c.closePath();
+    return;
+  }
+  /* or / xor: the back dishes inwards, the front comes to a nose */
+  const back = kind === 'xor' ? x + 6 : x;      // xor keeps room for its second line
+  c.moveTo(back, y);
+  c.quadraticCurveTo(back + bw * 0.5, y, x + bw, my);
+  c.quadraticCurveTo(back + bw * 0.5, y + h, back, y + h);
+  c.quadraticCurveTo(back + bw * 0.22, my, back, y);
+  c.closePath();
+}
+
+/** The second, outer back line that tells an XOR from an OR. */
+function xorBackPath(c, x, y, h) {
+  c.beginPath();
+  c.moveTo(x, y);
+  c.quadraticCurveTo(x + 9, y + h / 2, x, y + h);
+}
+
 function drawNode(node, ghost) {
   const g = gm(node);
   const part = node.type === 'CHIP' ? CHIP_PART : PARTS[node.type] || {};
@@ -1468,9 +1526,28 @@ function drawNode(node, ghost) {
     default: {
       drawPorts();
       const fill = chipDef ? chipDef.color : (GATE_COLORS[part.cat] || C.chip);
-      body(fill);
+      const sym = GATE_SHAPE[node.type];
+      let inkX = g.x + g.w / 2;
+      if (sym) {
+        gateSymbolPath(ctx, sym, g.x, g.y, g.w, g.h, part.bubble);
+        ctx.fillStyle = fill; ctx.fill();
+        ctx.strokeStyle = C.line; ctx.lineWidth = 1.5; ctx.stroke();
+        if (sym === 'xor') {
+          xorBackPath(ctx, g.x, g.y, g.h);
+          ctx.stroke();
+        }
+        /* an OR is fattest to the left of centre and a triangle to the left of
+           that, so the name is nudged to where there is actually room */
+        if (sym === 'or' || sym === 'xor') inkX = g.x + g.w * 0.42;
+        else if (sym === 'tri') inkX = g.x + g.w * 0.36;
+      } else body(fill);
       const named = g.ins.some((p) => p.name) || g.outs.some((p) => p.name);
-      label(g.label, C.chipInk, node.type === 'CHIP' ? 12 : 11.5, '600');
+      if (sym) {
+        ctx.fillStyle = C.chipInk;
+        ctx.font = `600 ${sym === 'tri' ? 9 : 10.5}px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(g.label, inkX, g.y + g.h / 2 + 0.5);
+      } else label(g.label, C.chipInk, node.type === 'CHIP' ? 12 : 11.5, '600');
       if (named) {
         ctx.font = `9.5px ${FONT}`; ctx.fillStyle = C.chipInk; ctx.globalAlpha = (ghost ? 0.55 : 1) * 0.65;
         ctx.textBaseline = 'middle';
@@ -2418,6 +2495,28 @@ function paintWarnings() {
 
 /* ---- palette ------------------------------------------------------------ */
 
+/* The same shapes again, small, so you learn what an OR looks like while you
+   are picking one rather than only after placing it. Anything without a
+   distinctive shape keeps its coloured square. */
+const SYMBOL_SVG = {
+  and: 'M2 1.5 H8 C15.5 1.5 15.5 12.5 8 12.5 H2 Z',
+  or: 'M2 1.5 Q9.5 1.5 16 7 Q9.5 12.5 2 12.5 Q5.6 7 2 1.5 Z',
+  xor: 'M4 1.5 Q11 1.5 17 7 Q11 12.5 4 12.5 Q7.6 7 4 1.5 Z',
+  tri: 'M3 1.5 L15 7 L3 12.5 Z',
+};
+
+function gateSwatch(type, color) {
+  const kind = GATE_SHAPE[type];
+  if (!kind) return h('span', { class: 'sw', style: `background:${color || GATE_COLORS.gate}` });
+  const bubble = (PARTS[type] || {}).bubble;
+  const svg = `<svg class="symsw" viewBox="0 0 22 14" aria-hidden="true">`
+    + (kind === 'xor' ? '<path d="M1 1.5 Q4.6 7 1 12.5" fill="none"/>' : '')
+    + `<path d="${SYMBOL_SVG[kind]}"/>`
+    + (bubble ? '<circle cx="18.6" cy="7" r="1.9"/>' : '')
+    + '</svg>';
+  return h('span', { class: 'symwrap', html: svg });
+}
+
 function armPart(p) {
   /* Reaching for a part is unambiguously an edit, so say so and switch rather
      than refusing the click and leaving the user to work out why. */
@@ -2468,7 +2567,7 @@ function renderPalette() {
           const same = S.armed && S.armed.type === it.type && S.armed.chip === it.chip;
           armPart(same ? null : { type: it.type, chip: it.chip });
         },
-      }, h('span', { class: 'sw', style: `background:${it.color || GATE_COLORS.gate}` }), it.name);
+      }, gateSwatch(it.type, it.color), it.name);
       wrap.append(btn);
     }
     host.append(wrap);
@@ -2540,7 +2639,9 @@ function nodeInspector(node) {
   const part = node.type === 'CHIP' ? LIB[node.chip] : PARTS[node.type];
   const sec = h('div', { class: 'insp-sec' }, h('h3', {}, 'Selected part'));
   const title = node.type === 'CHIP' ? (part ? part.name : 'missing chip') : part.name;
-  sec.append(h('div', { class: 'kv' }, h('span', {}, 'Type'), h('span', {}, title)));
+  /* the name and the shape together, so one teaches the other */
+  sec.append(h('div', { class: 'kv' }, h('span', {}, 'Type'),
+    h('span', { class: 'typeval' }, GATE_SHAPE[node.type] ? gateSwatch(node.type, null) : null, title)));
 
   /* The same "here is what this is" treatment the breadboard gets. */
   const prim = PARTS[node.type];
@@ -3078,7 +3179,10 @@ function drawDefInto(canvas, def, maxZoom, markDeeper, opts) {
       for (const n of def.nodes) {
         if (!descendable(n)) continue;
         const g = gm(n);
-        const x = g.x + g.w - 7 / z, y = g.y + g.h - 6 / z, k = 4 / z;
+        /* a gate symbol has nothing in its bottom-right corner to hang this on,
+           so it moves to where the shape actually is */
+        const inset = GATE_SHAPE[n.type] ? g.w * 0.32 : 7 / z;
+        const x = g.x + g.w - inset, y = g.y + g.h - 6 / z, k = 4 / z;
         ctx.strokeStyle = C.sel; ctx.lineWidth = 2 / z; ctx.lineCap = 'round';
         ctx.beginPath();
         ctx.moveTo(x - k, y - k * 0.6); ctx.lineTo(x, y + k * 0.5); ctx.lineTo(x + k, y - k * 0.6);

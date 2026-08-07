@@ -77,6 +77,15 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**The gates look like gates.** Each one is drawn as the distinctive shape every
+schematic in the world uses — a D for AND, a pointed shield for OR, a second
+curved back for XOR, a triangle for a plain pass-through, and the small circle
+on the nose for the inverting half of each pair — with the **name still written
+inside it**, because someone who has not learned the shapes yet needs both to
+learn either. The same symbols appear beside each name in the palette and next
+to the type in the side panel. The shape is drawn inside the box the gate always
+occupied, so nothing about ports, wiring or layout moved.
+
 **Circuit editor.** Drop gates on a board, drag between ports to wire them, and
 click an input pin to flip it. Give a circuit input and output pins and you can
 **package it as a chip**, which then appears in the palette and can be dropped

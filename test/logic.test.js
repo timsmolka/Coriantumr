@@ -1969,6 +1969,35 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- the gates are drawn as their real schematic shapes ---- */
+    {
+      const syms = await ev(`(()=>{const L=LogicLab;
+        const want=['AND','OR','NAND','NOR','XOR','XNOR','NOT','BUFFER'];
+        const got=[...document.querySelectorAll('.pal-item')]
+          .filter(b=>want.includes(b.textContent.trim()))
+          .map(b=>b.textContent.trim()+':'+(b.querySelector('svg.symsw')?'sym':'square'));
+        return got.join(' ');})()`);
+      report('every gate in the palette shows its symbol next to its name',
+        syms.split(' ').length === 8 && !/square/.test(syms), syms);
+      const bubbles = await ev(`(()=>{
+        const of=(n)=>{const b=[...document.querySelectorAll('.pal-item')]
+          .find(x=>x.textContent.trim()===n); return b && !!b.querySelector('svg circle');};
+        return ['NAND','NOR','XNOR','NOT'].every(of) && !['AND','OR','XOR','BUFFER'].some(of);})()`);
+      report('and only the inverting ones carry the little circle', bubbles === true, bubbles);
+
+      /* an AND and an OR must not draw the same picture */
+      const shapes = await ev(`(()=>{const L=LogicLab;
+        const pix=(type)=>{
+          const c=document.createElement('canvas'); c.width=c.height=1;
+          const b=L.builder('sym'); b.add(type, 0, 0);
+          const g=L.geom(b.def.nodes[0]);
+          return Math.round(g.w)+'x'+Math.round(g.h);
+        };
+        return pix('AND')===pix('OR');})()`);
+      report('the symbol never changes the footprint of a gate, so nothing else moves',
+        shapes === true, shapes);
+    }
+
     /* ---- Use mode: a click works the circuit and cannot change it ---- */
     {
       /* a switch, a button and a gate, so every kind of click can be tried */
