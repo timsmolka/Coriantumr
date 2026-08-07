@@ -103,11 +103,22 @@ that chip and nothing else. The **hex digit** part does both halves for you;
 
 **Crossings and joins look different.** Two wires meeting at a dot are one
 signal; two wires crossing are two, and drawn the same way there is no telling
-which you are looking at. A crossing now gets the little **bridge** every
-schematic uses — the wire passing over hops, the one underneath runs straight
-through — and only one of each pair hops, so a crossing never turns into a pair
-of bumps. Wires on the same signal are never bridged, because a fan-out is a
-join, not a crossing.
+which you are looking at. A crossing gets a **bridge** — three sides of a small
+box, stepped over the wire underneath, which reads as deliberate at any zoom
+where a rounded hump blurs into the wire itself. Only one of each pair hops, and
+wires on the same signal are never bridged, because a fan-out is a join.
+
+Routes are worked out for the whole board in one pass rather than each wire on
+its own, so every wire can see which lanes the ones before it have taken and
+step off them. Left to reach for the midpoint independently, two wires with the
+same start and end heights land exactly on top of each other — two signals drawn
+as a single line, which is worse than an unmarked crossing because there is
+nothing at all to see. Half the built-in examples had that; they now cross, and
+the crossings are marked.
+
+A wire that genuinely cannot get round something goes **over** it and bridges at
+the edge, so a line disappearing behind a chip is never mistaken for a line that
+stops there.
 
 **Junctions.** One signal often has to feed several inputs. A junction catches
 clicks from a little way outside the dot it draws, in both the body and the

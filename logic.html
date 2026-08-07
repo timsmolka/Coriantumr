@@ -1302,7 +1302,10 @@ const routeClear = (pts, rects) => {
 
 /** The points a wire runs through, ends included. Falls back to null when the
     old curve should be used instead. */
-function routeWire(a, b, fromJoint) {
+const LANE_GAP = 12;
+
+function routeWire(a, b, fromJoint, taken) {
+  taken = taken || [];
   if (S.work.nodes.length > ROUTE_LIMIT) return null;
   const rects = wireObstacles();
   const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB };
@@ -1321,7 +1324,14 @@ function routeWire(a, b, fromJoint) {
     const lo = Math.min(A.x, B.x), hi = Math.max(A.x, B.x);
     const order = fromJoint ? [0.06, 0.16, 0.34, 0.5, 0.75] : [0.5, 0.32, 0.68, 0.15, 0.85];
     for (const t of order) {
-      const mx = lo + (hi - lo) * t;
+      /* Every wire reaching for the same midpoint is what makes two of them lie
+         one on top of the other — two signals drawn as a single line, which is
+         worse than an unmarked crossing because there is nothing at all to see.
+         So a lane already spoken for is stepped off until a free one turns up. */
+      let mx = lo + (hi - lo) * t;
+      for (let step = 0; step < 8 && taken.some((u) => Math.abs(u - mx) < LANE_GAP); step++) {
+        mx += (step % 2 ? -1 : 1) * LANE_GAP * Math.ceil((step + 1) / 2);
+      }
       tries.push([A, { x: mx, y: A.y }, { x: mx, y: B.y }, B]);
     }
     /* Target behind the source: out, round the outside, back in. The lane has
@@ -1353,17 +1363,37 @@ function routeWire(a, b, fromJoint) {
   return null;
 }
 
-/** The route a wire takes, worked out once per layout and remembered. */
-const routeCache = new Map();
+/** Every wire's route, worked out in one pass so each can see which lanes the
+    ones before it have already taken, and remembered until something moves. */
+let routeTable = { key: '', map: new Map() };
+function allRoutes() {
+  const key = wireObstacles().map((r) => `${Math.round(r.x0)},${Math.round(r.y0)}`).join(';')
+    + '|' + S.work.wires.map((w) => w.id).join(',');
+  if (routeTable.key === key) return routeTable.map;
+  const map = new Map();
+  const taken = [];
+  for (const wr of S.work.wires) {
+    const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
+    if (!a || !b) continue;
+    const src = nodeById(S.work, wr.a.n);
+    const pts = routeWire(a, b, !!src && src.type === 'JOINT', taken);
+    map.set(wr.id, pts);
+    /* remember the vertical runs, so the next wire steps around them */
+    if (pts) {
+      for (let i = 0; i < pts.length - 1; i++) {
+        if (Math.abs(pts[i].x - pts[i + 1].x) < 0.5 && Math.abs(pts[i].y - pts[i + 1].y) > 18) {
+          taken.push(pts[i].x);
+        }
+      }
+    }
+  }
+  routeTable = { key, map };
+  return map;
+}
+
 function wireRoute(wr, a, b) {
-  const key = `${wr.id}|${Math.round(a.x)},${Math.round(a.y)},${Math.round(b.x)},${Math.round(b.y)}|${wireObstacles().length}`;
-  const hit = routeCache.get(wr.id);
-  if (hit && hit.key === key) return hit.pts;
-  const src = nodeById(S.work, wr.a.n);
-  const pts = routeWire(a, b, !!src && src.type === 'JOINT');
-  routeCache.set(wr.id, { key, pts });
-  if (routeCache.size > 4000) routeCache.clear();
-  return pts;
+  const map = allRoutes();
+  return map.has(wr.id) ? map.get(wr.id) : null;
 }
 
 /* ---- where wires cross without joining -------------------------------------
@@ -1416,6 +1446,28 @@ function wireHops() {
       }
     }
   }
+  /* A wire that could not get round something goes over it — and says so, at
+     the edge it crosses, so a line disappearing behind a chip is never mistaken
+     for a line that stops there. */
+  const rects = wireObstacles();
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    if (!L) continue;
+    const own = new Set([S.work.wires[i].a.n, S.work.wires[i].b.n]);
+    for (const r of rects) {
+      if (own.has(r.id)) continue;
+      const edges = [
+        [{ x: r.x0, y: r.y0 }, { x: r.x1, y: r.y0 }], [{ x: r.x1, y: r.y0 }, { x: r.x1, y: r.y1 }],
+        [{ x: r.x1, y: r.y1 }, { x: r.x0, y: r.y1 }], [{ x: r.x0, y: r.y1 }, { x: r.x0, y: r.y0 }],
+      ];
+      for (let a3 = 0; a3 < L.pts.length - 1; a3++) {
+        for (const e of edges) {
+          const c = crossAt(L.pts[a3], L.pts[a3 + 1], e[0], e[1]);
+          if (c) hops.push({ wire: i, x: c.x, y: c.y, dx: c.dx / c.len, dy: c.dy / c.len });
+        }
+      }
+    }
+  }
   hopCache = { key, hops };
   return hops;
 }
@@ -1426,10 +1478,18 @@ function drawHop(hop, colour) {
   ctx.save();
   ctx.translate(hop.x, hop.y);
   ctx.rotate(ang);
-  ctx.strokeStyle = C.bg; ctx.lineWidth = 6; ctx.lineCap = 'butt';
+  ctx.strokeStyle = C.bg; ctx.lineWidth = 7; ctx.lineCap = 'butt';
   ctx.beginPath(); ctx.moveTo(-HOP_R, 0); ctx.lineTo(HOP_R, 0); ctx.stroke();
-  ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.arc(0, 0, HOP_R, Math.PI, 0, false); ctx.stroke();
+  /* a square step over rather than a rounded hump: three sides of a box, which
+     reads as deliberate at any zoom and does not blur into the wire itself */
+  ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+  ctx.beginPath();
+  ctx.moveTo(-HOP_R, 0);
+  ctx.lineTo(-HOP_R, -HOP_R);
+  ctx.lineTo(HOP_R, -HOP_R);
+  ctx.lineTo(HOP_R, 0);
+  ctx.stroke();
+  ctx.lineCap = 'round';
   ctx.restore();
 }
 
