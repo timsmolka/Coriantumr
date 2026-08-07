@@ -1302,10 +1302,14 @@ const routeClear = (pts, rects) => {
 
 /** The points a wire runs through, ends included. Falls back to null when the
     old curve should be used instead. */
-const LANE_GAP = 12;
+/* How far apart two wires' vertical runs must sit. Twelve was not enough — two
+   lanes that close read as one thick line with a kink in it rather than as two
+   wires, which defeats the point of separating them at all. At this distance
+   they are plainly two, and there is room for the eye to follow either one. */
+const LANE_GAP = 30;
 
-function routeWire(a, b, fromJoint, taken) {
-  taken = taken || [];
+function routeWire(a, b, fromJoint, taken, takenH) {
+  taken = taken || []; takenH = takenH || [];
   if (S.work.nodes.length > ROUTE_LIMIT) return null;
   const rects = wireObstacles();
   const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB };
@@ -1342,11 +1346,17 @@ function routeWire(a, b, fromJoint, taken) {
       if (r.x1 < Math.min(A.x, B.x) - 60 || r.x0 > Math.max(A.x, B.x) + 60) continue;
       top = Math.min(top, r.y0); bot = Math.max(bot, r.y1);
     }
-    for (const lane of [bot + 24, top - 24, bot + 46, top - 46]) {
-      if (!isFinite(lane)) continue;
+    for (const base of [bot + 26, top - 26, bot + 52, top - 52]) {
+      if (!isFinite(base)) continue;
+      /* the way round is a lane too, and wires stacked on the same one going
+         round the outside look no better than wires stacked going down */
+      let lane = base;
+      for (let step = 0; step < 8 && takenH.some((u) => Math.abs(u - lane) < LANE_GAP); step++) {
+        lane = base + (step % 2 ? -1 : 1) * LANE_GAP * Math.ceil((step + 1) / 2);
+      }
       tries.push([A, { x: A.x, y: lane }, { x: B.x, y: lane }, B]);
       /* and out past the side first, for when the way up is blocked too */
-      const side = A.x + 26;
+      const side = A.x + 30;
       tries.push([A, { x: side, y: A.y }, { x: side, y: lane }, { x: B.x, y: lane }, B]);
     }
   } else {
@@ -1371,19 +1381,19 @@ function allRoutes() {
     + '|' + S.work.wires.map((w) => w.id).join(',');
   if (routeTable.key === key) return routeTable.map;
   const map = new Map();
-  const taken = [];
+  const taken = [], takenH = [];
   for (const wr of S.work.wires) {
     const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
     if (!a || !b) continue;
     const src = nodeById(S.work, wr.a.n);
-    const pts = routeWire(a, b, !!src && src.type === 'JOINT', taken);
+    const pts = routeWire(a, b, !!src && src.type === 'JOINT', taken, takenH);
     map.set(wr.id, pts);
-    /* remember the vertical runs, so the next wire steps around them */
+    /* remember the long runs both ways, so the next wire steps around them */
     if (pts) {
       for (let i = 0; i < pts.length - 1; i++) {
-        if (Math.abs(pts[i].x - pts[i + 1].x) < 0.5 && Math.abs(pts[i].y - pts[i + 1].y) > 18) {
-          taken.push(pts[i].x);
-        }
+        const dx = Math.abs(pts[i].x - pts[i + 1].x), dy = Math.abs(pts[i].y - pts[i + 1].y);
+        if (dx < 0.5 && dy > 18) taken.push(pts[i].x);
+        else if (dy < 0.5 && dx > 40) takenH.push(pts[i].y);
       }
     }
   }
