@@ -1704,7 +1704,7 @@ const TESTS = String.raw`
         if(first===null) first=k; else if(k!==first){ varied=true; break; } }
       return (c.width>400?'wide':'narrow') + '|' + varied;})()`);
     report('clicking the diagram opens a readable copy', big === 'wide|true', big);
-    await clickSel('#modal header .btn');
+    await clickSel('#modal-close');
     await wait(250);
 
     /* drilling down: RAM -> flip-flop -> NAND, and back up again */
@@ -1811,6 +1811,36 @@ const TESTS = String.raw`
     await wait(300);
     report('"fit it all in" puts it back', (await cam()) === restCam, (await cam()) + ' vs ' + restCam);
 
+    /* the diagram can take the whole window, which matters most where real
+       fullscreen is not allowed — an embed, a chat panel */
+    const sheetBox = () => ev(`(()=>{const r=document.querySelector('#modal-sheet').getBoundingClientRect();
+      const c=document.querySelector('#modal canvas.preview.big').getBoundingClientRect();
+      return [Math.round(r.width), Math.round(r.height), Math.round(c.height)].join(',');})()`);
+    const small = await sheetBox();
+    await clickSel('#modal-grow');
+    await wait(400);
+    const huge = await sheetBox();
+    report('the diagram can be grown to fill the window',
+      +huge.split(',')[0] > +small.split(',')[0]
+      && +huge.split(',')[2] > +small.split(',')[2], small + ' → ' + huge);
+    const refit = await ev(`(()=>{const c=LogicLab.__diagTrail().slice(-1)[0].cam;
+      const r=document.querySelector('#modal canvas.preview.big').getBoundingClientRect();
+      const b=LogicLab.__diagDef.nodes.length;
+      return c && c.x > -r.width && c.x < r.width ? 'in view' : 'lost';})()`);
+    report('and growing it re-fits the picture rather than leaving it off-screen',
+      refit === 'in view', refit);
+    /* the sticky footer must not sit on top of the controls under the picture */
+    const clear = await ev(`(()=>{
+      const f=document.querySelector('#modal-sheet footer').getBoundingClientRect();
+      const gaps=['.zoomhint','.openups']
+        .map(s=>document.querySelector('#modal '+s))
+        .filter(Boolean).map(e=>f.top - e.getBoundingClientRect().bottom);
+      return Math.round(Math.min(...gaps));})()`);
+    report('nothing under the grown picture hides behind the footer', clear >= 0, clear + 'px clear');
+    await clickSel('#modal-grow');
+    await wait(400);
+    report('and shrinks back again', (await sheetBox()) === small, (await sheetBox()) + ' vs ' + small);
+
     await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
     await wait(350);
     report('backing out of a breakdown returns to the whole part', (await depth()) === 1, await depth());
@@ -1830,10 +1860,44 @@ const TESTS = String.raw`
       opened === 'D FLIP-FLOP opened up · 80 parts|48|16|0', opened);
     report('and the flip-flop is no longer on offer',
       !(await chips()).includes('D FLIP-FLOP'), await chips());
-    await clickSel('#modal header .btn');
+    /* this level has the fullest set of controls under the picture — caption
+       over two lines, the hint, and a row of buttons — so it is the one that
+       proves the grown sheet leaves room for all of them */
+    const gaps = () => ev(`(()=>{
+      const f=document.querySelector('#modal-sheet footer').getBoundingClientRect();
+      return ['.zoomhint','.openups'].map(s=>document.querySelector('#modal '+s))
+        .filter(Boolean).map(e=>Math.round(f.top - e.getBoundingClientRect().bottom)).join(',');})()`);
+    await clickSel('#modal-grow');
+    await wait(400);
+    const grownGaps = await gaps();
+    report('grown, the hint and the button row still clear the footer',
+      grownGaps.split(',').every(n => +n >= 0), grownGaps);
+    await clickSel('#modal-grow');
+    await wait(300);
+    await clickSel('#modal-close');
     await wait(250);
 
     /* the top bar says what "Untitled" is, and lets you change it */
+    /* fullscreen, and what it does when the frame around the page says no */
+    {
+      const has = await ev(`(()=>{const b=document.querySelector('#btn-full');
+        return b ? b.title : 'missing';})()`);
+      report('there is a fullscreen button and it says the shortcut',
+        /Fullscreen \(Shift\+F\)/.test(has), has);
+      /* pretend the embedding frame refuses, the way a sandboxed one does */
+      const refused = await ev(`(()=>{
+        const el=document.documentElement, real=el.requestFullscreen;
+        el.requestFullscreen = () => Promise.reject(new Error('denied'));
+        document.querySelector('#btn-full').click();
+        return new Promise(r => setTimeout(()=>{
+          el.requestFullscreen = real;
+          const t=document.querySelector('#hint');
+          r(t && t.classList.contains('show') ? t.textContent : 'no toast');
+        }, 300));})()`);
+      report('a frame that refuses fullscreen gets an explanation, not silence',
+        /own browser tab/.test(refused) && /F11/.test(refused), refused);
+    }
+
     await ev(`(()=>{const L=LogicLab; L.S.work.name='Untitled'; L.renderCrumbs(); return 1;})()`);
     await wait(150);
     const crumb = await ev(`document.querySelector('#crumbs').textContent`);
@@ -2062,7 +2126,7 @@ const TESTS = String.raw`
          const w=L.S.work.wires.find(x=>x.a.n===A.id);
          L.S.selWires.clear(); L.S.selWires.add(w.id); L.renderInspector(); return 1;})()`],
       ['ram-inside', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click();
          const b=L.builder('ram'); const r=b.add('RAM', 0, 0, {abits:4,dbits:8,data:[]});
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
@@ -2070,7 +2134,7 @@ const TESTS = String.raw`
          setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview'); if(c) c.click();}, 250);
          return 1;})()`],
       ['drilldown', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click();
          const b=L.builder('drill'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
@@ -2089,7 +2153,7 @@ const TESTS = String.raw`
          }, 200);
          return 1;})()`],
       ['simpler-whole-ram', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click();
          const b=L.builder('simpler'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
@@ -2104,7 +2168,7 @@ const TESTS = String.raw`
          }, 200);
          return 1;})()`],
       ['open-up-flipflops', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click();
          const b=L.builder('open up'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
@@ -2128,8 +2192,10 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['diagram-grown', `(()=>{const b=document.querySelector('#modal-grow');
+         if(b) b.click(); return 1;})()`],
       ['ram-array-built', `(()=>{const L=LogicLab;
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          const b=L.builder('array'); L.S.work=b.def;
          L.S.work.nodes.push(...L.ramArray(3,4).nodes);
          L.S.work.wires.push(...L.ramArray(3,4).wires);
@@ -2137,7 +2203,7 @@ const TESTS = String.raw`
          L.S.dirty=true; L.S.sel.clear(); L.renderInspector(); L.fitView();
          return 1;})()`],
       ['stored-program', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click();
          L.S.work=L.examples.EDITOR_EXAMPLES[8].make().work; L.S.dirty=true;
          const rom=L.S.work.nodes.find(n=>n.type==='ROM');
@@ -2156,7 +2222,7 @@ const TESTS = String.raw`
          const n=L.S.work.nodes.find(x=>x.type==='OR');
          L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`],
       ['transistor-nand', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-board').click();
          L.S.board=L.examples.BOARD_EXAMPLES[5].make();
          L.S.board.parts.filter(p=>p.k==='btn').forEach(b=>{b.pressed=true;});
@@ -2164,7 +2230,7 @@ const TESTS = String.raw`
          L.S.bdirty=true; L.renderInspector(); L.fitView();
          L.S.bcam.z*=1.7; L.S.bcam.x=-40; L.S.bcam.y=-120; return 1;})()`],
       ['two-boards', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         const x=document.querySelector('#modal .btn.icon'); if(x) x.click();
+         const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-board').click();
          const chips=['74173','74173','7483','74245','74161','7485','74151','7400',
                       '74138','7475','7486','74595','7404','74157','7474','7432'];
@@ -2179,7 +2245,7 @@ const TESTS = String.raw`
          L.S.bsel=null; L.S.bdirty=true; L.renderPalette(); L.renderInspector(); L.fitView();
          return 1;})()`],
       ['chip-list', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
-         document.querySelector('#modal .btn.icon').click();
+         document.querySelector('#modal-close').click();
          document.querySelector('#mode-board').click();
          L.S.board={cols:60,parts:[{k:'ic',id:'z',type:'74595',col:8}]};
          L.S.bsel='z'; L.S.bdirty=true; L.renderInspector(); L.fitView(); return 1;})()`],

@@ -97,7 +97,12 @@ there are. Press *D FLIP-FLOP (8)* on that RAM and all eight flip-flops become
 their six NANDs apiece — 48 of them — while the decoder around them is still
 recognisably ANDs and inverters, so you can see which clump of six used to be
 which bit. The picture scrolls to zoom and drags to move, because a hundred gates
-fitted into one box are too small to read.
+fitted into one box are too small to read, and the **⤢** in the corner of the
+diagram stretches it to fill the window. There is a **⛶ fullscreen** button in
+the top bar too (Shift+F). Fullscreen is the one thing an embedded copy cannot
+always have — a frame that was not granted permission refuses the request — so
+when that happens it says to open the page in its own tab rather than doing
+nothing; the ⤢ always works, since it only uses the space the page already has.
 
 It is the same circuit at every level, which is a claim the tests check by
 running the truth table and the store-and-read-back at each step rather than by

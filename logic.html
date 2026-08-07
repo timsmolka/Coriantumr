@@ -358,6 +358,11 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
   box-shadow:var(--shadow);max-width:640px;width:100%;max-height:86vh;overflow:auto;
 }
 .sheet.wide{max-width:860px}
+/* the whole window, for the big diagrams */
+.sheet.huge{max-width:none;width:100%;height:100%;max-height:none}
+/* leaves room for the caption, the hint and the "open up every…" row, so the
+   sticky footer never covers them */
+.sheet.huge canvas.preview.big{height:calc(100vh - 310px)}
 .sheet header{
   display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);
   position:sticky;top:0;background:var(--panel);z-index:1;
@@ -453,6 +458,7 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
       <button class="btn wide-only" id="btn-chip" title="Package this circuit as a reusable chip">Make chip</button>
       <button class="btn wide-only" id="btn-examples">Examples</button>
       <button class="btn wide-only" id="btn-file">File</button>
+      <button class="btn icon wide-only" id="btn-full" title="Fullscreen (Shift+F)">⛶</button>
       <button class="btn icon wide-only" id="btn-help" title="Help">?</button>
       <button class="btn icon wide-only" id="btn-theme" title="Light / dark">◐</button>
       <button class="btn icon narrow-only" id="btn-more" title="More">⋯</button>
@@ -2217,7 +2223,8 @@ window.addEventListener('keydown', (ev) => {
       }
       armPart(null); select([]); S.drag = null; endBatch(); closeModal();
       break;
-    case 'f': case 'F': fitView(); break;
+    case 'f': fitView(); break;
+    case 'F': ev.shiftKey ? toggleFullscreen() : fitView(); break;
     case ' ':
       ev.preventDefault(); setRunning(!S.run); break;
     case 'ArrowLeft': case 'ArrowRight': case 'ArrowUp': case 'ArrowDown': {
@@ -2873,8 +2880,11 @@ function renderDiagram() {
       onclick: () => { closeModal(); insertDef(lvl.make()); },
     }, lvl.button || 'Build it on the board'));
 
-  openModal('What it’s made of', body, foot, true);
   const draw = () => drawDefInto(canvas, lvl.def, 1.6, true, { cam: lvl.cam, cache: lvl });
+  /* growing the sheet changes the canvas size, so the fitted view has to be
+     worked out again from scratch */
+  openModal('What it’s made of', body, foot, true,
+    { onResize: () => requestAnimationFrame(() => { lvl.cam = null; draw(); lvl.cam = { ...canvas._cam }; }) });
   requestAnimationFrame(() => {
     draw();
     if (!lvl.cam && canvas._cam) lvl.cam = { ...canvas._cam };   // remember where it started
@@ -3207,15 +3217,29 @@ function truthTableSection() {
 
 /* ---- modals ------------------------------------------------------------- */
 
-function openModal(title, bodyEl, footEl, wide) {
+/* `grow` adds a button that stretches the sheet to fill the window. The
+   diagrams want it: a page embedded in a chat panel may not be allowed real
+   fullscreen, but it can always use every pixel it does have. The choice is
+   remembered, because someone who wants one big diagram wants the next one
+   big too. */
+let modalBig = false;
+
+function openModal(title, bodyEl, footEl, wide, grow) {
   const sheet = $('#modal-sheet');
+  const apply = () => { sheet.classList.toggle('huge', grow && modalBig); };
   sheet.className = 'sheet' + (wide ? ' wide' : '');
   sheet.innerHTML = '';
   sheet.append(
     h('header', {}, h('h2', {}, title), h('span', { class: 'grow' }),
-      h('button', { class: 'btn icon', onclick: closeModal }, '✕')),
+      grow ? h('button', {
+        class: 'btn icon', id: 'modal-grow',
+        title: 'Use the whole window',
+        onclick: () => { modalBig = !modalBig; apply(); if (grow.onResize) grow.onResize(); },
+      }, '⤢') : null,
+      h('button', { class: 'btn icon', id: 'modal-close', onclick: closeModal }, '✕')),
     h('div', { class: 'body' }, bodyEl));
   if (footEl) sheet.append(h('footer', {}, footEl));
+  apply();
   $('#modal').classList.add('open');
 }
 let modalOnClose = null;
@@ -3510,8 +3534,43 @@ function openMoreMenu() {
     card('File', 'Export or import a .json file; start over.', openFileMenu),
     card('Help', 'How everything works, and the shortcuts.', openHelp),
     card('Redo', 'Put back the last undone change.', redo),
-    card('Theme', `Currently: ${themeName}.`, cycleTheme)));
+    card('Theme', `Currently: ${themeName}.`, cycleTheme),
+    card(fullscreenOn() ? 'Leave fullscreen' : 'Fullscreen',
+      'Use the whole screen — worth it for the big diagrams.', toggleFullscreen)));
   openModal('More', body, h('button', { class: 'btn', onclick: closeModal }, 'Close'));
+}
+
+/* Fullscreen. Worth having because this page is often looked at inside
+   something else — an embed, a chat panel, a narrow window — and a hundred
+   gates need the room. A frame that was not given permission refuses the
+   request, so say what to do instead rather than failing silently. */
+function fullscreenOn() {
+  return !!(document.fullscreenElement || document.webkitFullscreenElement);
+}
+
+function toggleFullscreen() {
+  const el = document.documentElement;
+  if (fullscreenOn()) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    return;
+  }
+  const go = el.requestFullscreen || el.webkitRequestFullscreen;
+  const nope = () => toast(
+    'The page this is embedded in will not allow fullscreen. Open it in its own '
+    + 'browser tab, then press F11 (⌃⌘F on a Mac).', true);
+  if (!go) { nope(); return; }
+  try {
+    const p = go.call(el);
+    if (p && p.catch) p.catch(nope);
+  } catch (e) { nope(); }
+}
+
+function syncFullscreenButton() {
+  const b = $('#btn-full');
+  if (!b) return;
+  const on = fullscreenOn();
+  b.classList.toggle('on', on);
+  b.title = on ? 'Leave fullscreen (Shift+F)' : 'Fullscreen (Shift+F)';
 }
 
 function cycleTheme() {
@@ -5889,7 +5948,8 @@ undo history.</p>
 
 <h4>Keyboard</h4>
 <ul>
-  <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Esc</kbd> deselect</li>
+  <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
+      fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
       <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>A</kbd> select all</li>
   <li><kbd>Delete</kbd> remove the selection · arrow keys nudge</li>
@@ -5975,7 +6035,10 @@ function boot() {
   $('#btn-file').onclick = openFileMenu;
   $('#btn-help').onclick = openHelp;
   $('#btn-theme').onclick = cycleTheme;
+  $('#btn-full').onclick = toggleFullscreen;
   $('#btn-more').onclick = openMoreMenu;
+  document.addEventListener('fullscreenchange', syncFullscreenButton);
+  document.addEventListener('webkitfullscreenchange', syncFullscreenButton);
   $('#btn-pal').onclick = () => $('#app').classList.toggle('pal-open');
   $('#btn-insp').onclick = () => $('#app').classList.toggle('insp-open');
 
