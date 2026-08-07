@@ -205,6 +205,9 @@ button,input,select{font:inherit;color:inherit}
 /* the gate's real schematic shape, in place of the coloured square */
 .pal-item .symwrap{display:flex;flex:0 0 auto}
 .typeval{display:inline-flex;align-items:center;gap:7px}
+.rotrow{display:flex;align-items:center;gap:6px}
+.rotrow span{flex:1;text-align:center;color:var(--ink-faint);font-size:11.5px}
+.rotrow .btn{flex:0 0 auto;padding:4px 11px;font-size:14px;line-height:1}
 .symsw{width:20px;height:13px;display:block}
 .symsw path,.symsw circle{fill:var(--chip);stroke:var(--ink-faint);stroke-width:1.1}
 .symsw path[fill="none"]{fill:none}
@@ -869,12 +872,38 @@ function geom(node, ctx) {
   }
   if (node.type === 'TUNNEL' && ctx) w = Math.max(52, textWidth(ctx, node.label || 'net', '11px ' + FONT) + 30);
   const spread = (count, i) => (count <= 1 ? h / 2 : (h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
+
+  /* Rotation. node.x/node.y stay the top-left of whatever box the part
+     occupies on screen, so a quarter turn swaps the width and the height. The
+     ports are worked out in the part's own upright frame and then turned about
+     the middle, which is the only place the angle has to be reasoned about —
+     hit-testing, wires and the marquee all read what comes back here and never
+     need to know a part was turned at all. */
+  const rot = turnOf(node);
+  const quarter = rot === 90 || rot === 270;
+  const W = quarter ? h : w, H = quarter ? w : h;
+  const cx = node.x + W / 2, cy = node.y + H / 2;
+  const x0 = cx - w / 2, y0 = cy - h / 2;            // the upright box, same middle
+  const turn = (px, py) => {
+    const dx = px - cx, dy = py - cy;
+    if (rot === 90) return { x: cx - dy, y: cy + dx };
+    if (rot === 180) return { x: cx - dx, y: cy - dy };
+    if (rot === 270) return { x: cx + dy, y: cy - dx };
+    return { x: px, y: py };
+  };
+  const port = (name, px, py) => { const q = turn(px, py); return { name, x: q.x, y: q.y }; };
   return {
-    x: node.x, y: node.y, w, h, label: p.label,
-    ins: p.ins.map((name, i) => ({ name, x: node.x, y: node.y + spread(p.ins.length, i) })),
-    outs: p.outs.map((name, i) => ({ name, x: node.x + w, y: node.y + spread(p.outs.length, i) })),
+    x: node.x, y: node.y, w: W, h: H, label: p.label, rot,
+    /* the same box unturned, for the drawing code, which turns the canvas
+       instead of turning every coordinate it owns */
+    up: { x: x0, y: y0, w, h },
+    ins: p.ins.map((name, i) => port(name, x0, y0 + spread(p.ins.length, i))),
+    outs: p.outs.map((name, i) => port(name, x0 + w, y0 + spread(p.outs.length, i))),
   };
 }
+
+/** A part's quarter turn, always one of 0, 90, 180, 270. */
+const turnOf = (node) => ((((node.rot || 0) / 90 | 0) % 4) + 4) % 4 * 90;
 
 const nodeById = (def, id) => def.nodes.find((n) => n.id === id);
 
@@ -1370,8 +1399,38 @@ function xorBackPath(c, x, y, h) {
 }
 
 function drawNode(node, ghost) {
-  const g = gm(node);
+  const world = gm(node);
   const part = node.type === 'CHIP' ? CHIP_PART : PARTS[node.type] || {};
+
+  /* Everything below draws the part upright; the canvas is turned instead, so
+     none of the shape code has to know about angles. Text is the exception —
+     an upside-down NAND is a NAND, but upside-down lettering is just wrong —
+     so `upright` spins the frame back for the length of one word. */
+  const rot = world.rot;
+  const cx = world.x + world.w / 2, cy = world.y + world.h / 2;
+  if (rot) {
+    ctx.save();
+    ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.translate(-cx, -cy);
+  }
+  const upright = (x, y, fn) => {
+    if (!rot) { fn(x, y); return; }
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(-rot * Math.PI / 180);
+    fn(0, 0);
+    ctx.restore();
+  };
+  const done = () => { if (rot) ctx.restore(); };
+
+  const g = { ...world, x: world.up.x, y: world.up.y, w: world.up.w, h: world.up.h };
+  /* ports, in the upright frame the canvas transform will turn for us */
+  {
+    const p = portsOf(node);
+    const rows = Math.max(p.ins.length, p.outs.length, 1);
+    const gap = (count, i) => (count <= 1 ? g.h / 2 : (g.h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
+    g.ins = p.ins.map((name, i) => ({ name, x: g.x, y: g.y + gap(p.ins.length, i) }));
+    g.outs = p.outs.map((name, i) => ({ name, x: g.x + g.w, y: g.y + gap(p.outs.length, i) }));
+    void rows;
+  }
   const selected = S.sel.has(node.id);
   const shape = part.shape || 'box';
   const chipDef = node.type === 'CHIP' ? LIB[node.chip] : null;
@@ -1408,9 +1467,11 @@ function drawNode(node, ghost) {
   };
 
   const label = (text, color, size = 12, weight = '600') => {
-    ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${FONT}`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(text, g.x + g.w / 2, g.y + g.h / 2 + 0.5);
+    upright(g.x + g.w / 2, g.y + g.h / 2 + 0.5, (x, y) => {
+      ctx.fillStyle = color; ctx.font = `${weight} ${size}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(text, x, y);
+    });
   };
 
   switch (shape) {
@@ -1543,18 +1604,22 @@ function drawNode(node, ghost) {
       } else body(fill);
       const named = g.ins.some((p) => p.name) || g.outs.some((p) => p.name);
       if (sym) {
-        ctx.fillStyle = C.chipInk;
-        ctx.font = `600 ${sym === 'tri' ? 9 : 10.5}px ${FONT}`;
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(g.label, inkX, g.y + g.h / 2 + 0.5);
+        upright(inkX, g.y + g.h / 2 + 0.5, (x, y) => {
+          ctx.fillStyle = C.chipInk;
+          ctx.font = `600 ${sym === 'tri' ? 9 : 10.5}px ${FONT}`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(g.label, x, y);
+        });
       } else label(g.label, C.chipInk, node.type === 'CHIP' ? 12 : 11.5, '600');
       if (named) {
-        ctx.font = `9.5px ${FONT}`; ctx.fillStyle = C.chipInk; ctx.globalAlpha = (ghost ? 0.55 : 1) * 0.65;
-        ctx.textBaseline = 'middle';
-        ctx.textAlign = 'left';
-        g.ins.forEach((p) => p.name && ctx.fillText(p.name, p.x + 5, p.y));
-        ctx.textAlign = 'right';
-        g.outs.forEach((p) => p.name && ctx.fillText(p.name, p.x - 5, p.y));
+        ctx.globalAlpha = (ghost ? 0.55 : 1) * 0.65;
+        const pinName = (p, align, dx) => upright(p.x + dx, p.y, (x, y) => {
+          ctx.font = `9.5px ${FONT}`; ctx.fillStyle = C.chipInk;
+          ctx.textBaseline = 'middle'; ctx.textAlign = align;
+          ctx.fillText(p.name, x, y);
+        });
+        g.ins.forEach((p) => p.name && pinName(p, 'left', 5));
+        g.outs.forEach((p) => p.name && pinName(p, 'right', -5));
         ctx.globalAlpha = ghost ? 0.55 : 1;
       }
       if (part.bubble) {                                   // the inverting circle
@@ -1567,8 +1632,9 @@ function drawNode(node, ghost) {
     }
   }
 
+  done();                                            // back to the world frame
   if (selected && !ghost) {
-    roundRect(g.x - 4, g.y - 4, g.w + 8, g.h + 8, 9);
+    roundRect(world.x - 4, world.y - 4, world.w + 8, world.h + 8, 9);
     ctx.strokeStyle = C.sel; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
     ctx.stroke(); ctx.setLineDash([]);
   }
@@ -1883,6 +1949,48 @@ function deleteSelection() {
     (w) => !S.selWires.has(w.id) && !S.sel.has(w.a.n) && !S.sel.has(w.b.n));
   S.sel.clear(); S.selWires.clear();
   renderInspector();
+}
+
+/** Turn the selection a quarter turn — `dir` is 1 clockwise, -1 the other way.
+    One part spins where it stands. Several turn as a block: each one turns on
+    the spot AND its place turns about the middle of the group, which is what
+    makes a row of gates become a column rather than a row of sideways gates. */
+function rotateSelection(dir) {
+  if (S.mode !== 'editor' || S.play) return;
+  const nodes = S.work.nodes.filter((n) => S.sel.has(n.id));
+  if (!nodes.length) { toast('Select something to turn first.'); return; }
+  pushUndo();
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const n of nodes) {
+    const g = gm(n);
+    x0 = Math.min(x0, g.x); y0 = Math.min(y0, g.y);
+    x1 = Math.max(x1, g.x + g.w); y1 = Math.max(y1, g.y + g.h);
+  }
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+  /* A chip's pins are ordered by where they sit, so turning a circuit that has
+     pins can renumber them — and every copy of that chip already on a board is
+     wired by number. Dragging a pin has always been able to do this; turning
+     makes it easy to do to all of them at once, so it is worth saying out loud
+     rather than leaving to be discovered. */
+  const pinOrder = () => {
+    const io = ioOrder(S.work);
+    return io.ins.map((n) => n.label).join(',') + '|' + io.outs.map((n) => n.label).join(',');
+  };
+  const orderWas = pinOrder();
+  for (const n of nodes) {
+    const g = gm(n);
+    const dx = g.x + g.w / 2 - cx, dy = g.y + g.h / 2 - cy;
+    const nx = dir > 0 ? cx - dy : cx + dy;          // where its middle lands
+    const ny = dir > 0 ? cy + dx : cy - dx;
+    n.rot = turnOf({ rot: (n.rot || 0) + dir * 90 });
+    const after = gm(n);                             // width and height may have swapped
+    n.x = snap(nx - after.w / 2);
+    n.y = snap(ny - after.h / 2);
+  }
+  if (pinOrder() !== orderWas) {
+    toast('That moved the pins into a different order, which changes this chip’s pin numbering. Ctrl+Z if you did not mean to.', true);
+  }
+  markDirty(); renderInspector();
 }
 
 function duplicateSelection() {
@@ -2355,6 +2463,7 @@ window.addEventListener('keydown', (ev) => {
   }
   if (mod && k === 's') { ev.preventDefault(); saveNow(); toast('Saved to this browser.'); return; }
   if (k === 'e') { setPlay(!S.play); toast(S.play ? 'Use mode — clicks only work the switches' : 'Edit mode'); return; }
+  if (k === 'r') { ev.preventDefault(); rotateSelection(ev.shiftKey ? -1 : 1); return; }
   switch (ev.key) {
     case 'Delete': case 'Backspace':
       if (S.play) break;
@@ -2617,6 +2726,10 @@ function renderInspector() {
       h('h3', {}, 'Selection'),
       h('p', { class: 'muted' }, `${selNodes.length} parts selected.`),
       h('div', { class: 'stack' },
+        h('div', { class: 'rotrow' },
+          h('button', { class: 'btn', title: 'Turn the whole group a quarter turn (Shift+R)', onclick: () => rotateSelection(-1) }, '↺'),
+          h('span', {}, 'Turn all ' + selNodes.length),
+          h('button', { class: 'btn', title: 'Turn the whole group a quarter turn (R)', onclick: () => rotateSelection(1) }, '↻')),
         h('button', { class: 'btn', onclick: duplicateSelection }, 'Duplicate (Ctrl+D)'),
         h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete'))));
   } else if (S.selWires.size) {
@@ -2734,6 +2847,10 @@ function nodeInspector(node) {
       h('button', { class: 'btn', onclick: () => openChip(node.chip) }, 'Open this chip')));
   }
   if (!S.play) sec.append(h('div', { class: 'stack', style: 'margin-top:8px' },
+    h('div', { class: 'rotrow' },
+      h('button', { class: 'btn', title: 'Turn it a quarter turn (Shift+R)', onclick: () => rotateSelection(-1) }, '↺'),
+      h('span', {}, turnOf(node) ? `Turned ${turnOf(node)}°` : 'Upright'),
+      h('button', { class: 'btn', title: 'Turn it a quarter turn (R)', onclick: () => rotateSelection(1) }, '↻')),
     h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete part')));
 
   if (node.type === 'ROM' || node.type === 'RAM') sec.append(memoryEditor(node));
@@ -6182,6 +6299,11 @@ undo history.</p>
       nearest one within reach is the one that flips. The left button never moves the view
       in Use mode, so nothing slides out from under you — right-drag does that instead.
       Reach for the palette and it puts you back in Edit by itself.</li>
+  <li><kbd>R</kbd> turns whatever is selected a quarter turn, <kbd>Shift</kbd>+<kbd>R</kbd> the
+      other way. One part spins on the spot; several turn as a block, so a row of gates
+      becomes a column rather than a row of sideways gates. A circuit's pins are numbered by
+      where they sit, so turning a whole circuit can renumber them — it says so when it
+      does.</li>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
       fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
@@ -6351,7 +6473,7 @@ window.LogicLab = {
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
-  saveNow, setPlay,
+  saveNow, setPlay, rotateSelection, turnOf,
   get lib() { return LIB; },
 };
 

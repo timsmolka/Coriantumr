@@ -1969,6 +1969,94 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- turning parts, one at a time and in a block ---- */
+    {
+      /* a half adder, so there is something with a known truth table to turn */
+      await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+        L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+      await wait(300);
+      /* Read the table keyed by pin NAME. Pin order is worked out from where
+         the pins sit, so turning the board legitimately renumbers them — what
+         must not change is what each named input does to each named output. */
+      const table = () => ev(`(()=>{const L=LogicLab;
+        const io=L.ioOrder(L.S.work), t=L.computeTruthTable(L.S.work);
+        return t.rows.map(r=>{
+          const inp=io.ins.map((p,i)=>p.label+'='+r.in[i]).sort().join(',');
+          const out=io.outs.map((p,i)=>p.label+'='+r.out[i]).sort().join(',');
+          return inp+' -> '+out;}).sort().join(' | ');})()`);
+      const want = await table();
+
+      /* one part: it spins where it stands, and its ports move with it */
+      const one = await ev(`(()=>{const L=LogicLab;
+        const n=L.S.work.nodes.find(x=>x.type==='XOR');
+        const b=L.geom(n);
+        L.S.sel.clear(); L.S.sel.add(n.id);
+        L.rotateSelection(1);
+        const a=L.geom(n);
+        return {rot:n.rot, wasW:Math.round(b.w), wasH:Math.round(b.h),
+          nowW:Math.round(a.w), nowH:Math.round(a.h),
+          inWasLeft: b.ins.every(p=>Math.abs(p.x-b.x)<1),
+          inNowTop: a.ins.every(p=>Math.abs(p.y-a.y)<1),
+          outNowBottom: a.outs.every(p=>Math.abs(p.y-(a.y+a.h))<1),
+          midMoved: Math.abs((a.x+a.w/2)-(b.x+b.w/2)) + Math.abs((a.y+a.h/2)-(b.y+b.h/2))};})()`);
+      report('turning one part swaps its width and height',
+        one.rot === 90 && one.nowW === one.wasH && one.nowH === one.wasW, JSON.stringify(one));
+      report('its inputs move from the left edge to the top',
+        one.inWasLeft && one.inNowTop && one.outNowBottom, JSON.stringify(one));
+      report('and it stays where it was, give or take the snap to the grid',
+        one.midMoved <= 10, one.midMoved);
+      report('turning a part changes nothing about what the circuit does',
+        (await table()) === want, await table());
+
+      /* four quarter turns is where you started */
+      await ev(`(()=>{const L=LogicLab; L.rotateSelection(1); L.rotateSelection(1); L.rotateSelection(1); return 1;})()`);
+      const back = await ev(`(LogicLab.S.work.nodes.find(x=>x.type==='XOR')||{}).rot`);
+      report('four quarter turns is back to upright', back === 0, back);
+
+      /* a block: a row of parts must come out as a column */
+      const block = await ev(`(()=>{const L=LogicLab;
+        const before=L.S.work.nodes.map(n=>{const g=L.geom(n);
+          return {id:n.id, cx:g.x+g.w/2, cy:g.y+g.h/2};});
+        const wide=Math.max(...before.map(b=>b.cx))-Math.min(...before.map(b=>b.cx));
+        const tall=Math.max(...before.map(b=>b.cy))-Math.min(...before.map(b=>b.cy));
+        L.S.sel.clear(); L.S.work.nodes.forEach(n=>L.S.sel.add(n.id));
+        L.rotateSelection(1);
+        const after=L.S.work.nodes.map(n=>{const g=L.geom(n);
+          return {id:n.id, cx:g.x+g.w/2, cy:g.y+g.h/2};});
+        const wide2=Math.max(...after.map(b=>b.cx))-Math.min(...after.map(b=>b.cx));
+        const tall2=Math.max(...after.map(b=>b.cy))-Math.min(...after.map(b=>b.cy));
+        return {wide:Math.round(wide), tall:Math.round(tall),
+          wide2:Math.round(wide2), tall2:Math.round(tall2),
+          turned: L.S.work.nodes.every(n=>n.rot===90)};})()`);
+      report('turning a whole selection lays a wide arrangement out tall',
+        block.turned && block.wide2 <= block.tall + 4 && block.tall2 >= block.wide - 4,
+        JSON.stringify(block));
+      report('and the circuit still does exactly what it did',
+        (await table()) === want, await table());
+
+      /* pin order comes from pin position, so that turn renumbered them —
+         which silently rewires every copy of the chip, and must be said */
+      const warned = await ev(`(()=>{const t=document.querySelector('#hint');
+        return t && t.classList.contains('show') ? t.textContent : 'silent';})()`);
+      report('turning a whole circuit warns that its pin numbering changed',
+        /pin numbering/.test(warned), warned);
+
+      /* it is one undo step, not one per part */
+      await clickSel('#btn-undo');
+      await wait(250);
+      report('turning a group is a single undo',
+        await ev(`LogicLab.S.work.nodes.every(n=>!n.rot)`));
+
+      /* turning survives being packaged and reloaded */
+      const kept = await ev(`(()=>{const L=LogicLab;
+        const n=L.S.work.nodes[0]; L.S.sel.clear(); L.S.sel.add(n.id);
+        L.rotateSelection(-1);
+        const saved=JSON.parse(JSON.stringify(L.S.work));
+        return saved.nodes[0].rot;})()`);
+      report('a turn is part of the circuit, so it saves and loads with it', kept === 270, kept);
+      await ev(`(()=>{const L=LogicLab; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[]; return 1;})()`);
+    }
+
     /* ---- the gates are drawn as their real schematic shapes ---- */
     {
       const syms = await ev(`(()=>{const L=LogicLab;
@@ -2435,6 +2523,16 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['rotated', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         const b=L.builder('turned');
+         const kinds=['AND','OR','NAND','XOR','NOT','DFF'];
+         const ns=kinds.map((k,i)=>b.add(k, 80+(i%3)*240, 60+((i/3)|0)*230));
+         L.S.work=b.def; L.S.dirty=true;
+         ns.forEach((n,i)=>{ L.S.sel.clear(); L.S.sel.add(n.id);
+           for(let t=0;t<i%4;t++) L.rotateSelection(1); });
+         L.S.sel.clear(); L.renderInspector(); L.fitView(); return 1;})()`],
       ['use-mode', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-board').click();

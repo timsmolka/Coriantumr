@@ -77,6 +77,21 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**Parts turn.** <kbd>R</kbd> turns the selection a quarter turn and
+<kbd>Shift</kbd>+<kbd>R</kbd> goes the other way, with buttons in the side panel
+for both. One part spins where it stands. Several turn **as a block** — each one
+turns on the spot and its place turns about the middle of the group — so a row of
+gates becomes a column, not a row of sideways gates. Inputs move from the left
+edge to the top, the width and height swap, and everything downstream (wires,
+hit-testing, the marquee, the diagrams) reads the turned geometry without
+knowing an angle was involved. Lettering stays upright at every angle.
+
+One consequence is worth knowing: a circuit's pins are numbered by where they
+sit, so turning a whole circuit can renumber them — which rewires every copy of
+that chip already on a board. Dragging a pin has always been able to do that;
+turning makes it easy to do to all of them at once, so it now says so when it
+happens.
+
 **The gates look like gates.** Each one is drawn as the distinctive shape every
 schematic in the world uses — a D for AND, a pointed shield for OR, a second
 curved back for XOR, a triangle for a plain pass-through, and the small circle
