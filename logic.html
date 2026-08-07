@@ -6511,25 +6511,40 @@ function recRAMCell() {
 }
 
 function recROM() {
+  const WORDS = [1, 2, 3, 0];                          // what this one holds
   const b = builder('A four-word ROM');
-  const a0 = b.pin('A0', 0, 40), a1 = b.pin('A1', 0, 170);
-  const n0 = b.add('NOT', 160, 30), n1 = b.add('NOT', 160, 160);
+  const a0 = b.pin('A0', 0, 60), a1 = b.pin('A1', 0, 200);
+  const n0 = b.add('NOT', 170, 50), n1 = b.add('NOT', 170, 190);
   b.w(a0, 0, n0, 0); b.w(a1, 0, n1, 0);
+
+  /* one line per address, and each one says which word it picks */
   const sel = [];
-  for (let i = 0; i < 4; i++) {                        // one line per address
-    const g = b.add('AND', 340, i * 100);
+  for (let i = 0; i < 4; i++) {
+    const g = b.add('AND', 360, i * 130, { n: 2 });
     b.w(i & 1 ? a0 : n0, 0, g, 0);
     b.w(i & 2 ? a1 : n1, 0, g, 1);
     sel.push(g);
+    /* Every word line is taken somewhere, even the one holding 0 — it used to
+       stop dead in mid-air, which read as a missing connection rather than as
+       "this word is all zeros". */
+    const tap = b.out(`word ${i} = ${WORDS[i]}`, 560, i * 130 + 16);
+    b.w(g, 0, tap, 0);
   }
+
   /* And here is the data: a wire from a word's line into a bit's OR gate means
-     that bit is a 1 in that word. Words are 1, 2, 3, 0. */
-  const d0 = b.add('OR', 560, 20);
-  b.w(sel[0], 0, d0, 0); b.w(sel[2], 0, d0, 1);
-  const d1 = b.add('OR', 560, 230);
-  b.w(sel[1], 0, d1, 0); b.w(sel[2], 0, d1, 1);
-  const o0 = b.out('D0', 740, 36), o1 = b.out('D1', 740, 246);
-  b.w(d0, 0, o0, 0); b.w(d1, 0, o1, 0);
+     that bit is a 1 in that word. Nothing wired in means that bit is 0. */
+  const outs = [];
+  for (let bit = 0; bit < 2; bit++) {
+    const feeds = [];
+    for (let i = 0; i < 4; i++) if ((WORDS[i] >> bit) & 1) feeds.push(sel[i]);
+    const o = b.out('D' + bit, 1000, 60 + bit * 260);
+    if (!feeds.length) { outs.push(o); continue; }
+    if (feeds.length === 1) { b.w(feeds[0], 0, o, 0); outs.push(o); continue; }
+    const g = b.add('OR', 800, 40 + bit * 260, { n: feeds.length });
+    feeds.forEach((f, k) => b.w(f, 0, g, k));
+    b.w(g, 0, o, 0);
+    outs.push(o);
+  }
   return b.def;
 }
 

@@ -327,9 +327,17 @@ const TESTS = String.raw`
     {
       // truth-table rows count with the FIRST pin as the high bit, so read the
       // address off the input columns rather than assuming row order
-      const t = L.computeTruthTable(L.RECIPES.ROM.make());
+      /* read by pin NAME: the diagram also brings each word line out to a
+         labelled stub, so D0 and D1 are not the first two columns any more */
+      const def = L.RECIPES.ROM.make();
+      const io = L.ioOrder(def);
+      const t = L.computeTruthTable(def);
+      const col = (nm) => io.outs.findIndex(p => p.label === nm);
+      const inCol = (nm) => io.ins.findIndex(p => p.label === nm);
       const words = [0, 0, 0, 0];
-      for (const r of t.rows) words[r.in[0] + r.in[1] * 2] = r.out[0] + r.out[1] * 2;
+      for (const r of t.rows) {
+        words[r.in[inCol('A0')] + r.in[inCol('A1')] * 2] = r.out[col('D0')] + r.out[col('D1')] * 2;
+      }
       ok('the ROM diagram really stores 1, 2, 3, 0', words.join(',') === '1,2,3,0', words.join(','));
     }
 
@@ -2811,6 +2819,15 @@ const TESTS = String.raw`
              }, 300);
            }, 300);
          }, 200);
+         return 1;})()`],
+      ['rom-inside', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         const b=L.builder('rom'); const r=b.add('ROM',0,0,{abits:2,dbits:2,data:[1,2,3,0]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview');
+           if(c) c.click();}, 250);
          return 1;})()`],
       ['hex-decoder', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();
