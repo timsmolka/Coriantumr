@@ -77,6 +77,15 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**Junctions.** One signal often has to feed several inputs. Select a wire and
+press <kbd>J</kbd> (or the **Add a junction** button) and one is spliced in
+where you are pointing — the wire becomes two, with a junction between them you
+can run as many more wires from as you like. That is the T, and the cross, that
+a schematic draws as a solder dot; it is drawn as one, with a short stub towards
+every wire meeting on it, so it reads as a deliberate join rather than two wires
+happening to cross. Dropping a wire onto a wire still splices one in too — the
+difference is that this is a way to ask for one.
+
 **Wires go round things.** A wire is planned as a few straight runs that dodge
 the boxes, with the corners rounded off so it still reads as a wire rather than
 a circuit-board trace. Candidates are tried cheapest-looking first — dead

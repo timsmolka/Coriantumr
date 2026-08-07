@@ -1969,6 +1969,62 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- junctions you can put on a wire on purpose ---- */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('tee');
+        const i=b.pin('A',0,60), o1=b.out('X',420,20), o2=b.out('Y',420,140);
+        b.w(i,0,o1,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+        L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+      await wait(300);
+      const shape = () => ev(`(()=>{const L=LogicLab;
+        return L.S.work.nodes.filter(n=>n.type==='JOINT').length + '/' + L.S.work.wires.length;})()`);
+      report('nothing there to start with', (await shape()) === '0/1', await shape());
+
+      /* refuses politely when nothing is selected */
+      await ev(`LogicLab.addJointToSelection(null)`);
+      await wait(200);
+      report('asks for a wire first when none is selected',
+        (await shape()) === '0/1'
+        && /Click a wire first/.test(await ev(`document.querySelector('#hint').textContent`)));
+
+      /* select the wire, then put a junction on it */
+      await ev(`(()=>{const L=LogicLab; L.S.selWires.clear();
+        L.S.selWires.add(L.S.work.wires[0].id); return 1;})()`);
+      await ev(`LogicLab.addJointToSelection(null)`);
+      await wait(250);
+      report('adding a junction splits the wire in two and leaves a joint',
+        (await shape()) === '1/2', await shape());
+
+      /* the junction has to be ON the wire, not off to one side */
+      const onLine = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        const a=L.S.work.nodes.find(n=>n.type==='IN'), o=L.S.work.nodes.find(n=>n.type==='OUT');
+        const ga=L.geom(a), go=L.geom(o), gj=L.geom(j);
+        const jx=gj.x+gj.w/2, jy=gj.y+gj.h/2;
+        return jx > ga.x && jx < go.x + go.w && Math.abs(jy - ga.ins.concat(ga.outs)[0].y) < 60;})()`);
+      report('and it lands on the wire rather than off to one side', onLine === true, onLine);
+
+      /* now branch off it — one input feeding two outputs, which is the point */
+      await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        const y=L.S.work.nodes.find(n=>n.type==='OUT' && n.label==='Y');
+        L.S.work.wires.push({id:'w-tee', a:{n:j.id,s:'out',i:0}, b:{n:y.id,s:'in',i:0}});
+        L.S.dirty=true; return 1;})()`);
+      await wait(250);
+      const tee = await ev(`LogicLab.computeTruthTable(LogicLab.S.work).rows
+        .map(r=>r.in.join('')+'='+r.out.join('')).join(' ')`);
+      report('a junction really does feed every branch off it',
+        tee === '0=00 1=11', tee);
+
+      /* and it is one undo step */
+      await clickSel('#btn-undo');
+      await wait(250);
+      report('adding a junction is a single undo',
+        (await shape()) === '0/1' || (await shape()) === '0/2', await shape());
+    }
+
     /* ---- wires route round the parts instead of through them ---- */
     {
       const crossings = async (exampleIx) => {
@@ -2609,6 +2665,21 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['junctions', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         const b=L.builder('tees');
+         const src=b.pin('IN',0,200); src.value=1;
+         const outs=[0,1,2].map(i=>b.out('Q'+i, 620, 60+i*140));
+         b.w(src,0,outs[0],0);
+         L.S.work=b.def; L.S.dirty=true;
+         L.S.selWires.clear(); L.S.selWires.add(L.S.work.wires[0].id);
+         L.addJointToSelection({x:200,y:210});
+         const j1=L.S.work.nodes.find(n=>n.type==='JOINT');
+         L.S.work.wires.push({id:'t1', a:{n:j1.id,s:'out',i:0}, b:{n:outs[1].id,s:'in',i:0}});
+         L.S.work.wires.push({id:'t2', a:{n:j1.id,s:'out',i:0}, b:{n:outs[2].id,s:'in',i:0}});
+         L.S.sel.clear(); L.S.selWires.clear(); L.S.dirty=true;
+         L.renderInspector(); L.fitView(); return 1;})()`],
       ['lined-up', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click(); L.setPlay(false);

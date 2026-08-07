@@ -1738,9 +1738,30 @@ function drawNode(node, ghost) {
       break;
     }
     case 'joint': {
+      /* A solder dot, drawn the way a schematic draws one: big enough to read
+         as deliberate rather than as two wires happening to cross. How many
+         wires actually meet decides whether it is a T, a cross or a corner —
+         all it has to do is look like a join. */
       const v = ghost ? 0 : valAt(node.id, 'in', 0);
+      const cx2 = g.x + g.w / 2, cy2 = g.y + g.h / 2;
+      const legs = ghost ? [] : S.work.wires.filter((x) => x.a.n === node.id || x.b.n === node.id);
+      ctx.strokeStyle = v ? C.hi : C.lo;
+      ctx.lineWidth = 3; ctx.lineCap = 'round';
+      for (const leg of legs) {                        // a short stub towards each
+        const far = endPos(S.work, leg.a.n === node.id ? leg.b : leg.a);
+        if (!far) continue;
+        const dx = far.x - cx2, dy = far.y - cy2, len = Math.hypot(dx, dy) || 1;
+        ctx.beginPath();
+        ctx.moveTo(cx2, cy2);
+        ctx.lineTo(cx2 + dx / len * 7, cy2 + dy / len * 7);
+        ctx.stroke();
+      }
       ctx.fillStyle = v ? C.hi : C.lo;
-      ctx.beginPath(); ctx.arc(g.x + g.w / 2, g.y + g.h / 2, g.w / 2, 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx2, cy2, Math.max(4, g.w / 2), 0, 7); ctx.fill();
+      if (selected && !ghost) {
+        ctx.strokeStyle = C.sel; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(cx2, cy2, Math.max(4, g.w / 2) + 4, 0, 7); ctx.stroke();
+      }
       break;
     }
     case 'tunnel': {
@@ -2348,6 +2369,34 @@ function spliceJoint(wire, at) {
   return j;
 }
 
+/** Put a junction on the wire you have selected, at the point you last pointed
+    at (or halfway along, if that is not on it). Splicing one in has always been
+    possible by dropping a wire onto a wire, but only as a side effect of doing
+    something else — this is the way to say you want one. */
+function addJointToSelection(at) {
+  if (S.mode !== 'editor' || S.play) return;
+  const wr = S.work.wires.find((x) => S.selWires.has(x.id));
+  if (!wr) { toast('Click a wire first, then add a junction to it.'); return; }
+  const a2 = endPos(S.work, wr.a), b2 = endPos(S.work, wr.b);
+  if (!a2 || !b2) return;
+  const pts = wirePoints(a2, b2, 24, wr);
+  /* the point on the wire nearest where you were pointing, so the junction
+     lands under the cursor rather than at some arbitrary midpoint */
+  let spot = pts[12];
+  if (at) {
+    let best = Infinity;
+    for (const p2 of pts) {
+      const d = dist2(at.x, at.y, p2.x, p2.y);
+      if (d < best) { best = d; spot = p2; }
+    }
+  }
+  pushUndo();
+  const j = spliceJoint(wr, spot);
+  select([j.id], []);
+  markDirty();
+  toast('Junction added. Drag from it to feed another input.');
+}
+
 /** Where a wire being drawn would land right now, if you let go here. */
 function wireLanding(end, w, touch) {
   const want = end.s === 'out' ? 'in' : 'out';
@@ -2755,6 +2804,11 @@ window.addEventListener('keydown', (ev) => {
   if (mod && k === 's') { ev.preventDefault(); saveNow(); toast('Saved to this browser.'); return; }
   if (k === 'e') { setPlay(!S.play); toast(S.play ? 'Use mode — clicks only work the switches' : 'Edit mode'); return; }
   if (k === 'r') { ev.preventDefault(); rotateSelection(ev.shiftKey ? -1 : 1); return; }
+  if (k === 'j') {
+    ev.preventDefault();
+    addJointToSelection(S.hover && S.hover.world);
+    return;
+  }
   if (k === 'l') {
     ev.preventDefault();
     straightenWires(S.work.nodes.filter((n) => S.sel.has(n.id)));
@@ -3034,7 +3088,12 @@ function renderInspector() {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Selection'),
       h('p', { class: 'muted' }, `${S.selWires.size} wire(s) selected.`),
-      h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete')));
+      h('div', { class: 'stack' },
+        h('button', {
+          class: 'btn', title: 'Put a junction on this wire so it can feed more than one input (J)',
+          onclick: () => addJointToSelection(null),
+        }, 'Add a junction'),
+        h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete'))));
   } else {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
@@ -6602,6 +6661,10 @@ undo history.</p>
       becomes a column rather than a row of sideways gates. A circuit's pins are numbered by
       where they sit, so turning a whole circuit can renumber them — it says so when it
       does.</li>
+  <li><kbd>J</kbd> puts a junction on the selected wire, where you are pointing. A junction
+      is one wire in and as many out as you like, so one signal can feed several inputs —
+      the T and the cross a schematic draws as a solder dot. Dropping a wire onto a wire
+      still splices one in as well.</li>
   <li><kbd>L</kbd> lines things up: every wire that is nearly straight already has the
       part at one end nudged until it is exactly straight. With nothing selected it tidies
       the whole board, with a selection only those parts. Dragging does the same thing one
@@ -6777,6 +6840,7 @@ window.LogicLab = {
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
+  addJointToSelection, spliceJoint,
   get lib() { return LIB; },
 };
 
