@@ -419,6 +419,7 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
 .narrow-only{display:none}
 @media (max-width:560px){
   .tools .wide-only{display:none}
+  .seg.wide-only{display:none}
   .brand span.nm{display:none}
   .narrow-only{display:inline-block}
   #topbar{gap:6px;padding:6px}
@@ -449,6 +450,14 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
       <button id="mode-editor" class="on" role="tab">Circuit</button>
       <button id="mode-board" role="tab">Breadboard</button>
     </div>
+
+    <div class="seg wide-only" role="tablist" aria-label="What clicking does">
+      <button id="act-edit" class="on" role="tab" title="Place, wire and move things (E)">✎ Edit</button>
+      <button id="act-run" role="tab" title="Only work the switches — nothing can be re-wired (E)">▶ Use</button>
+    </div>
+    <!-- the same switch on a phone, where the bar cannot hold two more labels
+         and fat fingers make it matter most -->
+    <button class="btn icon narrow-only" id="act-toggle" title="Switch to Use (E)">✎</button>
 
     <div id="crumbs" class="grow"></div>
 
@@ -1087,6 +1096,11 @@ const S = {
   cam: { x: 0, y: 0, z: 1 },
   bcam: { x: 0, y: 0, z: 1 },                   // the breadboard keeps its own camera
   sel: new Set(), selWires: new Set(),
+  /* Edit or Run. In Run nothing you click can change the wiring — clicks only
+     work the thing you have built. Without it, reaching for a switch on a
+     crowded board keeps starting a wire you did not want, and the fix for
+     that should not be "be more careful". */
+  play: false,
   run: true, speedIx: 6,
   dirty: true, compiled: null, sim: null,
   armed: null,                                  // part waiting to be placed
@@ -1638,6 +1652,7 @@ function hitTest(w, touch) {
 
 function deleteHandle() {
   const R = 13;
+  if (S.play) return null;                         // nothing is deletable in Use mode
   if (S.mode === 'board') {
     const p = S.board && S.board.parts.find((q) => q.id === S.bsel);
     if (!p) return null;
@@ -1959,6 +1974,26 @@ cv.addEventListener('pointerdown', (ev) => {
     S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y, btn: ev.button };
     return;
   }
+
+  /* In Use mode a click works the circuit and nothing else: flip a switch,
+     look at a part, or push the view around. Every path below this that could
+     wire, move or place something is skipped. */
+  if (S.play) {
+    const hit = hitTest(w, touch);
+    if (hit.kind === 'node') {
+      const node = nodeById(S.work, hit.node);
+      select([node.id]);
+      if (node.type === 'IN') {
+        if (node.momentary) node.value = 1;         // finishDrag lets it back up
+        else { node.value = node.value ? 0 : 1; scheduleSave(); }
+        return;
+      }
+    } else if (hit.kind === 'wire') select([], [hit.wire]);
+    else select([]);
+    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y };
+    return;
+  }
+
   if (S.armed) {
     placeNode(S.armed.type, w.x, w.y, S.armed.type === 'CHIP' ? { chip: S.armed.chip } : null);
     if (!ev.shiftKey) armPart(null);
@@ -2042,6 +2077,11 @@ cv.addEventListener('pointermove', (ev) => {
       : hit.kind === 'wire'
         ? { kind: 'wire', wire: hit.wire, world: w }
         : { kind: hit.kind, world: w };
+    if (S.play) {
+      const n = hit.kind === 'node' ? nodeById(S.work, hit.node) : null;
+      cv.style.cursor = n && n.type === 'IN' ? 'pointer' : 'grab';
+      return;
+    }
     cv.style.cursor = S.pendingWire ? 'crosshair' : onHandle ? 'grab'
       : hit.kind === 'port' ? 'crosshair'
         : hit.kind === 'node' ? 'move' : S.armed ? 'copy' : 'default';
@@ -2075,6 +2115,10 @@ cv.addEventListener('pointermove', (ev) => {
 });
 
 function finishDrag(ev) {
+  /* A momentary input springs back however the press ended. This has to happen
+     before the early returns below: in Use mode pressing one starts no drag at
+     all, so the sweep at the bottom would never be reached. */
+  for (const n of S.work.nodes) if (n.type === 'IN' && n.momentary) n.value = 0;
   const d = S.drag;
   S.drag = null;
   if (!d) return;
@@ -2112,7 +2156,6 @@ function finishDrag(ev) {
     }).map((n) => n.id);
     select(ids, [], d.add);
   }
-  for (const n of S.work.nodes) if (n.type === 'IN' && n.momentary) n.value = 0;
   endBatch();
 }
 
@@ -2210,8 +2253,10 @@ window.addEventListener('keydown', (ev) => {
     return;
   }
   if (mod && k === 's') { ev.preventDefault(); saveNow(); toast('Saved to this browser.'); return; }
+  if (k === 'e') { setPlay(!S.play); toast(S.play ? 'Use mode — clicks only work the switches' : 'Edit mode'); return; }
   switch (ev.key) {
     case 'Delete': case 'Backspace':
+      if (S.play) break;
       if (S.mode === 'editor') { ev.preventDefault(); deleteSelection(); }
       else boardDelete();
       break;
@@ -2228,7 +2273,7 @@ window.addEventListener('keydown', (ev) => {
     case ' ':
       ev.preventDefault(); setRunning(!S.run); break;
     case 'ArrowLeft': case 'ArrowRight': case 'ArrowUp': case 'ArrowDown': {
-      if (S.mode !== 'editor' || !S.sel.size) break;
+      if (S.play || S.mode !== 'editor' || !S.sel.size) break;
       ev.preventDefault();
       const step = ev.shiftKey ? GRID * 5 : GRID;
       const dx = (ev.key === 'ArrowRight') - (ev.key === 'ArrowLeft');
@@ -2350,6 +2395,9 @@ function paintWarnings() {
 /* ---- palette ------------------------------------------------------------ */
 
 function armPart(p) {
+  /* Reaching for a part is unambiguously an edit, so say so and switch rather
+     than refusing the click and leaving the user to work out why. */
+  if (p && S.play) { setPlay(false); toast('Back in Edit mode.'); }
   S.armed = p;
   if (p) S.pendingWire = null;
   const sub = p ? (p.chip || p.ic || '') : '';
@@ -2456,8 +2504,9 @@ function renderInspector() {
   } else {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
-      h('p', { class: 'muted' },
-        'Pick a part from the left, then click the board. To wire two parts together, click one port and then the other. Click an input pin to flip it between 0 and 1.')));
+      h('p', { class: 'muted' }, S.play
+        ? 'Use mode: click an input pin to flip it between 0 and 1, or hold a button down. Nothing you click can move a part or change a wire. Press E, or the ✎ Edit button up top, to build again.'
+        : 'Pick a part from the left, then click the board. To wire two parts together, click one port and then the other. Click an input pin to flip it between 0 and 1.')));
   }
 
   if (S.ttable) host.append(truthTableSection());
@@ -2559,7 +2608,7 @@ function nodeInspector(node) {
     sec.append(h('div', { class: 'stack', style: 'margin-top:6px' },
       h('button', { class: 'btn', onclick: () => openChip(node.chip) }, 'Open this chip')));
   }
-  sec.append(h('div', { class: 'stack', style: 'margin-top:8px' },
+  if (!S.play) sec.append(h('div', { class: 'stack', style: 'margin-top:8px' },
     h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete part')));
 
   if (node.type === 'ROM' || node.type === 'RAM') sec.append(memoryEditor(node));
@@ -3472,7 +3521,7 @@ function snapshot() {
     v: 1, lib: LIB, work: S.work, editing: S.editing,
     stash: S.stash ? { work: S.stash.work } : null,
     board: S.board, mode: S.mode,
-    prefs: { theme: document.documentElement.dataset.theme || '', speed: S.speedIx },
+    prefs: { theme: document.documentElement.dataset.theme || '', speed: S.speedIx, play: S.play },
   };
 }
 function loadState() {
@@ -3492,6 +3541,7 @@ function applySnapshot(d) {
   if (d.prefs) {
     if (d.prefs.theme) document.documentElement.dataset.theme = d.prefs.theme;
     if (typeof d.prefs.speed === 'number') S.speedIx = clamp(d.prefs.speed, 0, SPEEDS.length - 1);
+    S.play = !!d.prefs.play;
   }
   S.undo = []; S.redo = [];
   S.dirty = true; S.bdirty = true;
@@ -3535,6 +3585,10 @@ function openMoreMenu() {
     card('Help', 'How everything works, and the shortcuts.', openHelp),
     card('Redo', 'Put back the last undone change.', redo),
     card('Theme', `Currently: ${themeName}.`, cycleTheme),
+    card(S.play ? 'Switch to Edit' : 'Switch to Use',
+      S.play ? 'Go back to placing parts and drawing wires.'
+        : 'Only work the switches — nothing can be re-wired by accident.',
+      () => setPlay(!S.play)),
     card(fullscreenOn() ? 'Leave fullscreen' : 'Fullscreen',
       'Use the whole screen — worth it for the big diagrams.', toggleFullscreen)));
   openModal('More', body, h('button', { class: 'btn', onclick: closeModal }, 'Close'));
@@ -4843,6 +4897,23 @@ function boardDown(ev) {
   }
   const hole = hitHole(w);
 
+  /* Use mode: press buttons, flip DIP switches, look at parts. Nothing that
+     could move a chip or lay a jumper. */
+  if (S.play) {
+    const only = hitBoardPart(w);
+    S.bsel = only ? only.id : null;
+    renderInspector();
+    if (only && only.k === 'btn') { only.pressed = true; S.bdirty = true; S.pressing = only; return; }
+    if (only && only.k === 'dip') {
+      const i = clamp(Math.round(w.x / BB.P - 1.2) - only.col, 0, only.n - 1);
+      only.on[i] = !only.on[i];
+      S.bdirty = true; scheduleSave();
+      return;
+    }
+    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.bcam.x, cy: S.bcam.y };
+    return;
+  }
+
   if (S.armed) {
     if (BOARD_2T[S.armed.type]) {
       if (!hole) { toast('Both ends have to go in a hole.', true); return; }
@@ -4889,7 +4960,12 @@ function boardMove(ev, p, w) {
   S.bhoverHole = hole;
   S.bhoverNet = hole ? netOfHole(hole.r, hole.c) : undefined;
   const d = S.drag;
-  if (!d) { cv.style.cursor = S.armed ? 'copy' : hitBoardPart(w) ? 'pointer' : 'default'; return; }
+  if (!d) {
+    const p2 = hitBoardPart(w);
+    cv.style.cursor = S.play ? (p2 && (p2.k === 'btn' || p2.k === 'dip') ? 'pointer' : 'grab')
+      : S.armed ? 'copy' : p2 ? 'pointer' : 'default';
+    return;
+  }
   if (d.kind === 'pan') { S.bcam.x = d.cx + (p.x - d.sx); S.bcam.y = d.cy + (p.y - d.sy); return; }
   if (d.kind === 'bmove') {
     const span = partSpan(d.part);
@@ -5115,7 +5191,9 @@ function renderBoardInspector(host) {
   if (!part) {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
-      h('p', { class: 'muted' }, 'Pick a part on the left, then click a hole. Click a placed part to inspect it.')));
+      h('p', { class: 'muted' }, S.play
+        ? 'Use mode: press the buttons and flip the DIP switches. Nothing you click can move a chip or lay a jumper. Press E, or the ✎ Edit button up top, to build again.'
+        : 'Pick a part on the left, then click a hole. Click a placed part to inspect it.')));
     return;
   }
 
@@ -5948,6 +6026,10 @@ undo history.</p>
 
 <h4>Keyboard</h4>
 <ul>
+  <li><kbd>E</kbd> switches between <b>Edit</b> and <b>Use</b>. In Use, a click only works
+      the thing you have built — flips a switch, holds a button down — and cannot start a
+      wire, move a part or delete anything. Reach for the palette and it puts you back in
+      Edit by itself.</li>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
       fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
@@ -5974,11 +6056,35 @@ function setMode(m) {
   $('#btn-chip').style.display = m === 'editor' ? '' : 'none';
   $('#pal-q').placeholder = m === 'board' ? 'Search parts…' : 'Search gates and chips…';
   if (m === 'board' && !S.board) S.board = makeBoard();
-  $('#status-tip').textContent = m === 'board'
-    ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
-    : 'Click a part on the left, then click the board. To wire: click one port, then the other. To remove something: click it and press Delete, tap the red ✕, or right-click it.';
+  setStatusTip();
   renderPalette(); renderInspector(); renderCrumbs(); syncUndoButtons();
   if (m === 'board' && !S.bcam.set) { S.bcam.set = 1; fitView(); }
+  scheduleSave();
+}
+
+function setStatusTip() {
+  $('#status-tip').textContent = S.play
+    ? (S.mode === 'board'
+      ? 'Use mode: press the buttons and flip the switches. Nothing you click can move a part or change a wire — switch back to Edit for that.'
+      : 'Use mode: click an input pin to flip it between 0 and 1. Nothing you click can move a part or change a wire — switch back to Edit for that.')
+    : (S.mode === 'board'
+      ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
+      : 'Click a part on the left, then click the board. To wire: click one port, then the other. To remove something: click it and press Delete, tap the red ✕, or right-click it.');
+}
+
+/** Edit or Use. Everything that could change the circuit checks S.play. */
+function setPlay(on) {
+  S.play = !!on;
+  S.armed = null; S.bpending = null; S.drag = null; S.pendingWire = null;
+  $('#act-edit').classList.toggle('on', !S.play);
+  $('#act-run').classList.toggle('on', S.play);
+  const t = $('#act-toggle');
+  t.textContent = S.play ? '▶' : '✎';
+  t.classList.toggle('on', S.play);
+  t.title = S.play ? 'Switch to Edit (E)' : 'Switch to Use (E)';
+  document.body.classList.toggle('playing', S.play);
+  setStatusTip();
+  renderPalette(); renderInspector();
   scheduleSave();
 }
 
@@ -6028,6 +6134,9 @@ function boot() {
   /* top bar */
   $('#mode-editor').onclick = () => setMode('editor');
   $('#mode-board').onclick = () => setMode('board');
+  $('#act-edit').onclick = () => setPlay(false);
+  $('#act-run').onclick = () => setPlay(true);
+  $('#act-toggle').onclick = () => setPlay(!S.play);
   $('#btn-undo').onclick = undo;
   $('#btn-redo').onclick = redo;
   $('#btn-chip').onclick = openMakeChip;
@@ -6062,6 +6171,7 @@ function boot() {
   updateSpeedLabel();
   setRunning(true);
   setMode(S.mode || 'editor');
+  setPlay(S.play);
   syncUndoButtons();
   recompile();
   fitView();
@@ -6089,6 +6199,7 @@ window.LogicLab = {
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
+  saveNow, setPlay,
   get lib() { return LIB; },
 };
 

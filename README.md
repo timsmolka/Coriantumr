@@ -60,6 +60,14 @@ from disk and keep working with no connection.
 
 A digital logic simulator with two workspaces sharing one engine.
 
+**Edit or Use.** A switch in the top bar (or the <kbd>E</kbd> key) decides what a
+click does. In **Edit** it builds — place, wire, move, delete. In **Use** a click
+only works the thing you have already built: it flips a switch, holds a button
+down, and shows you what a part is, but it cannot start a wire, move a part or
+delete anything, in either workspace. Reaching for the palette puts you back in
+Edit by itself, since that is unambiguous. On a phone it collapses to a single
+✎/▶ button, which is where it matters most.
+
 **Circuit editor.** Drop gates on a board, drag between ports to wire them, and
 click an input pin to flip it. Give a circuit input and output pins and you can
 **package it as a chip**, which then appears in the palette and can be dropped

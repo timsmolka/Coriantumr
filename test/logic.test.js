@@ -1969,6 +1969,90 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- Use mode: a click works the circuit and cannot change it ---- */
+    {
+      /* a switch, a button and a gate, so every kind of click can be tried */
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('use me');
+        const sw=b.pin('SW',60,60), btn=b.pin('BTN',60,180);
+        btn.momentary=true;
+        const g=b.add('OR',260,90), o=b.out('lit',460,100);
+        b.w(sw,0,g,0); b.w(btn,0,g,1); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[];
+        L.fitView(); return 1;})()`);
+      await wait(300);
+      const shape = () => ev(`LogicLab.S.work.nodes.length + '/' + LogicLab.S.work.wires.length`);
+      const at = (label) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.label===${JSON.stringify(label)}); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const val = (label) => ev(`(LogicLab.S.work.nodes.find(x=>x.label===${JSON.stringify(label)})||{}).value`);
+      const before = await shape();
+
+      await clickSel('#act-run');
+      await wait(250);
+      report('the Use button lights up and says what clicking now does',
+        await ev(`document.querySelector('#act-run').classList.contains('on')
+          && /Use mode/.test(document.querySelector('#status-tip').textContent)`));
+
+      /* clicking a switch flips it */
+      const swPt = await at('SW');
+      await clickAt(swPt.x, swPt.y);
+      await wait(200);
+      report('in Use mode a click flips a switch', (await val('SW')) === 1, await val('SW'));
+      await clickAt(swPt.x, swPt.y);
+      await wait(200);
+      report('and flips it back', (await val('SW')) === 0, await val('SW'));
+
+      /* a momentary button is held down and springs back on release */
+      const btnPt = await at('BTN');
+      await mouse('mousePressed', btnPt.x, btnPt.y);
+      const held = await val('BTN');
+      await mouse('mouseReleased', btnPt.x, btnPt.y);
+      await wait(200);
+      report('a button is down while held and springs back after',
+        held === 1 && (await val('BTN')) === 0, held + ' then ' + (await val('BTN')));
+
+      /* now the things it must refuse: dragging from a port, dragging a gate,
+         and pressing Delete on a selection */
+      const port = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w, g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      await mouse('mousePressed', port.x, port.y);
+      await mouse('mouseMoved', port.x + 120, port.y + 60);
+      await mouse('mouseReleased', port.x + 120, port.y + 60);
+      await wait(250);
+      report('dragging from a port draws no wire in Use mode',
+        (await shape()) === before, (await shape()) + ' vs ' + before);
+
+      const orPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y, gx:n.x, gy:n.y};})()`);
+      await mouse('mousePressed', orPt.x, orPt.y);
+      await mouse('mouseMoved', orPt.x + 140, orPt.y + 90);
+      await mouse('mouseReleased', orPt.x + 140, orPt.y + 90);
+      await wait(250);
+      const moved = await ev(`(()=>{const n=LogicLab.S.work.nodes.find(x=>x.type==='OR');
+        return n.x + ',' + n.y;})()`);
+      report('dragging a gate pans the view instead of moving it',
+        moved === orPt.gx + ',' + orPt.gy, moved + ' vs ' + orPt.gx + ',' + orPt.gy);
+
+      await ev(`(()=>{const L=LogicLab; const n=L.S.work.nodes.find(x=>x.type==='OR');
+        L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`);
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
+      await wait(250);
+      report('Delete does nothing in Use mode', (await shape()) === before, await shape());
+      report('and there is no ✕ offering to delete the selection',
+        !(await ev(`!!LogicLab.deleteHandle()`)));
+
+      /* reaching for the palette is unambiguously an edit, so it switches back */
+      await clickSel(`.pal-item[data-type="NOT"]`);
+      await wait(300);
+      report('clicking a part in the palette puts you back in Edit',
+        await ev(`!LogicLab.S.play && document.querySelector('#act-edit').classList.contains('on')`));
+      await ev(`LogicLab.S.armed=null`);
+    }
+
     /* the breadboard has its own undo, so deleting there is reversible too */
     await clickSel('#mode-board');
     await wait(300);
@@ -1988,6 +2072,53 @@ const TESTS = String.raw`
     await clickSel('#btn-undo');
     await wait(250);
     report('breadboard undo puts it back', (await bParts()) === n0, await bParts());
+
+    /* Use mode on the breadboard: buttons and DIP switches work, chips do not
+       slide and jumpers cannot be laid */
+    {
+      await ev(`(()=>{const L=LogicLab; L.S.board=L.examples.BOARD_EXAMPLES[1].make();
+        L.S.bundo=[]; L.S.bredo=[]; L.S.bdirty=true; L.S.bsel=null; L.fitView(); return 1;})()`);
+      await wait(300);
+      await clickSel('#act-run');
+      await wait(250);
+      const bShape = () => ev(`(()=>{const L=LogicLab;
+        return L.S.board.parts.length + '/' + L.S.board.parts.map(p=>p.col).join(',');})()`);
+      const bBefore = await bShape();
+      const btn = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const p=L.S.board.parts.find(x=>x.k==='btn'); if(!p) return null;
+        const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);
+        return {x:r.left+s.x, y:r.top+s.y};})()`);
+      if (btn) {
+        await mouse('mousePressed', btn.x, btn.y);
+        const down = await ev(`(LogicLab.S.board.parts.find(x=>x.k==='btn')||{}).pressed`);
+        await mouse('mouseReleased', btn.x, btn.y);
+        await wait(200);
+        const up = await ev(`(LogicLab.S.board.parts.find(x=>x.k==='btn')||{}).pressed`);
+        report('a breadboard button still presses in Use mode', down === true && up === false,
+          down + ' then ' + up);
+      }
+      const chip = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const p=L.S.board.parts.find(x=>x.k==='ic');
+        const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);
+        return {x:r.left+s.x, y:r.top+s.y};})()`);
+      await mouse('mousePressed', chip.x, chip.y);
+      await mouse('mouseMoved', chip.x + 140, chip.y);
+      await mouse('mouseReleased', chip.x + 140, chip.y);
+      await wait(250);
+      report('a chip cannot be slid along the board in Use mode',
+        (await bShape()) === bBefore, (await bShape()) + ' vs ' + bBefore);
+
+      /* and the mode is remembered, because it is a preference not a gesture */
+      await ev(`LogicLab.saveNow()`);
+      await wait(200);
+      await send('Page.reload');
+      await wait(2200);
+      report('the Edit / Use choice survives a reload',
+        await ev(`(()=>{const L=window.LogicLab; return !!L && L.S.play
+          && document.querySelector('#act-run').classList.contains('on');})()`));
+      await ev(`LogicLab.setPlay(false)`);
+      await wait(200);
+    }
     const circuitIntact = await ev(`LogicLab.S.work.nodes.length`);
     report('undoing on the breadboard leaves the circuit alone', circuitIntact === 4, circuitIntact);
 
@@ -2068,8 +2199,10 @@ const TESTS = String.raw`
     await ev(`LogicLab.S.work.name='persist me'; LogicLab.S.dirty=true;`);
     await ev(`(()=>{const L=LogicLab; L.S.board={cols:60,parts:[{k:'ic',id:'zz',type:'7486',col:9}]};
       L.S.bdirty=true; return 1;})()`);
-    await ev(`window.__saveProbe = 1`);
-    await wait(900);                                   // let the debounced save land
+    /* save through the app's own path rather than waiting on a debounce timer
+       that some earlier action happened to start */
+    await ev(`LogicLab.saveNow()`);
+    await wait(200);
     await send('Page.reload');
     await wait(2200);
     const restored = await ev(`(()=>{const L=window.LogicLab; if(!L) return 'no app';
@@ -2192,6 +2325,13 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['use-mode', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-board').click();
+         L.S.board=L.examples.BOARD_EXAMPLES[5].make();
+         L.S.board.parts.filter(p=>p.k==='btn').forEach(b=>{b.pressed=true;});
+         L.S.bsel=null; L.S.bdirty=true; L.setPlay(true); L.fitView();
+         L.S.bcam.z*=1.5; L.S.bcam.x=-30; L.S.bcam.y=-100; return 1;})()`],
       ['diagram-grown', `(()=>{const b=document.querySelector('#modal-grow');
          if(b) b.click(); return 1;})()`],
       ['ram-array-built', `(()=>{const L=LogicLab;
