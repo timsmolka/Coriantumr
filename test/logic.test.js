@@ -2012,6 +2012,54 @@ const TESTS = String.raw`
       report('a button is down while held and springs back after',
         held === 1 && (await val('BTN')) === 0, held + ' then ' + (await val('BTN')));
 
+      /* you should not have to hit a switch exactly */
+      const offBy = async (dx, dy) => {
+        const q = await at('SW');
+        await clickAt(q.x + dx, q.y + dy);
+        await wait(200);
+        const v = await val('SW');
+        if (v) { await clickAt(q.x, q.y); await wait(200); }   // put it back
+        return v;
+      };
+      report('a click near a switch still flips it', (await offBy(26, 18)) === 1);
+      report('and one from the other side too', (await offBy(-24, -20)) === 1);
+      report('but a click well away from everything does not',
+        (await offBy(300, 240)) === 0);
+      /* a gate standing near a pin must keep its own clicks */
+      const orPick = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y, id:n.id};})()`);
+      await clickAt(orPick.x, orPick.y);
+      await wait(220);
+      report('landing squarely on a gate selects it rather than flipping a nearby pin',
+        await ev(`(()=>{const L=LogicLab;
+          return L.S.sel.has(${JSON.stringify(orPick.id)})
+            && L.S.work.nodes.filter(n=>n.type==='IN').every(n=>!n.value);})()`));
+
+      /* the left button must never slide the board out from under a switch */
+      const camBefore2 = await ev(`JSON.stringify(LogicLab.S.cam)`);
+      await mouse('mousePressed', swPt.x + 260, swPt.y + 200);
+      await mouse('mouseMoved', swPt.x + 380, swPt.y + 280);
+      await mouse('mouseReleased', swPt.x + 380, swPt.y + 280);
+      await wait(250);
+      report('a left-drag on empty space does not move the view in Use mode',
+        (await ev(`JSON.stringify(LogicLab.S.cam)`)) === camBefore2);
+      /* right-hold is what pans now — and must not delete on release */
+      const shapeBeforePan = await shape();
+      await mouse('mousePressed', swPt.x + 260, swPt.y + 200, { button: 'right', buttons: 2 });
+      await mouse('mouseMoved', swPt.x + 340, swPt.y + 250, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', swPt.x + 340, swPt.y + 250, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('right-drag moves the view instead',
+        (await ev(`JSON.stringify(LogicLab.S.cam)`)) !== camBefore2);
+      await mouse('mousePressed', swPt.x + 300, swPt.y + 230, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', swPt.x + 300, swPt.y + 230, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('and a right-click deletes nothing in Use mode',
+        (await shape()) === shapeBeforePan, (await shape()) + ' vs ' + shapeBeforePan);
+      await ev(`(()=>{const L=LogicLab; L.fitView(); return 1;})()`);
+      await wait(250);
+
       /* now the things it must refuse: dragging from a port, dragging a gate,
          and pressing Delete on a selection */
       const port = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
@@ -2088,6 +2136,11 @@ const TESTS = String.raw`
         const p=L.S.board.parts.find(x=>x.k==='btn'); if(!p) return null;
         const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);
         return {x:r.left+s.x, y:r.top+s.y};})()`);
+      /* a stretch of board with nothing on or near it, for the drag checks */
+      const chipFree = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const far=Math.max(...L.S.board.parts.map(p=>p.col||0)) + 8;
+        const s=L.toScreen(L.holeX(far), L.holeY(2));
+        return {x:r.left+s.x, y:r.top+s.y};})()`);
       if (btn) {
         await mouse('mousePressed', btn.x, btn.y);
         const down = await ev(`(LogicLab.S.board.parts.find(x=>x.k==='btn')||{}).pressed`);
@@ -2096,7 +2149,35 @@ const TESTS = String.raw`
         const up = await ev(`(LogicLab.S.board.parts.find(x=>x.k==='btn')||{}).pressed`);
         report('a breadboard button still presses in Use mode', down === true && up === false,
           down + ' then ' + up);
+        /* and you should not have to land on it exactly */
+        await mouse('mousePressed', btn.x + 22, btn.y - 16);
+        const nearDown = await ev(`(LogicLab.S.board.parts.find(x=>x.k==='btn')||{}).pressed`);
+        await mouse('mouseReleased', btn.x + 22, btn.y - 16);
+        await wait(200);
+        report('a press near a breadboard button still works', nearDown === true, nearDown);
       }
+      /* left-drag must not slide the board out from under a button */
+      const bcamBefore = await ev(`JSON.stringify(LogicLab.S.bcam)`);
+      await mouse('mousePressed', chipFree.x, chipFree.y);
+      await mouse('mouseMoved', chipFree.x + 130, chipFree.y + 70);
+      await mouse('mouseReleased', chipFree.x + 130, chipFree.y + 70);
+      await wait(250);
+      report('a left-drag on bare board does not move the view in Use mode',
+        (await ev(`JSON.stringify(LogicLab.S.bcam)`)) === bcamBefore);
+      await mouse('mousePressed', chipFree.x, chipFree.y, { button: 'right', buttons: 2 });
+      await mouse('mouseMoved', chipFree.x + 90, chipFree.y + 50, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', chipFree.x + 90, chipFree.y + 50, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('right-drag moves the board view instead',
+        (await ev(`JSON.stringify(LogicLab.S.bcam)`)) !== bcamBefore);
+      const bkeep = await ev(`LogicLab.S.board.parts.length`);
+      await mouse('mousePressed', chipFree.x + 45, chipFree.y + 25, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', chipFree.x + 45, chipFree.y + 25, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('and a right-click removes no board part in Use mode',
+        (await ev(`LogicLab.S.board.parts.length`)) === bkeep);
+      await ev(`(()=>{LogicLab.fitView(); return 1;})()`);
+      await wait(250);
       const chip = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
         const p=L.S.board.parts.find(x=>x.k==='ic');
         const s=L.toScreen(L.holeX(p.col+1), (L.holeY(4)+L.holeY(5))/2);

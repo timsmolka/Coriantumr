@@ -68,6 +68,15 @@ delete anything, in either workspace. Reaching for the palette puts you back in
 Edit by itself, since that is unambiguous. On a phone it collapses to a single
 ✎/▶ button, which is where it matters most.
 
+Two things make Use mode actually usable rather than merely safe. You do not
+have to hit a switch exactly — the nearest one within reach is the one that
+flips, measured in screen pixels so it still works zoomed out, though anything
+you land squarely on wins, so a gate beside a pin keeps its own clicks. And the
+left button never moves the view: reaching for a switch and missing used to
+drag the whole board out from under you. **Right-hold** pans instead, and does
+not delete on release the way it does in Edit. A finger still pans with one
+drag, having no second button to use.
+
 **Circuit editor.** Drop gates on a board, drag between ports to wire them, and
 click an input pin to flip it. Give a circuit input and output pins and you can
 **package it as a chip**, which then appears in the palette and can be dropped

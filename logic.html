@@ -1945,6 +1945,24 @@ function resolveDrop(hit, want, at) {
   return { n: node.id, s: want, i };
 }
 
+/* The nearest input pin you could plausibly have been reaching for, or null.
+   Distance is to the edge of the pin, so anywhere inside it counts as zero, and
+   the reach is a fixed number of screen pixels — zoomed out, a pin is a few
+   pixels across and needs all the help it can get. Only used in Use mode, where
+   nothing else is competing for the click. */
+function nearestInput(w) {
+  const R = 34 / Math.max(0.15, S.cam.z);
+  let best = null, bestD = Infinity;
+  for (const n of S.work.nodes) {
+    if (n.type !== 'IN') continue;
+    const g = gm(n);
+    const dx = w.x - clamp(w.x, g.x, g.x + g.w), dy = w.y - clamp(w.y, g.y, g.y + g.h);
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = n; }
+  }
+  return bestD <= R ? best : null;
+}
+
 /* ---- pointer plumbing --------------------------------------------------- */
 
 const ptrs = new Map();
@@ -1975,22 +1993,28 @@ cv.addEventListener('pointerdown', (ev) => {
     return;
   }
 
-  /* In Use mode a click works the circuit and nothing else: flip a switch,
-     look at a part, or push the view around. Every path below this that could
-     wire, move or place something is skipped. */
+  /* In Use mode a click works the circuit and nothing else. The left button
+     never pans here — it is for reaching switches, and a switch you nearly hit
+     should still flip rather than sliding the whole board out from under you.
+     Right-hold pans instead. */
   if (S.play) {
+    /* Something you landed squarely on wins, so an input pin sitting next to a
+       gate cannot steal a click meant for the gate. The generous reach only
+       comes into play when the click landed on nothing at all. */
     const hit = hitTest(w, touch);
-    if (hit.kind === 'node') {
-      const node = nodeById(S.work, hit.node);
-      select([node.id]);
-      if (node.type === 'IN') {
-        if (node.momentary) node.value = 1;         // finishDrag lets it back up
-        else { node.value = node.value ? 0 : 1; scheduleSave(); }
-        return;
+    const exact = (hit.kind === 'node' || hit.kind === 'port') ? nodeById(S.work, hit.node) : null;
+    const use = exact || (hit.kind === 'wire' ? null : nearestInput(w));
+    if (use) {
+      select([use.id]);
+      if (use.type === 'IN') {
+        if (use.momentary) use.value = 1;           // finishDrag lets it back up
+        else { use.value = use.value ? 0 : 1; scheduleSave(); }
       }
-    } else if (hit.kind === 'wire') select([], [hit.wire]);
-    else select([]);
-    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y };
+      return;
+    }
+    if (hit.kind === 'wire') select([], [hit.wire]); else select([]);
+    /* a finger has no second button, so one-finger drag still pushes the view */
+    if (touch) S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.cam.x, cy: S.cam.y };
     return;
   }
 
@@ -2078,8 +2102,7 @@ cv.addEventListener('pointermove', (ev) => {
         ? { kind: 'wire', wire: hit.wire, world: w }
         : { kind: hit.kind, world: w };
     if (S.play) {
-      const n = hit.kind === 'node' ? nodeById(S.work, hit.node) : null;
-      cv.style.cursor = n && n.type === 'IN' ? 'pointer' : 'grab';
+      cv.style.cursor = nearestInput(w) ? 'pointer' : 'default';
       return;
     }
     cv.style.cursor = S.pendingWire ? 'crosshair' : onHandle ? 'grab'
@@ -2125,8 +2148,9 @@ function finishDrag(ev) {
   const p = pointerPos(ev);
   const w = toWorld(p.x, p.y);
   if (d.kind === 'pan') {
-    // A right-click that did not turn into a pan means "delete this".
-    if (d.btn === 2 && Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) < 5) deleteAt(w);
+    // A right-click that did not turn into a pan means "delete this" — except
+    // in Use mode, where right-hold is simply how you move the view.
+    if (!S.play && d.btn === 2 && Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) < 5) deleteAt(w);
     return;
   }
   if (d.kind === 'wire') {
@@ -2505,7 +2529,7 @@ function renderInspector() {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
       h('p', { class: 'muted' }, S.play
-        ? 'Use mode: click an input pin to flip it between 0 and 1, or hold a button down. Nothing you click can move a part or change a wire. Press E, or the ✎ Edit button up top, to build again.'
+        ? 'Use mode: click at or near an input pin to flip it, or hold a button down — you do not have to hit it exactly. Right-drag moves the view. Nothing you click can move a part or change a wire. Press E, or the ✎ Edit button up top, to build again.'
         : 'Pick a part from the left, then click the board. To wire two parts together, click one port and then the other. Click an input pin to flip it between 0 and 1.')));
   }
 
@@ -4793,6 +4817,24 @@ function hitHole(w) {
   return bd <= BB.P * 0.6 ? best : null;
 }
 
+/* The nearest thing on the board you could work with a finger — a push button
+   or a DIP switch — within a generous reach. The circuit editor's twin. */
+function nearestBoardControl(w) {
+  const P = BB.P, R = P * 1.7;
+  let best = null, bestD = Infinity;
+  for (const p of S.board.parts) {
+    if (p.k !== 'btn' && p.k !== 'dip') continue;
+    const span = partSpan(p);
+    if (!span) continue;
+    const x0 = holeX(span[0]) - P * 0.6, x1 = holeX(span[1]) + P * 0.6;
+    const y0 = holeY(chipRowHi(p)), y1 = holeY(chipRowLo(p));
+    const dx = w.x - clamp(w.x, x0, x1), dy = w.y - clamp(w.y, y0, y1);
+    const d = Math.hypot(dx, dy);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  return bestD <= R ? best : null;
+}
+
 function hitBoardPart(w) {
   const P = BB.P;
   const parts = S.board.parts;
@@ -4898,19 +4940,24 @@ function boardDown(ev) {
   const hole = hitHole(w);
 
   /* Use mode: press buttons, flip DIP switches, look at parts. Nothing that
-     could move a chip or lay a jumper. */
+     could move a chip or lay a jumper, and — as in the circuit — a control you
+     nearly hit still works, with the left button never panning. */
   if (S.play) {
-    const only = hitBoardPart(w);
-    S.bsel = only ? only.id : null;
+    /* as in the circuit: a part you landed squarely on wins over one merely
+       within reach, so a chip beside a button keeps its own clicks */
+    const exact = hitBoardPart(w);
+    const use = exact || nearestBoardControl(w);
+    S.bsel = use ? use.id : null;
     renderInspector();
-    if (only && only.k === 'btn') { only.pressed = true; S.bdirty = true; S.pressing = only; return; }
-    if (only && only.k === 'dip') {
-      const i = clamp(Math.round(w.x / BB.P - 1.2) - only.col, 0, only.n - 1);
-      only.on[i] = !only.on[i];
+    if (use && use.k === 'btn') { use.pressed = true; S.bdirty = true; S.pressing = use; return; }
+    if (use && use.k === 'dip') {
+      const i = clamp(Math.round(w.x / BB.P - 1.2) - use.col, 0, use.n - 1);
+      use.on[i] = !use.on[i];
       S.bdirty = true; scheduleSave();
       return;
     }
-    S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.bcam.x, cy: S.bcam.y };
+    if (use) return;
+    if (ev.pointerType === 'touch') S.drag = { kind: 'pan', sx: p.x, sy: p.y, cx: S.bcam.x, cy: S.bcam.y };
     return;
   }
 
@@ -4961,9 +5008,8 @@ function boardMove(ev, p, w) {
   S.bhoverNet = hole ? netOfHole(hole.r, hole.c) : undefined;
   const d = S.drag;
   if (!d) {
-    const p2 = hitBoardPart(w);
-    cv.style.cursor = S.play ? (p2 && (p2.k === 'btn' || p2.k === 'dip') ? 'pointer' : 'grab')
-      : S.armed ? 'copy' : p2 ? 'pointer' : 'default';
+    cv.style.cursor = S.play ? (nearestBoardControl(w) ? 'pointer' : 'default')
+      : S.armed ? 'copy' : hitBoardPart(w) ? 'pointer' : 'default';
     return;
   }
   if (d.kind === 'pan') { S.bcam.x = d.cx + (p.x - d.sx); S.bcam.y = d.cy + (p.y - d.sy); return; }
@@ -4987,7 +5033,7 @@ function boardUp(ev) {
   if (S.pressing) { S.pressing.pressed = false; S.bdirty = true; S.pressing = null; }
   const d = S.drag;
   S.drag = null;
-  if (d && d.kind === 'pan' && d.btn === 2 && ev) {
+  if (!S.play && d && d.kind === 'pan' && d.btn === 2 && ev) {
     const p = pointerPos(ev);
     if (Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) < 5) deleteAt(toWorld(p.x, p.y));
   }
@@ -5192,7 +5238,7 @@ function renderBoardInspector(host) {
     host.append(h('div', { class: 'insp-sec' },
       h('h3', {}, 'Nothing selected'),
       h('p', { class: 'muted' }, S.play
-        ? 'Use mode: press the buttons and flip the DIP switches. Nothing you click can move a chip or lay a jumper. Press E, or the ✎ Edit button up top, to build again.'
+        ? 'Use mode: click at or near a button or DIP switch to work it — you do not have to hit it exactly. Right-drag moves the view. Nothing you click can move a chip or lay a jumper. Press E, or the ✎ Edit button up top, to build again.'
         : 'Pick a part on the left, then click a hole. Click a placed part to inspect it.')));
     return;
   }
@@ -6028,8 +6074,10 @@ undo history.</p>
 <ul>
   <li><kbd>E</kbd> switches between <b>Edit</b> and <b>Use</b>. In Use, a click only works
       the thing you have built — flips a switch, holds a button down — and cannot start a
-      wire, move a part or delete anything. Reach for the palette and it puts you back in
-      Edit by itself.</li>
+      wire, move a part or delete anything. You do not have to hit a switch exactly: the
+      nearest one within reach is the one that flips. The left button never moves the view
+      in Use mode, so nothing slides out from under you — right-drag does that instead.
+      Reach for the palette and it puts you back in Edit by itself.</li>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
       fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
@@ -6065,8 +6113,8 @@ function setMode(m) {
 function setStatusTip() {
   $('#status-tip').textContent = S.play
     ? (S.mode === 'board'
-      ? 'Use mode: press the buttons and flip the switches. Nothing you click can move a part or change a wire — switch back to Edit for that.'
-      : 'Use mode: click an input pin to flip it between 0 and 1. Nothing you click can move a part or change a wire — switch back to Edit for that.')
+      ? 'Use mode: click at or near a button or switch to work it — you do not have to be exact. Right-drag moves the view. Nothing you click can move a part or change a wire.'
+      : 'Use mode: click at or near an input pin to flip it — you do not have to be exact. Right-drag moves the view. Nothing you click can move a part or change a wire.')
     : (S.mode === 'board'
       ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
       : 'Click a part on the left, then click the board. To wire: click one port, then the other. To remove something: click it and press Delete, tap the red ✕, or right-click it.');
