@@ -1969,6 +1969,41 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- naming a part where it stands ---- */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('chain');
+        const id=Object.keys(L.lib)[0];
+        [0,1,2].forEach(i=>b.add('CHIP', 80+i*220, 80, {chip:id}));
+        L.S.work=b.def; L.S.dirty=true;
+        L.S.sel.clear(); L.S.sel.add(b.def.nodes[1].id);
+        L.renderInspector(); L.fitView(); return 1;})()`);
+      await wait(300);
+      const box = await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder)); return !!i;})()`);
+      report('a placed part offers a name of its own, beside its type', box === true);
+      await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder));
+        i.value='module 1'; i.dispatchEvent(new Event('input',{bubbles:true})); return 1;})()`);
+      await wait(250);
+      const named = await ev(`(()=>{const L=LogicLab;
+        return L.S.work.nodes.map(n=>n.tag||'-').join(',');})()`);
+      report('naming one leaves its neighbours alone', named === '-,module 1,-', named);
+      report('the name is part of the circuit, so it saves with it',
+        await ev(`JSON.parse(JSON.stringify(LogicLab.S.work)).nodes[1].tag === 'module 1'`));
+      /* two copies of one chip keep their own names */
+      await ev(`(()=>{const L=LogicLab; L.S.sel.clear(); L.S.sel.add(L.S.work.nodes[0].id);
+        L.renderInspector(); return 1;})()`);
+      await wait(250);
+      await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder));
+        i.value='module 0'; i.dispatchEvent(new Event('input',{bubbles:true})); return 1;})()`);
+      await wait(250);
+      report('every copy of the same chip can be called something different',
+        (await ev(`LogicLab.S.work.nodes.map(n=>n.tag||'-').join(',')`)) === 'module 0,module 1,-',
+        await ev(`LogicLab.S.work.nodes.map(n=>n.tag||'-').join(',')`));
+    }
+
     /* ---- crossings get a bridge, joins get a dot ---- */
     {
       const hops = () => ev(`LogicLab.wireHops().length`);
@@ -2734,6 +2769,20 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['named-modules', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         const id=Object.keys(L.lib).find(k=>/full adder/i.test(L.lib[k].name)) || Object.keys(L.lib)[0];
+         const b=L.builder('adder chain');
+         const A=[0,1,2,3].map(i=>b.pin('A'+i, 0, 40+i*170));
+         const B=[0,1,2,3].map(i=>b.pin('B'+i, 0, 100+i*170));
+         const S2=[0,1,2,3].map(i=>b.out('S'+i, 640, 60+i*170));
+         const ch=[0,1,2,3].map(i=>{const c=b.add('CHIP', 300, 30+i*170, {chip:id});
+           c.tag='module '+i; return c;});
+         ch.forEach((c,i)=>{ b.w(A[i],0,c,0); b.w(B[i],0,c,1); b.w(c,0,S2[i],0);
+           if(i) b.w(ch[i-1],1,c,2); });
+         L.S.work=b.def; L.S.dirty=true;
+         L.S.sel.clear(); L.renderInspector(); L.fitView(); return 1;})()`],
       ['junctions', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click(); L.setPlay(false);

@@ -77,6 +77,23 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**A part has a type and a name.** What it *is* — "Full adder" — is written
+inside it and never changes. What it is **here** goes in the **Called** box in
+the side panel and is drawn above it: *module 0*, *module 1*, *carry stage*, or
+whatever you like. A chain of four identical adders is four things all called
+"Full adder", and telling them apart is the job real schematics give U1, U2, U3.
+Every copy of a chip carries its own name, and it saves with the circuit.
+
+**Are the displays made of gates?** Half of one is, and the app now says which
+half. An **LED** is not gates at all: a real one is a diode, and light comes out
+because electrons crossing a junction give up energy as photons — below it is
+physics, not logic, which is why it has no "what it's made of". A **7-segment**
+display is seven of those lamps in a package; it decides nothing. What decides
+*which* bars light is pure logic — a decoder — and that you can build here out
+of ANDs and ORs, or drop on the breadboard as the **7447**, which is exactly
+that chip and nothing else. The **hex digit** part does both halves for you;
+7-segment hands the deciding back.
+
 **Crossings and joins look different.** Two wires meeting at a dot are one
 signal; two wires crossing are two, and drawn the same way there is no telling
 which you are looking at. A crossing now gets the little **bridge** every

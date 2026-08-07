@@ -687,19 +687,19 @@ const PARTS = {
 
   /* ---- displays -------------------------------------------------------- */
   LED: {
-    name: 'LED', cat: 'disp', nick: "a light", plain: "Lights up while its input is 1. It has no effect on the circuit \u2014 it is there for you to watch.", group: 'Displays', shape: 'led',
+    name: 'LED', cat: 'disp', nick: "a light", plain: "Lights up while its input is 1. It has no effect on the circuit \u2014 it is there for you to watch. This is the one part with no gates in it at all: a real LED is a diode, and light comes out because electrons crossing a junction give up energy as photons. Below it is physics, not logic, which is why it has no \u2018what it\u2019s made of\u2019.", group: 'Displays', shape: 'led',
     ins: () => [''], outs: () => [], w: 26, h: 26,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Glows while its input is 1.',
   },
   SEG7: {
-    name: '7-SEGMENT', cat: 'disp', nick: "a digit, bar by bar", plain: "Seven bars and a dot, each with its own input, which together can draw a digit. You decide which bars light \u2014 working out the shapes is a decoder chip's job.", group: 'Displays', shape: 'seg7',
+    name: '7-SEGMENT', cat: 'disp', nick: "a digit, bar by bar", plain: "Seven bars and a dot, each with its own input, which together can draw a digit. Seven separate lamps, in other words \u2014 there are no gates inside it, and it does not decide anything. Working out which bars to light IS gates: that is a decoder, and the 7447 on the breadboard is exactly that chip. Wire one to this and you can see the whole job split in two.", group: 'Displays', shape: 'seg7',
     ins: () => ['a', 'b', 'c', 'd', 'e', 'f', 'g', '.'], outs: () => [], w: 104, h: 8 * PORT_GAP + 16,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Eight segments, driven one bit each — a through g plus the dot.',
   },
   HEX: {
-    name: 'HEX DIGIT', cat: 'disp', nick: "a digit, worked out for you", plain: "Reads four bits as a number from 0 to 15 and draws it as one digit, 0 to F. The decoding is done for you; the 7-SEGMENT part is the honest version.", group: 'Displays', shape: 'seg7',
+    name: 'HEX DIGIT', cat: 'disp', nick: "a digit, worked out for you", plain: "Reads four bits as a number from 0 to 15 and draws it as one digit, 0 to F. Two halves, and only one is gates: deciding which of the seven bars to light for each number is pure logic \u2014 a decoder, which you could build here from ANDs and ORs \u2014 while the bars themselves are just lamps. This part does the deciding for you. The 7-SEGMENT part hands it back, and the 7447 on the breadboard is the real decoder chip.", group: 'Displays', shape: 'seg7',
     ins: () => ['8', '4', '2', '1'], outs: () => [], w: 76, h: 92,
     make: () => ({ color: '#ffc247' }),
     tip: 'Shows a 4-bit number as one hex digit, 0–F. Decoding is done for you.',
@@ -1912,6 +1912,17 @@ function drawNode(node, ghost) {
   }
 
   done();                                            // back to the world frame
+
+  /* the instance name, written above the part in the world frame so it stays
+     level however the part is turned, and never inside where the type is */
+  if (node.tag) {
+    ctx.font = `600 10px ${FONT}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.fillStyle = C.sel;
+    ctx.globalAlpha = (ghost ? 0.55 : 1) * 0.95;
+    ctx.fillText(node.tag, world.x + world.w / 2, world.y - 4);
+    ctx.globalAlpha = ghost ? 0.55 : 1;
+  }
   if (selected && !ghost) {
     roundRect(world.x - 4, world.y - 4, world.w + 8, world.h + 8, 9);
     ctx.strokeStyle = C.sel; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]);
@@ -3220,6 +3231,24 @@ function nodeInspector(node) {
   /* the name and the shape together, so one teaches the other */
   sec.append(h('div', { class: 'kv' }, h('span', {}, 'Type'),
     h('span', { class: 'typeval' }, GATE_SHAPE[node.type] ? gateSwatch(node.type, null) : null, title)));
+
+  /* What it IS is the type above; what it IS HERE is this. A chain of four
+     identical adders is four things called "Full adder", and telling them
+     apart is what the schematics of the world use U1, U2, U3 for. */
+  if (!S.play) {
+    sec.append(h('div', { class: 'row' },
+      h('label', {}, 'Called'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'text', value: node.tag || '', spellcheck: 'false',
+        placeholder: 'module 0, U1, carry stage…',
+        oninput: (e) => {
+          node.tag = e.target.value.slice(0, 24);
+          markDirty(); scheduleSave();
+        },
+      }))));
+  } else if (node.tag) {
+    sec.append(h('div', { class: 'kv' }, h('span', {}, 'Called'), h('span', {}, node.tag)));
+  }
 
   /* The same "here is what this is" treatment the breadboard gets. */
   const prim = PARTS[node.type];
