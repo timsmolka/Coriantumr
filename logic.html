@@ -1286,10 +1286,14 @@ const segHitsRect = (p, q, r) => {
   return x1 > r.x0 && x0 < r.x1 && y1 > r.y0 && y0 < r.y1;
 };
 
-const routeClear = (pts, rects, skip) => {
-  for (let i = 0; i < pts.length - 1; i++) {
+/* Only the two stubs are exempt — they start on a port, which is on the edge of
+   a box, so they cannot help touching it. Everything between them has to clear
+   EVERY box including the wire's own two, which is what stops a wire that has to
+   come back on itself from taking the short cut straight through the chip it
+   just left. */
+const routeClear = (pts, rects) => {
+  for (let i = 1; i < pts.length - 2; i++) {
     for (const r of rects) {
-      if (skip.has(r.id)) continue;
       if (segHitsRect(pts[i], pts[i + 1], r)) return false;
     }
   }
@@ -1298,7 +1302,7 @@ const routeClear = (pts, rects, skip) => {
 
 /** The points a wire runs through, ends included. Falls back to null when the
     old curve should be used instead. */
-function routeWire(a, b, skip) {
+function routeWire(a, b, fromJoint) {
   if (S.work.nodes.length > ROUTE_LIMIT) return null;
   const rects = wireObstacles();
   const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB };
@@ -1310,22 +1314,30 @@ function routeWire(a, b, skip) {
   else if (Math.abs(A.x - B.x) < 0.6) tries.push([A, B]);
 
   if (horizA && horizB) {
-    /* a vertical run somewhere between the two, at a few likely places */
+    /* A wire leaving a junction should part company with its siblings AT the
+       junction — that is what the dot is for. Left to pick the middle like
+       everything else, three branches run together for half the board and the
+       dot ends up nowhere near where the picture appears to split. */
     const lo = Math.min(A.x, B.x), hi = Math.max(A.x, B.x);
-    for (const t of [0.5, 0.32, 0.68, 0.15, 0.85]) {
+    const order = fromJoint ? [0.06, 0.16, 0.34, 0.5, 0.75] : [0.5, 0.32, 0.68, 0.15, 0.85];
+    for (const t of order) {
       const mx = lo + (hi - lo) * t;
       tries.push([A, { x: mx, y: A.y }, { x: mx, y: B.y }, B]);
     }
-    /* target behind the source: out, round the outside, back in */
+    /* Target behind the source: out, round the outside, back in. The lane has
+       to clear the wire's own two boxes as well, or it snakes round everything
+       else and then cuts through the chip it started on. */
     let top = Infinity, bot = -Infinity;
     for (const r of rects) {
-      if (skip.has(r.id)) continue;
-      if (r.x1 < Math.min(A.x, B.x) - 40 || r.x0 > Math.max(A.x, B.x) + 40) continue;
+      if (r.x1 < Math.min(A.x, B.x) - 60 || r.x0 > Math.max(A.x, B.x) + 60) continue;
       top = Math.min(top, r.y0); bot = Math.max(bot, r.y1);
     }
-    for (const lane of [top - 22, bot + 22]) {
+    for (const lane of [bot + 24, top - 24, bot + 46, top - 46]) {
       if (!isFinite(lane)) continue;
       tries.push([A, { x: A.x, y: lane }, { x: B.x, y: lane }, B]);
+      /* and out past the side first, for when the way up is blocked too */
+      const side = A.x + 26;
+      tries.push([A, { x: side, y: A.y }, { x: side, y: lane }, { x: B.x, y: lane }, B]);
     }
   } else {
     /* one of them has been turned, so the two runs meet at a corner */
@@ -1336,7 +1348,7 @@ function routeWire(a, b, skip) {
   for (const mid of tries) {
     const full = [{ x: a.x, y: a.y }, ...mid, { x: b.x, y: b.y }];
     const trimmed = full.filter((p, i) => i === 0 || Math.abs(p.x - full[i - 1].x) > 0.4 || Math.abs(p.y - full[i - 1].y) > 0.4);
-    if (routeClear(trimmed, rects, skip)) return trimmed;
+    if (routeClear(trimmed, rects)) return trimmed;
   }
   return null;
 }
@@ -1347,7 +1359,8 @@ function wireRoute(wr, a, b) {
   const key = `${wr.id}|${Math.round(a.x)},${Math.round(a.y)},${Math.round(b.x)},${Math.round(b.y)}|${wireObstacles().length}`;
   const hit = routeCache.get(wr.id);
   if (hit && hit.key === key) return hit.pts;
-  const pts = routeWire(a, b, new Set([wr.a.n, wr.b.n]));
+  const src = nodeById(S.work, wr.a.n);
+  const pts = routeWire(a, b, !!src && src.type === 'JOINT');
   routeCache.set(wr.id, { key, pts });
   if (routeCache.size > 4000) routeCache.clear();
   return pts;
@@ -1965,13 +1978,15 @@ const snap = (v) => Math.round(v / GRID) * GRID;
 function hitTest(w, touch) {
   const z = cam().z;
   const pr = (touch ? 20 : 13) / z;                // port grab radius, in world units
+  const prJoint = (touch ? 26 : 18) / z;           // a junction is small; be kind
   const nodes = S.work.nodes;
   for (let i = nodes.length - 1; i >= 0; i--) {
     const n = nodes[i], g = gm(n);
     if (w.x < g.x - pr - 6 || w.x > g.x + g.w + pr + 6 || w.y < g.y - pr - 6 || w.y > g.y + g.h + pr + 6) continue;
     for (const [side, list] of [['out', g.outs], ['in', g.ins]]) {
       for (let k = 0; k < list.length; k++) {
-        if (dist2(w.x, w.y, list[k].x, list[k].y) <= pr * pr) {
+        const reach = n.type === 'JOINT' ? prJoint : pr;
+        if (dist2(w.x, w.y, list[k].x, list[k].y) <= reach * reach) {
           return { kind: 'port', node: n.id, side, i: k, pos: list[k] };
         }
       }
@@ -1979,7 +1994,14 @@ function hitTest(w, touch) {
   }
   for (let i = nodes.length - 1; i >= 0; i--) {
     const n = nodes[i], g = gm(n);
-    if (w.x >= g.x && w.x <= g.x + g.w && w.y >= g.y && w.y <= g.y + g.h) return { kind: 'node', node: n.id };
+    /* A junction is eighteen units across, which is a hard thing to hit and an
+       even harder thing to hit on a phone. It gets a bigger catch than it draws,
+       and it is checked before the boxes so a junction sitting on top of a chip
+       still wins its own clicks. */
+    const pad = n.type === 'JOINT' ? (touch ? 16 : 10) / z : 0;
+    if (w.x >= g.x - pad && w.x <= g.x + g.w + pad && w.y >= g.y - pad && w.y <= g.y + g.h + pad) {
+      return { kind: 'node', node: n.id };
+    }
   }
   const tol = (touch ? 12 : 7) / z;
   for (let i = S.work.wires.length - 1; i >= 0; i--) {
@@ -6840,7 +6862,7 @@ window.LogicLab = {
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
-  addJointToSelection, spliceJoint,
+  addJointToSelection, spliceJoint, hitTest,
   get lib() { return LIB; },
 };
 

@@ -2018,6 +2018,33 @@ const TESTS = String.raw`
       report('a junction really does feed every branch off it',
         tee === '0=00 1=11', tee);
 
+      /* the branches must part company AT the dot, not run together first */
+      const split = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const gj=L.geom(j);
+        const jx=gj.x+gj.w/2;
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+          return (e.s==='in'?g.ins:g.outs)[e.i];};
+        const legs=L.S.work.wires.filter(w=>w.a.n===j.id);
+        if(legs.length<2) return 'only '+legs.length+' leg';
+        /* how far right of the dot each leg runs before it turns */
+        const runs=legs.map(w=>{
+          const pts=L.wirePoints(at(w.a), at(w.b), 60, w);
+          const y0=pts[0].y;
+          const turn=pts.find(p=>Math.abs(p.y-y0)>2);
+          return turn ? Math.round(turn.x - jx) : 0;});
+        return Math.max(...runs);})()`);
+      report('branches leave the junction near the dot, not half a board later',
+        typeof split === 'number' && split < 90, split);
+
+      /* and the dot itself is easy to hit */
+      const grab = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j);
+        L.S.cam.z=1;
+        const hit=(dx,dy)=>{const h=L.hitTest({x:g.x+g.w/2+dx, y:g.y+g.h/2+dy}, false);
+          return h && h.node===j.id;};
+        return hit(0,0) && hit(14,0) && hit(0,-14) && !hit(90,90);})()`);
+      report('a junction catches clicks from a little way off', grab === true, grab);
+
       /* and it is one undo step */
       await clickSel('#btn-undo');
       await wait(250);
@@ -2049,6 +2076,25 @@ const TESTS = String.raw`
           }
           return bad+'/'+total;})()`);
       };
+      /* the hard case: a chip's own output looping back to its own input has
+         to go round the outside, not straight through the chip */
+      const loopBack = await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('loop');
+        const d=b.add('DFF', 300, 200);
+        const clk=b.pin('CLK', 60, 260);
+        b.w(d,1,d,0);                                  // Qbar back to D
+        b.w(clk,0,d,1);
+        L.S.work=b.def; L.S.dirty=true; L.fitView();
+        const g=L.geom(d);
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const gg=L.geom(n);
+          return (e.s==='in'?gg.ins:gg.outs)[e.i];};
+        const w=L.S.work.wires[0];
+        const pts=L.wirePoints(at(w.a), at(w.b), 80, w);
+        const inside=pts.filter(p=>p.x>g.x+1&&p.x<g.x+g.w-1&&p.y>g.y+1&&p.y<g.y+g.h-1).length;
+        return inside;})()`);
+      report('a wire looping back to its own part goes round it, not through it',
+        loopBack === 0, loopBack + ' points inside the box');
+
       const adder = await crossings(1);
       report('no wire in the full adder runs through a part',
         adder === '0/12', adder);

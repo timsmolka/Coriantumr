@@ -77,7 +77,10 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
-**Junctions.** One signal often has to feed several inputs. Select a wire and
+**Junctions.** One signal often has to feed several inputs. A junction catches
+clicks from a little way outside the dot it draws, in both the body and the
+ports — eighteen units across is a hard thing to hit with a mouse and a harder
+one with a finger.  Select a wire and
 press <kbd>J</kbd> (or the **Add a junction** button) and one is spliced in
 where you are pointing — the wire becomes two, with a junction between them you
 can run as many more wires from as you like. That is the T, and the cross, that
@@ -87,8 +90,17 @@ happening to cross. Dropping a wire onto a wire still splices one in too — the
 difference is that this is a way to ask for one.
 
 **Wires go round things.** A wire is planned as a few straight runs that dodge
-the boxes, with the corners rounded off so it still reads as a wire rather than
-a circuit-board trace. Candidates are tried cheapest-looking first — dead
+every box — including the two it belongs to, which is what stops a signal
+looping back to its own chip from taking the short cut straight through it
+instead of round the outside. Only the two short stubs at the ports are exempt,
+because a port sits on the edge of a box and cannot help touching it. A wire
+that must come back on itself is offered lanes above and below, and a step out
+past the side first for when those are blocked too. A wire leaving a junction
+parts company with its siblings **at** the junction rather than running with
+them across half the board, so the dot is where the picture actually splits.
+
+Corners are rounded off so it still reads as a wire rather than a
+circuit-board trace. Candidates are tried cheapest-looking first — dead
 straight, then a single dog-leg at one of a few likely places, then out and
 around the outside when the target is *behind* the source, which is where most
 of the spaghetti used to come from: a curve to something on its left looped
