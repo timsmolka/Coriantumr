@@ -1969,6 +1969,59 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- lining parts up so the wires run straight ---- */
+    {
+      /* Two gates on the grid, wired. Their PORTS are at fractional offsets
+         inside the boxes, so grid-aligned boxes still leave a kinked wire —
+         which is the whole reason this feature has to exist. */
+      /* the gap between the two PORTS a wire joins — wireHandles samples the
+         drawn curve, which is not the same thing */
+      const skew = () => ev(`(()=>{const L=LogicLab;
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+          return (e.s==='in'?g.ins:g.outs)[e.i];};
+        return L.S.work.wires.map(w=>Math.round(Math.abs(at(w.b).y-at(w.a).y))).join(',');})()`);
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('lineup');
+        const i=b.pin('A',0,0), g=b.add('AND',200,30), o=b.out('Q',420,70);
+        b.w(i,0,g,0); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[];
+        L.fitView(); return 1;})()`);
+      await wait(300);
+      const before = await skew();
+      report('parts on the grid still leave the wires between them kinked',
+        before.split(',').some(n => +n !== 0), before);
+
+      const table = () => ev(`LogicLab.computeTruthTable(LogicLab.S.work).rows
+        .map(r=>r.in.join('')+'='+r.out.join('')).join(' ')`);
+      const want = await table();
+      await ev(`LogicLab.straightenWires(null)`);
+      await wait(250);
+      report('lining up makes every wire dead level',
+        (await skew()).split(',').every(n => +n === 0), await skew());
+      report('and lining up cannot change what the circuit does',
+        (await table()) === want, await table());
+
+      /* dragging: come near level with something you are wired to and it pulls */
+      const pulled = await ev(`(()=>{const L=LogicLab;
+        L.S.cam.z = 1;                                // reach is in screen pixels
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y += 5;                                     // just off level
+        const hit=L.alignOffset([g]);
+        return hit ? Math.round(hit.gap) : 'no pull';})()`);
+      report('a part a few pixels off level is pulled the rest of the way',
+        pulled === -5, pulled);
+      const tooFar = await ev(`(()=>{const L=LogicLab;
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y += 120;
+        const hit=L.alignOffset([g]);
+        g.y -= 120;
+        return hit ? 'pulled' : 'left alone';})()`);
+      report('but one nowhere near level is left where you put it',
+        tooFar === 'left alone', tooFar);
+      await ev(`(()=>{const L=LogicLab; const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y -= 5; L.S.dirty=true; return 1;})()`);
+    }
+
     /* ---- turning parts, one at a time and in a block ---- */
     {
       /* a half adder, so there is something with a known truth table to turn */
@@ -2523,6 +2576,11 @@ const TESTS = String.raw`
            }, 300);
          }, 200);
          return 1;})()`],
+      ['lined-up', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         document.querySelector('#mode-editor').click(); L.setPlay(false);
+         L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work; L.S.dirty=true;
+         L.S.sel.clear(); L.straightenWires(null); L.fitView(); return 1;})()`],
       ['rotated', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
          const x=document.querySelector('#modal-close'); if(x) x.click();
          document.querySelector('#mode-editor').click(); L.setPlay(false);

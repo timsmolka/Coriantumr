@@ -1235,10 +1235,13 @@ function endPos(def, e) {
 }
 
 function wirePath(a, b) {
-  const dx = Math.abs(b.x - a.x);
-  const k = clamp(dx * 0.55, 18, 110);
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
+  /* Level ends get a real straight line rather than a curve that merely looks
+     like one — the whole point of lining parts up is being able to see that
+     they are lined up. */
+  if (Math.abs(b.y - a.y) < 0.5 || Math.abs(b.x - a.x) < 0.5) { ctx.lineTo(b.x, b.y); return; }
+  const k = clamp(Math.abs(b.x - a.x) * 0.55, 18, 110);
   ctx.bezierCurveTo(a.x + k, a.y, b.x - k, b.y, b.x, b.y);
 }
 
@@ -1246,6 +1249,16 @@ function wirePath(a, b) {
 function wirePoints(a, b, n = 18) {
   const dx = Math.abs(b.x - a.x);
   const k = clamp(dx * 0.55, 18, 110);
+  /* must follow the same rule wirePath draws by, or clicking a straightened
+     wire would miss it by the width of the curve that is no longer there */
+  if (Math.abs(b.y - a.y) < 0.5 || Math.abs(b.x - a.x) < 0.5) {
+    const line = [];
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      line.push({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+    }
+    return line;
+  }
   const p = [];
   for (let i = 0; i <= n; i++) {
     const t = i / n, u = 1 - t;
@@ -1678,6 +1691,20 @@ function drawWorld() {
 
   for (const n of S.work.nodes) drawNode(n, false);
 
+  /* the line something just snapped onto, so the jump is explained */
+  if (alignGuides.length && S.drag && S.drag.kind === 'move') {
+    ctx.save();
+    ctx.strokeStyle = C.sel; ctx.lineWidth = 1 / S.cam.z; ctx.setLineDash([5 / S.cam.z, 4 / S.cam.z]);
+    for (const g of alignGuides) {
+      const pad = 28;
+      ctx.beginPath();
+      if (g.horiz) { ctx.moveTo(g.a - pad, g.at); ctx.lineTo(g.b + pad, g.at); }
+      else { ctx.moveTo(g.at, g.a - pad); ctx.lineTo(g.at, g.b + pad); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (!S.drag) alignGuides = [];
+
   /* the wire currently being drawn — dragged, or waiting for its second click */
   const aim = (S.drag && S.drag.kind === 'wire') ? S.drag : S.pendingWire;
   if (aim) {
@@ -1949,6 +1976,110 @@ function deleteSelection() {
     (w) => !S.selWires.has(w.id) && !S.sel.has(w.a.n) && !S.sel.has(w.b.n));
   S.sel.clear(); S.selWires.clear();
   renderInspector();
+}
+
+/* ---- lining things up ----------------------------------------------------
+   A part lands on a ten-unit grid, but its ports do not: they are spaced down
+   the middle of a box whose height depends on how many there are. So two gates
+   can sit perfectly on the grid and the wire between them still has a kink in
+   it. What has to line up is the ports, not the boxes — so while a part is
+   being dragged, any wire it already has is checked, and if one of its ends is
+   within a few pixels of level with the other, it is nudged the rest of the
+   way and a guide is drawn to say why it moved. */
+const ALIGN_REACH = 7;                              // screen pixels of pull
+
+let alignGuides = [];                               // drawn for one frame
+
+/** The offset that would make some wire on `moving` perfectly straight, or null.
+    Only ends outside the moving group count — dragging two wired parts together
+    should not have them fight each other. */
+function alignOffset(moving) {
+  const ids = new Set(moving.map((n) => n.id));
+  const reach = ALIGN_REACH / Math.max(0.15, S.cam.z);
+  let best = null;
+  for (const wire of S.work.wires) {
+    const insideA = ids.has(wire.a.n), insideB = ids.has(wire.b.n);
+    if (insideA === insideB) continue;              // both ends move, or neither
+    const mine = insideA ? wire.a : wire.b, theirs = insideA ? wire.b : wire.a;
+    const from = endPos(S.work, mine), to = endPos(S.work, theirs);
+    if (!from || !to) continue;
+    /* a horizontal run wants equal y; a vertical one equal x. Whichever is
+       already the nearer to true is the one being aimed at. */
+    const dy = to.y - from.y, dx = to.x - from.x;
+    const horiz = Math.abs(dx) >= Math.abs(dy);
+    const gap = horiz ? dy : dx;
+    if (Math.abs(gap) > reach || Math.abs(gap) < 0.01) continue;
+    if (!best || Math.abs(gap) < Math.abs(best.gap)) {
+      best = { gap, horiz, at: horiz ? to.y : to.x, from, to };
+    }
+  }
+  return best;
+}
+
+/** Nudge the parts being dragged so a wire they carry comes out straight. */
+function applyAlignSnap(moving) {
+  alignGuides = [];
+  const hit = alignOffset(moving);
+  if (!hit) return;
+  for (const n of moving) { if (hit.horiz) n.y += hit.gap; else n.x += hit.gap; }
+  alignGuides.push(hit.horiz
+    ? { horiz: true, at: hit.at, a: Math.min(hit.from.x, hit.to.x), b: Math.max(hit.from.x, hit.to.x) }
+    : { horiz: false, at: hit.at, a: Math.min(hit.from.y, hit.to.y), b: Math.max(hit.from.y, hit.to.y) });
+}
+
+/** Straighten every wire that is nearly straight already, in one go — the
+    tidy-up for a board that was thrown together and now wants to be read.
+    Parts are moved, never wires: a wire has no shape of its own here. */
+function straightenWires(scope) {
+  if (S.mode !== 'editor' || S.play) return;
+  const pool = scope && scope.length ? scope : S.work.nodes;
+  const movable = new Set(pool.map((n) => n.id));
+  pushUndo();
+  let fixed = 0;
+  const moved = new Set();
+  /* Left to right, so a chain settles from its source outwards: the pin feeds
+     the gate, so the gate moves to the pin, then the next thing moves to the
+     gate. Doing it in wire order instead makes each fix break the one before —
+     each part is moved at most once, and the ones upstream go first. */
+  const wires = [...S.work.wires].sort((p, q) => {
+    const a = endPos(S.work, p.a), b = endPos(S.work, q.a);
+    return (a ? a.x : 0) - (b ? b.x : 0);
+  });
+  /* Decide first, from the layout as it stands, THEN move. Judging each wire
+     after the previous one has already shifted a part is how the first fix
+     talks the second out of happening: straightening A→gate can push the
+     gate→B gap past the limit, and B is left stranded. */
+  const plan = [];
+  for (const wire of wires) {
+    const from = endPos(S.work, wire.a), to = endPos(S.work, wire.b);
+    if (!from || !to) continue;
+    const horiz = Math.abs(to.x - from.x) >= Math.abs(to.y - from.y);
+    const gap = horiz ? to.y - from.y : to.x - from.x;
+    /* Half a gate's height. Tighter than this and ordinary sloppy placement is
+       left alone, which makes the button look broken; looser and it starts
+       hauling parts across the board. */
+    if (!gap || Math.abs(gap) > GRID * 5) continue;
+    plan.push({ wire, horiz });
+  }
+  for (const { wire, horiz } of plan) {
+    const pick = movable.has(wire.b.n) && !moved.has(wire.b.n) ? wire.b
+      : movable.has(wire.a.n) && !moved.has(wire.a.n) ? wire.a : null;
+    if (!pick) continue;
+    const from = endPos(S.work, wire.a), to = endPos(S.work, wire.b);
+    if (!from || !to) continue;
+    /* the live gap, not the one it was judged on — the chain has to follow
+       through once the part upstream of it has moved */
+    const gap = horiz ? to.y - from.y : to.x - from.x;
+    if (!gap) continue;
+    const node = nodeById(S.work, pick.n);
+    const sign = pick === wire.b ? -1 : 1;
+    if (horiz) node.y += gap * sign; else node.x += gap * sign;
+    moved.add(pick.n);
+    fixed++;
+  }
+  markDirty();
+  toast(fixed ? `Straightened ${fixed} connection${fixed === 1 ? '' : 's'}.`
+    : 'Nothing was close enough to straighten.');
 }
 
 /** Turn the selection a quarter turn — `dir` is 1 clockwise, -1 the other way.
@@ -2305,6 +2436,7 @@ cv.addEventListener('pointermove', (ev) => {
       if (Math.abs(p.x - d.sx) + Math.abs(p.y - d.sy) > 3) {
         if (!d.moved) { d.moved = true; pushUndo(); }
         for (const s of d.start) { s.n.x = snap(s.x + dx); s.n.y = snap(s.y + dy); }
+        applyAlignSnap(d.start.map((s) => s.n));
       }
       break;
     }
@@ -2464,6 +2596,11 @@ window.addEventListener('keydown', (ev) => {
   if (mod && k === 's') { ev.preventDefault(); saveNow(); toast('Saved to this browser.'); return; }
   if (k === 'e') { setPlay(!S.play); toast(S.play ? 'Use mode — clicks only work the switches' : 'Edit mode'); return; }
   if (k === 'r') { ev.preventDefault(); rotateSelection(ev.shiftKey ? -1 : 1); return; }
+  if (k === 'l') {
+    ev.preventDefault();
+    straightenWires(S.work.nodes.filter((n) => S.sel.has(n.id)));
+    return;
+  }
   switch (ev.key) {
     case 'Delete': case 'Backspace':
       if (S.play) break;
@@ -2715,6 +2852,7 @@ function renderInspector() {
   sec1.append(h('div', { class: 'stack', style: 'margin-top:8px' },
     h('button', { class: 'btn primary', onclick: openMakeChip }, S.editing ? 'Save chip changes' : 'Package as a chip…'),
     h('button', { class: 'btn', onclick: showTruthTable }, 'Truth table'),
+    h('button', { class: 'btn', title: 'Nudge parts so the wires between them run dead straight (L)', onclick: () => straightenWires(null) }, 'Line up the wires'),
     S.editing ? h('button', { class: 'btn', onclick: () => leaveChipEdit(false) }, 'Stop editing (discard)') : null,
     h('button', { class: 'btn danger', onclick: clearBoard }, 'Clear the board')));
   host.append(sec1);
@@ -2730,6 +2868,7 @@ function renderInspector() {
           h('button', { class: 'btn', title: 'Turn the whole group a quarter turn (Shift+R)', onclick: () => rotateSelection(-1) }, '↺'),
           h('span', {}, 'Turn all ' + selNodes.length),
           h('button', { class: 'btn', title: 'Turn the whole group a quarter turn (R)', onclick: () => rotateSelection(1) }, '↻')),
+        h('button', { class: 'btn', title: 'Nudge these so their wires run dead straight (L)', onclick: () => straightenWires(selNodes) }, 'Line up the wires'),
         h('button', { class: 'btn', onclick: duplicateSelection }, 'Duplicate (Ctrl+D)'),
         h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete'))));
   } else if (S.selWires.size) {
@@ -6304,6 +6443,11 @@ undo history.</p>
       becomes a column rather than a row of sideways gates. A circuit's pins are numbered by
       where they sit, so turning a whole circuit can renumber them — it says so when it
       does.</li>
+  <li><kbd>L</kbd> lines things up: every wire that is nearly straight already has the
+      part at one end nudged until it is exactly straight. With nothing selected it tidies
+      the whole board, with a selection only those parts. Dragging does the same thing one
+      part at a time — come within a few pixels of level with something you are wired to and
+      it snaps the rest of the way, with a dashed line to say why.</li>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
       fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
@@ -6473,7 +6617,7 @@ window.LogicLab = {
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
-  saveNow, setPlay, rotateSelection, turnOf,
+  saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset,
   get lib() { return LIB; },
 };
 

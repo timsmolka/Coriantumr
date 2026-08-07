@@ -77,6 +77,21 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**Things line up.** A part lands on a ten-unit grid, but its ports do not —
+they are spaced down the middle of a box whose height depends on how many there
+are — so two gates can sit perfectly on the grid and the wire between them still
+has a kink in it. What has to line up is the ports.
+
+Drag a part and any wire it already carries is watched: come within a few screen
+pixels of level with the thing at the other end and it is pulled the rest of the
+way, with a dashed guide to say why it jumped. **Line up the wires** (or
+<kbd>L</kbd>) does the whole board at once — every wire within half a gate's
+height of straight gets the part at one end nudged until it is exactly straight,
+and a level wire is then drawn as a real straight line rather than a curve that
+merely looks like one. It works left to right, so a chain settles from its source
+outwards, and it decides which wires to fix *before* moving anything: judged
+after the fact, straightening one wire talks the next one out of happening.
+
 **Parts turn.** <kbd>R</kbd> turns the selection a quarter turn and
 <kbd>Shift</kbd>+<kbd>R</kbd> goes the other way, with buttons in the side panel
 for both. One part spins where it stands. Several turn **as a block** — each one
