@@ -77,6 +77,18 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**Wires go round things.** A wire is planned as a few straight runs that dodge
+the boxes, with the corners rounded off so it still reads as a wire rather than
+a circuit-board trace. Candidates are tried cheapest-looking first — dead
+straight, then a single dog-leg at one of a few likely places, then out and
+around the outside when the target is *behind* the source, which is where most
+of the spaghetti used to come from: a curve to something on its left looped
+right back over itself. If every candidate is blocked it falls back to the old
+curve, because a wire drawn awkwardly beats a wire not drawn. Routes are
+remembered until something moves, and skipped entirely above a few hundred
+parts, where the generated arrays are laid out by machine anyway. The counter
+and stored-program examples now have no wire crossing a part at all.
+
 **Things line up.** A part lands on a ten-unit grid, but its ports do not —
 they are spaced down the middle of a box whose height depends on how many there
 are — so two gates can sit perfectly on the grid and the wire between them still

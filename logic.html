@@ -891,14 +891,27 @@ function geom(node, ctx) {
     if (rot === 270) return { x: cx + dy, y: cy - dx };
     return { x: px, y: py };
   };
-  const port = (name, px, py) => { const q = turn(px, py); return { name, x: q.x, y: q.y }; };
+  /* Which way a port faces once the part has been turned: an output leaves to
+     its right, an input is met from its left. The wire router needs this to
+     know which way to set off. */
+  const face = (sx) => {
+    if (rot === 90) return { x: 0, y: sx };
+    if (rot === 180) return { x: -sx, y: 0 };
+    if (rot === 270) return { x: 0, y: -sx };
+    return { x: sx, y: 0 };
+  };
+  const inDir = face(-1), outDir = face(1);
+  const port = (name, px, py, dir) => {
+    const q = turn(px, py);
+    return { name, x: q.x, y: q.y, dx: dir.x, dy: dir.y };
+  };
   return {
     x: node.x, y: node.y, w: W, h: H, label: p.label, rot,
     /* the same box unturned, for the drawing code, which turns the canvas
        instead of turning every coordinate it owns */
     up: { x: x0, y: y0, w, h },
-    ins: p.ins.map((name, i) => port(name, x0, y0 + spread(p.ins.length, i))),
-    outs: p.outs.map((name, i) => port(name, x0 + w, y0 + spread(p.outs.length, i))),
+    ins: p.ins.map((name, i) => port(name, x0, y0 + spread(p.ins.length, i), inDir)),
+    outs: p.outs.map((name, i) => port(name, x0 + w, y0 + spread(p.outs.length, i), outDir)),
   };
 }
 
@@ -1234,7 +1247,131 @@ function endPos(def, e) {
   return list[e.i] || null;
 }
 
-function wirePath(a, b) {
+/* ---- routing a wire round the parts ---------------------------------------
+   A straight line from port to port runs through whatever is in the way, and a
+   curve to something BEHIND the source loops right back over itself, which is
+   where most of the spaghetti came from. So a wire is planned as a few
+   axis-aligned runs that dodge the boxes, and drawn with the corners rounded
+   off so it still reads as a wire rather than a circuit-board trace.
+
+   Candidates are tried cheapest-looking first and the first clean one wins; if
+   every one is blocked the old curve is used, because a wire that is drawn
+   awkwardly is far better than a wire that is not drawn. */
+const WIRE_STUB = 13;                                // straight bit off a port
+const WIRE_ROUND = 9;                                // corner radius
+const OBSTACLE_PAD = 7;
+const ROUTE_LIMIT = 320;                             // parts, above which routing is skipped
+
+let obstacleCache = { key: '', rects: [] };
+
+/** Every part's box, padded, with the ids kept so a wire can ignore its own ends. */
+function wireObstacles() {
+  const key = S.work.nodes.length + ':' + S.work.nodes.map((n) => `${n.x},${n.y},${n.rot || 0}`).join(';');
+  if (obstacleCache.key === key) return obstacleCache.rects;
+  const rects = S.work.nodes.map((n) => {
+    const g = gm(n);
+    return {
+      id: n.id,
+      x0: g.x - OBSTACLE_PAD, y0: g.y - OBSTACLE_PAD,
+      x1: g.x + g.w + OBSTACLE_PAD, y1: g.y + g.h + OBSTACLE_PAD,
+    };
+  });
+  obstacleCache = { key, rects };
+  return rects;
+}
+
+const segHitsRect = (p, q, r) => {
+  const x0 = Math.min(p.x, q.x), x1 = Math.max(p.x, q.x);
+  const y0 = Math.min(p.y, q.y), y1 = Math.max(p.y, q.y);
+  return x1 > r.x0 && x0 < r.x1 && y1 > r.y0 && y0 < r.y1;
+};
+
+const routeClear = (pts, rects, skip) => {
+  for (let i = 0; i < pts.length - 1; i++) {
+    for (const r of rects) {
+      if (skip.has(r.id)) continue;
+      if (segHitsRect(pts[i], pts[i + 1], r)) return false;
+    }
+  }
+  return true;
+};
+
+/** The points a wire runs through, ends included. Falls back to null when the
+    old curve should be used instead. */
+function routeWire(a, b, skip) {
+  if (S.work.nodes.length > ROUTE_LIMIT) return null;
+  const rects = wireObstacles();
+  const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB };
+  const B = { x: b.x + (b.dx || -1) * WIRE_STUB, y: b.y + (b.dy || 0) * WIRE_STUB };
+  const horizA = Math.abs(a.dx || 1) > 0.5, horizB = Math.abs(b.dx || -1) > 0.5;
+  const tries = [];
+
+  if (Math.abs(A.y - B.y) < 0.6) tries.push([A, B]);           // dead level already
+  else if (Math.abs(A.x - B.x) < 0.6) tries.push([A, B]);
+
+  if (horizA && horizB) {
+    /* a vertical run somewhere between the two, at a few likely places */
+    const lo = Math.min(A.x, B.x), hi = Math.max(A.x, B.x);
+    for (const t of [0.5, 0.32, 0.68, 0.15, 0.85]) {
+      const mx = lo + (hi - lo) * t;
+      tries.push([A, { x: mx, y: A.y }, { x: mx, y: B.y }, B]);
+    }
+    /* target behind the source: out, round the outside, back in */
+    let top = Infinity, bot = -Infinity;
+    for (const r of rects) {
+      if (skip.has(r.id)) continue;
+      if (r.x1 < Math.min(A.x, B.x) - 40 || r.x0 > Math.max(A.x, B.x) + 40) continue;
+      top = Math.min(top, r.y0); bot = Math.max(bot, r.y1);
+    }
+    for (const lane of [top - 22, bot + 22]) {
+      if (!isFinite(lane)) continue;
+      tries.push([A, { x: A.x, y: lane }, { x: B.x, y: lane }, B]);
+    }
+  } else {
+    /* one of them has been turned, so the two runs meet at a corner */
+    tries.push([A, { x: A.x, y: B.y }, B]);
+    tries.push([A, { x: B.x, y: A.y }, B]);
+  }
+
+  for (const mid of tries) {
+    const full = [{ x: a.x, y: a.y }, ...mid, { x: b.x, y: b.y }];
+    const trimmed = full.filter((p, i) => i === 0 || Math.abs(p.x - full[i - 1].x) > 0.4 || Math.abs(p.y - full[i - 1].y) > 0.4);
+    if (routeClear(trimmed, rects, skip)) return trimmed;
+  }
+  return null;
+}
+
+/** The route a wire takes, worked out once per layout and remembered. */
+const routeCache = new Map();
+function wireRoute(wr, a, b) {
+  const key = `${wr.id}|${Math.round(a.x)},${Math.round(a.y)},${Math.round(b.x)},${Math.round(b.y)}|${wireObstacles().length}`;
+  const hit = routeCache.get(wr.id);
+  if (hit && hit.key === key) return hit.pts;
+  const pts = routeWire(a, b, new Set([wr.a.n, wr.b.n]));
+  routeCache.set(wr.id, { key, pts });
+  if (routeCache.size > 4000) routeCache.clear();
+  return pts;
+}
+
+/** Trace a route with its corners rounded, or the old curve when there is none. */
+function strokeRoute(pts) {
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = pts[i - 1], c = pts[i], n = pts[i + 1];
+    const d1 = Math.hypot(c.x - p.x, c.y - p.y), d2 = Math.hypot(n.x - c.x, n.y - c.y);
+    const r = Math.min(WIRE_ROUND, d1 / 2, d2 / 2);
+    if (r < 0.6) { ctx.lineTo(c.x, c.y); continue; }
+    ctx.lineTo(c.x - (c.x - p.x) / d1 * r, c.y - (c.y - p.y) / d1 * r);
+    ctx.quadraticCurveTo(c.x, c.y, c.x + (n.x - c.x) / d2 * r, c.y + (n.y - c.y) / d2 * r);
+  }
+  const last = pts[pts.length - 1];
+  ctx.lineTo(last.x, last.y);
+}
+
+function wirePath(a, b, wr) {
+  const pts = wr && wireRoute(wr, a, b);
+  if (pts) { strokeRoute(pts); return; }
   ctx.beginPath();
   ctx.moveTo(a.x, a.y);
   /* Level ends get a real straight line rather than a curve that merely looks
@@ -1246,7 +1383,29 @@ function wirePath(a, b) {
 }
 
 /** Sample the same bezier for hit-testing. */
-function wirePoints(a, b, n = 18) {
+function wirePoints(a, b, n = 18, wr) {
+  /* must follow whatever wirePath drew, or clicking a wire would miss it by
+     however far the drawn line is from the one being tested */
+  const route = wr && wireRoute(wr, a, b);
+  if (route) {
+    let total = 0;
+    for (let i = 1; i < route.length; i++) total += Math.hypot(route[i].x - route[i - 1].x, route[i].y - route[i - 1].y);
+    const out = [];
+    for (let i = 0; i <= n; i++) {
+      let want = total * (i / n), j = 1;
+      for (; j < route.length; j++) {
+        const len = Math.hypot(route[j].x - route[j - 1].x, route[j].y - route[j - 1].y);
+        if (want <= len || j === route.length - 1) {
+          const t = len ? want / len : 0;
+          out.push({ x: route[j - 1].x + (route[j].x - route[j - 1].x) * t,
+            y: route[j - 1].y + (route[j].y - route[j - 1].y) * t });
+          break;
+        }
+        want -= len;
+      }
+    }
+    return out;
+  }
   const dx = Math.abs(b.x - a.x);
   const k = clamp(dx * 0.55, 18, 110);
   /* must follow the same rule wirePath draws by, or clicking a straightened
@@ -1278,7 +1437,7 @@ function wirePoints(a, b, n = 18) {
 function wireHandles(wr) {
   const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
   if (!a || !b) return null;
-  const pts = wirePoints(a, b, 20);
+  const pts = wirePoints(a, b, 20, wr);
   return { a: pts[2], b: pts[18] };
 }
 
@@ -1669,7 +1828,7 @@ function drawWorld() {
     ctx.lineWidth = on ? 4.5 : 3;
     ctx.strokeStyle = on ? C.sel : bad ? C.danger : v ? C.hi : C.lo;
     if (v && !bad) { ctx.shadowColor = C.hi; ctx.shadowBlur = 7; }
-    wirePath(a, b); ctx.stroke();
+    wirePath(a, b, w); ctx.stroke();
     ctx.shadowBlur = 0;
   }
 
@@ -1806,7 +1965,7 @@ function hitTest(w, touch) {
     const wr = S.work.wires[i];
     const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
     if (!a || !b) continue;
-    const pts = wirePoints(a, b, 22);
+    const pts = wirePoints(a, b, 22, wr);
     for (let k = 0; k < pts.length - 1; k++) {
       if (segDist(w, pts[k], pts[k + 1]) <= tol) return { kind: 'wire', wire: wr.id, at: w };
     }
@@ -1850,7 +2009,7 @@ function deleteHandle() {
     if (!wr) return null;
     const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
     if (!a || !b) return null;
-    const mid = wirePoints(a, b, 10)[5];
+    const mid = wirePoints(a, b, 10, wr)[5];
     const s = toScreen(mid.x, mid.y);
     return { x: s.x, y: s.y - 18, r: R };
   }
@@ -6617,7 +6776,7 @@ window.LogicLab = {
   get __diagDef() { return diagTrail.length ? diagTrail[diagTrail.length - 1].def : null; },
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
-  saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset,
+  saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
   get lib() { return LIB; },
 };
 

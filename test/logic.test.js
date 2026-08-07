@@ -1969,6 +1969,39 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- wires route round the parts instead of through them ---- */
+    {
+      const crossings = async (exampleIx) => {
+        await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[${exampleIx}].make();
+          L.S.work=e.work||e; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`);
+        await wait(300);
+        return ev(`(()=>{const L=LogicLab;
+          const boxes=L.S.work.nodes.map(n=>{const g=L.geom(n);
+            return {id:n.id, x0:g.x, y0:g.y, x1:g.x+g.w, y1:g.y+g.h};});
+          const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+            return (e.s==='in'?g.ins:g.outs)[e.i];};
+          let bad=0, total=0;
+          for(const w of L.S.work.wires){
+            const a=at(w.a), b=at(w.b); if(!a||!b) continue;
+            total++;
+            const pts=L.wirePoints(a,b,60,w);
+            const skip=new Set([w.a.n,w.b.n]);
+            for(const box of boxes){
+              if(skip.has(box.id)) continue;
+              if(pts.some(p=>p.x>box.x0+1&&p.x<box.x1-1&&p.y>box.y0+1&&p.y<box.y1-1)){bad++;break;}
+            }
+          }
+          return bad+'/'+total;})()`);
+      };
+      const adder = await crossings(1);
+      report('no wire in the full adder runs through a part',
+        adder === '0/12', adder);
+      const counter = await crossings(7);
+      report('nor in the counter', counter === '0/16', counter);
+      const prog = await crossings(8);
+      report('nor in the stored-program example', prog === '0/32', prog);
+    }
+
     /* ---- lining parts up so the wires run straight ---- */
     {
       /* Two gates on the grid, wired. Their PORTS are at fractional offsets
