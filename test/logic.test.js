@@ -1969,6 +1969,29 @@ const TESTS = String.raw`
     await wait(250);
     report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
 
+    /* ---- crossings get a bridge, joins get a dot ---- */
+    {
+      const hops = () => ev(`LogicLab.wireHops().length`);
+      /* the stored-program example has genuine crossings in it */
+      await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[8].make();
+        L.S.work=e.work||e; L.S.dirty=true; L.fitView(); return 1;})()`);
+      await wait(300);
+      const real = await hops();
+      report('wires that cross without joining are bridged', real === 3, real);
+
+      /* one signal reaching two places is a join, and must never be bridged —
+         otherwise a fan-out would look like two unrelated wires */
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('same');
+        const a1=b.pin('A',0,140);
+        const o1=b.out('X',520,40), o2=b.out('Y',520,240);
+        b.w(a1,0,o1,0); b.w(a1,0,o2,0);
+        L.S.work=b.def; L.S.dirty=true; L.fitView(); return 1;})()`);
+      await wait(300);
+      report('but one signal reaching two places is never bridged',
+        (await hops()) === 0, await hops());
+    }
+
     /* ---- junctions you can put on a wire on purpose ---- */
     {
       await ev(`(()=>{const L=LogicLab;

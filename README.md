@@ -77,6 +77,14 @@ drag the whole board out from under you. **Right-hold** pans instead, and does
 not delete on release the way it does in Edit. A finger still pans with one
 drag, having no second button to use.
 
+**Crossings and joins look different.** Two wires meeting at a dot are one
+signal; two wires crossing are two, and drawn the same way there is no telling
+which you are looking at. A crossing now gets the little **bridge** every
+schematic uses — the wire passing over hops, the one underneath runs straight
+through — and only one of each pair hops, so a crossing never turns into a pair
+of bumps. Wires on the same signal are never bridged, because a fan-out is a
+join, not a crossing.
+
 **Junctions.** One signal often has to feed several inputs. A junction catches
 clicks from a little way outside the dot it draws, in both the body and the
 ports — eighteen units across is a hard thing to hit with a mouse and a harder
@@ -132,7 +140,10 @@ turns on the spot and its place turns about the middle of the group — so a row
 gates becomes a column, not a row of sideways gates. Inputs move from the left
 edge to the top, the width and height swap, and everything downstream (wires,
 hit-testing, the marquee, the diagrams) reads the turned geometry without
-knowing an angle was involved. Lettering stays upright at every angle.
+knowing an angle was involved. At a quarter turn the writing **rides with the part**, reading like the spine
+of a book, so a long name fits down a tall narrow box instead of hanging out
+either side of it. Half a turn is the exception: the box is the same shape
+either way, and riding with it would only put the writing upside down.
 
 One consequence is worth knowing: a circuit's pins are numbered by where they
 sit, so turning a whole circuit can renumber them — which rewires every copy of

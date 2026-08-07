@@ -1366,6 +1366,73 @@ function wireRoute(wr, a, b) {
   return pts;
 }
 
+/* ---- where wires cross without joining -------------------------------------
+   Two wires meeting at a dot are one signal; two wires crossing are two. Drawn
+   the same way there is no telling which you are looking at, which is the one
+   thing a schematic must never be ambiguous about. So a crossing gets the
+   little hop every schematic uses: the wire passing over is bridged, the one
+   underneath runs straight through. */
+const HOP_R = 6;
+let hopCache = { key: '', hops: [] };
+
+const crossAt = (p1, p2, q1, q2) => {
+  const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
+  const d2x = q2.x - q1.x, d2y = q2.y - q1.y;
+  const den = d1x * d2y - d1y * d2x;
+  if (Math.abs(den) < 1e-6) return null;             // parallel, so no crossing
+  const t = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
+  const u = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
+  const edge = 0.12;                                 // keep hops off the corners
+  if (t < edge || t > 1 - edge || u < edge || u > 1 - edge) return null;
+  return { x: p1.x + d1x * t, y: p1.y + d1y * t, dx: d1x, dy: d1y, len: Math.hypot(d1x, d1y) };
+};
+
+/** Every place two wires cross without being the same signal. The later wire
+    hops, so exactly one of each pair does. */
+function wireHops() {
+  if (S.work.nodes.length > ROUTE_LIMIT) return [];
+  const key = wireObstacles().length + '|' + S.work.wires.length + '|'
+    + S.work.nodes.map((n) => `${n.x},${n.y},${n.rot || 0}`).join(';');
+  if (hopCache.key === key) return hopCache.hops;
+  const lines = [];
+  for (const w of S.work.wires) {
+    const a2 = endPos(S.work, w.a), b2 = endPos(S.work, w.b);
+    if (!a2 || !b2) { lines.push(null); continue; }
+    lines.push({ pts: wireRoute(w, a2, b2) || wirePoints(a2, b2, 14), net: netAt(w.a.n, w.a.s, w.a.i) });
+  }
+  const hops = [];
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    if (!L) continue;
+    for (let j = 0; j < i; j++) {
+      const M = lines[j];
+      if (!M) continue;
+      if (L.net !== undefined && L.net === M.net) continue;   // same signal, so no crossing to show
+      for (let a3 = 0; a3 < L.pts.length - 1; a3++) {
+        for (let b3 = 0; b3 < M.pts.length - 1; b3++) {
+          const c = crossAt(L.pts[a3], L.pts[a3 + 1], M.pts[b3], M.pts[b3 + 1]);
+          if (c) hops.push({ wire: i, x: c.x, y: c.y, dx: c.dx / c.len, dy: c.dy / c.len });
+        }
+      }
+    }
+  }
+  hopCache = { key, hops };
+  return hops;
+}
+
+/** Draw the little bridge over a crossing, in the passing wire's own colour. */
+function drawHop(hop, colour) {
+  const ang = Math.atan2(hop.dy, hop.dx);
+  ctx.save();
+  ctx.translate(hop.x, hop.y);
+  ctx.rotate(ang);
+  ctx.strokeStyle = C.bg; ctx.lineWidth = 6; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(-HOP_R, 0); ctx.lineTo(HOP_R, 0); ctx.stroke();
+  ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(0, 0, HOP_R, Math.PI, 0, false); ctx.stroke();
+  ctx.restore();
+}
+
 /** Trace a route with its corners rounded, or the old curve when there is none. */
 function strokeRoute(pts) {
   ctx.beginPath();
@@ -1597,10 +1664,16 @@ function drawNode(node, ghost) {
     ctx.save();
     ctx.translate(cx, cy); ctx.rotate(rot * Math.PI / 180); ctx.translate(-cx, -cy);
   }
+  /* At a quarter turn the part is tall and narrow, and a label held horizontal
+     hangs out either side of it. So the writing rides with the part — it reads
+     like the spine of a book, which is what a turned part wants. Half a turn is
+     the exception: the box is the same shape either way, and riding with it
+     would only put the writing upside down. */
+  const flip = rot === 180 ? 180 : 0;
   const upright = (x, y, fn) => {
-    if (!rot) { fn(x, y); return; }
+    if (!flip) { fn(x, y); return; }
     ctx.save();
-    ctx.translate(x, y); ctx.rotate(-rot * Math.PI / 180);
+    ctx.translate(x, y); ctx.rotate(-flip * Math.PI / 180);
     fn(0, 0);
     ctx.restore();
   };
@@ -1852,7 +1925,15 @@ function drawNode(node, ghost) {
 function drawWorld() {
   /* wires */
   ctx.lineCap = 'round';
+  /* grouped by which wire carries them, so each is drawn with its own wire */
+  const hopsFor = new Map();
+  for (const hop of wireHops()) {
+    if (!hopsFor.has(hop.wire)) hopsFor.set(hop.wire, []);
+    hopsFor.get(hop.wire).push(hop);
+  }
+  let wi = -1;
   for (const w of S.work.wires) {
+    wi++;
     const a = endPos(S.work, w.a), b = endPos(S.work, w.b);
     if (!a || !b) continue;
     const net = netAt(w.a.n, w.a.s, w.a.i);
@@ -1864,6 +1945,11 @@ function drawWorld() {
     if (v && !bad) { ctx.shadowColor = C.hi; ctx.shadowBlur = 7; }
     wirePath(a, b, w); ctx.stroke();
     ctx.shadowBlur = 0;
+    /* the bridges belonging to this wire, drawn straight after it so the one
+       underneath is already down and the hop sits on top of it */
+    for (const hop of hopsFor.get(wi) || []) {
+      drawHop(hop, on ? C.sel : bad ? C.danger : v ? C.hi : C.lo);
+    }
   }
 
   /* grab handles on whichever wire is under the pointer or selected */
@@ -6862,7 +6948,7 @@ window.LogicLab = {
   __descendable: descendable,
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
-  addJointToSelection, spliceJoint, hitTest,
+  addJointToSelection, spliceJoint, hitTest, wireHops,
   get lib() { return LIB; },
 };
 
