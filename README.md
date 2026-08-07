@@ -132,26 +132,27 @@ every wire meeting on it, so it reads as a deliberate join rather than two wires
 happening to cross. Dropping a wire onto a wire still splices one in too — the
 difference is that this is a way to ask for one.
 
-**Wires go round things.** A wire is planned as a few straight runs that dodge
-every box — including the two it belongs to, which is what stops a signal
-looping back to its own chip from taking the short cut straight through it
-instead of round the outside. Only the two short stubs at the ports are exempt,
-because a port sits on the edge of a box and cannot help touching it. A wire
-that must come back on itself is offered lanes above and below, and a step out
-past the side first for when those are blocked too. A wire leaving a junction
-parts company with its siblings **at** the junction rather than running with
-them across half the board, so the dot is where the picture actually splits.
+**Wires go round things.** Parts sit on the ten-unit grid; wires run on the
+lines halfway between them — ...5 rather than ...0 — so a wire can never lie
+along a part's edge, where you cannot tell whether it is touching the part or
+passing it. From there routing is a shortest-path search over those half-lines,
+with two things added to the price of a step. **Turning costs twelve times what
+going straight does**, so a route comes out with as few corners as it can manage
+instead of staircasing. And **a lane somebody else is already on costs more than
+an empty one**, so wires spread out rather than piling onto the same line, which
+is what makes their crossings visible.
 
-Corners are rounded off so it still reads as a wire rather than a
-circuit-board trace. Candidates are tried cheapest-looking first — dead
-straight, then a single dog-leg at one of a few likely places, then out and
-around the outside when the target is *behind* the source, which is where most
-of the spaghetti used to come from: a curve to something on its left looped
-right back over itself. If every candidate is blocked it falls back to the old
-curve, because a wire drawn awkwardly beats a wire not drawn. Routes are
-remembered until something moves, and skipped entirely above a few hundred
-parts, where the generated arrays are laid out by machine anyway. The counter
-and stored-program examples now have no wire crossing a part at all.
+A part is dear to cross, not impossible — four hundred times the price of an
+empty cell. Hard walls meant a wire that was boxed in found no route at all and
+fell back to a curve straight across the board, which is worse in every way than
+stepping over one chip. At that price it will walk a very long way round first,
+and where it does cross, the crossing is bridged.
+
+Routes are worked out for the whole board in one pass, so each wire can see the
+lanes the ones before it have taken, and remembered until something moves.
+Corners are rounded off so it still reads as a wire and not a circuit-board
+trace. Above a few hundred parts routing is skipped, where the generated arrays
+are laid out by machine anyway.
 
 **Things line up.** A part lands on a ten-unit grid, but its ports do not —
 they are spaced down the middle of a box whose height depends on how many there

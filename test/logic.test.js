@@ -1550,7 +1550,9 @@ const TESTS = String.raw`
       const w=L.S.work.wires.find(x=>x.a.n===A.id);
       const a=L.S.work.nodes.find(x=>x.id===w.a.n), g=L.S.work.nodes.find(x=>x.id===w.b.n);
       const ga=L.geom(a), gg=L.geom(g);
-      const m={x:(ga.outs[0].x+gg.ins[0].x)/2, y:(ga.outs[0].y+gg.ins[0].y)/2};
+      /* halfway along the route the wire actually takes — the midpoint of the
+         two ports stopped being on the wire once it started going round things */
+      const m=L.wirePoints(ga.outs[0], gg.ins[0], 20, w)[10];
       const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
       const sm=L.toScreen(m.x,m.y), sn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
       return {mx:r.left+sm.x, my:r.top+sm.y, ox:r.left+sn.x, oy:r.top+sn.y};})()`);

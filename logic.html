@@ -1306,71 +1306,174 @@ const routeClear = (pts, rects) => {
    lanes that close read as one thick line with a kink in it rather than as two
    wires, which defeats the point of separating them at all. At this distance
    they are plainly two, and there is room for the eye to follow either one. */
-const LANE_GAP = 30;
+/* ---- the grid router ------------------------------------------------------
+   Parts sit on the ten-unit grid. Wires run on the lines halfway between —
+   ...5 rather than ...0 — so a wire can never lie along a part's edge, where
+   you cannot tell whether it is touching the part or passing it.
 
-function routeWire(a, b, fromJoint, taken, takenH) {
-  taken = taken || []; takenH = takenH || [];
+   From there it is a shortest-path search over those half-lines, with two
+   things added to the cost of a step. Turning costs much more than going
+   straight, so a route comes out with as few corners as it can manage rather
+   than staircasing. And a lane somebody else is already using costs more than
+   an empty one, so wires spread out instead of piling onto the same line —
+   which is what makes crossings visible, and what the hand-rolled lane
+   stepping was a poor imitation of. */
+const CELL = GRID;                                   // one step of the search
+const HALF = GRID / 2;                               // wires live on the half lines
+const TURN_COST = 12;                                // corners are expensive
+const BUSY_COST = 6;                                 // so is somebody else's lane
+const THROUGH_COST = 400;                            // going over a part: allowed, but dear
+/* Zero, not one: the obstacle rects already carry a seven-unit pad, and a
+   further whole cell on top made the blocked ring wider than the stub is long,
+   so a wire was walled in at its own port before it had gone anywhere. */
+const PAD_CELLS = 0;
+
+const laneX = (gx) => HALF + gx * CELL;
+const cellOf = (x) => Math.round((x - HALF) / CELL);
+
+/** A tiny binary heap, so the search does not sort its whole frontier. */
+function heap() {
+  const a = [];
+  return {
+    size: () => a.length,
+    push(item) {
+      a.push(item);
+      let i = a.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (a[p].f <= a[i].f) break;
+        [a[p], a[i]] = [a[i], a[p]]; i = p;
+      }
+    },
+    pop() {
+      const top = a[0], last = a.pop();
+      if (a.length) {
+        a[0] = last;
+        let i = 0;
+        for (;;) {
+          const l = i * 2 + 1, r = l + 1;
+          let m = i;
+          if (l < a.length && a[l].f < a[m].f) m = l;
+          if (r < a.length && a[r].f < a[m].f) m = r;
+          if (m === i) break;
+          [a[m], a[i]] = [a[i], a[m]]; i = m;
+        }
+      }
+      return top;
+    },
+  };
+}
+
+const DIRS = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+
+/** Shortest tidy path between two half-grid points, or null if there is none. */
+function gridRoute(A, B, rects, used) {
+  const pad = 140;
+  const x0 = Math.min(A.x, B.x) - pad, x1 = Math.max(A.x, B.x) + pad;
+  const y0 = Math.min(A.y, B.y) - pad, y1 = Math.max(A.y, B.y) + pad;
+  const gx0 = cellOf(x0), gx1 = cellOf(x1), gy0 = cellOf(y0), gy1 = cellOf(y1);
+  const W = gx1 - gx0 + 1, H = gy1 - gy0 + 1;
+  if (W * H > 90000) return null;                    // too far apart to be worth it
+
+  const sx = cellOf(A.x), sy = cellOf(A.y);
+  const tx = cellOf(B.x), ty = cellOf(B.y);
+  const idx = (gx, gy) => (gy - gy0) * W + (gx - gx0);
+  const inside = (gx, gy) => gx >= gx0 && gx <= gx1 && gy >= gy0 && gy <= gy1;
+
+  /* which cells a part occupies — with a little clearance, except right at the
+     two ends, where the wire has to be allowed out of its own port */
+  const blocked = new Uint8Array(W * H);
+  const clear = CELL * 1.3;
+  const lo = (v) => Math.floor((v - HALF) / CELL), hi = (v) => Math.ceil((v - HALF) / CELL);
+  for (const r of rects) {
+    /* round outwards, never inwards — a cell that is even partly inside a part
+       has to count as blocked, or a wire slips along the very edge of it */
+    const a0 = lo(r.x0) - PAD_CELLS, a1 = hi(r.x1) + PAD_CELLS;
+    const b0 = lo(r.y0) - PAD_CELLS, b1 = hi(r.y1) + PAD_CELLS;
+    for (let gy = Math.max(b0, gy0); gy <= Math.min(b1, gy1); gy++) {
+      for (let gx = Math.max(a0, gx0); gx <= Math.min(a1, gx1); gx++) blocked[idx(gx, gy)] = 1;
+    }
+  }
+  /* Free exactly the cells the two stubs pass through and nothing else. The
+     port is on a part's edge, so its own first cells are bound to be blocked —
+     but opening a generous disc around each end punched holes in whatever
+     happened to be next door, and a search that cannot even start falls back to
+     the old curve, which goes straight through everything. */
+  for (const [port, end] of [[A.port, A], [B.port, B]]) {
+    const steps = Math.ceil(Math.hypot(end.x - (port ? port.x : end.x),
+      end.y - (port ? port.y : end.y)) / CELL) + 2;
+    for (let i = 0; i <= steps; i++) {
+      const t = steps ? i / steps : 0;
+      const px = (port ? port.x : end.x) + ((end.x - (port ? port.x : end.x)) * t);
+      const py = (port ? port.y : end.y) + ((end.y - (port ? port.y : end.y)) * t);
+      const gx = cellOf(px), gy = cellOf(py);
+      if (inside(gx, gy)) blocked[idx(gx, gy)] = 0;
+    }
+    const gx = cellOf(end.x), gy = cellOf(end.y);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (inside(gx + dx, gy + dy)
+        && Math.hypot(laneX(gx + dx) - end.x, laneX(gy + dy) - end.y) <= clear) {
+        blocked[idx(gx + dx, gy + dy)] = 0;
+      }
+    }
+  }
+  if (!inside(sx, sy) || !inside(tx, ty)) return null;
+
+  const best = new Map();
+  const q = heap();
+  const h = (gx, gy) => (Math.abs(gx - tx) + Math.abs(gy - ty));
+  for (let d = 0; d < 4; d++) q.push({ gx: sx, gy: sy, d, g: 0, f: h(sx, sy), from: null });
+  let goal = null, steps = 0;
+  while (q.size() && steps++ < 120000) {
+    const cur = q.pop();
+    if (cur.gx === tx && cur.gy === ty) { goal = cur; break; }
+    const key = `${cur.gx},${cur.gy},${cur.d}`;
+    if (best.has(key) && best.get(key) <= cur.g) continue;
+    best.set(key, cur.g);
+    for (let d = 0; d < 4; d++) {
+      const nx = cur.gx + DIRS[d][0], ny = cur.gy + DIRS[d][1];
+      if (!inside(nx, ny)) continue;
+      /* A part is dear, not impassable. Hard walls meant a wire that was boxed
+         in found no route at all and fell back to a curve straight across the
+         board — worse in every way than going over one chip. At this price it
+         will walk a very long way round first, and where it does cross, the
+         crossing is bridged. */
+      let g = cur.g + 1 + (blocked[idx(nx, ny)] ? THROUGH_COST : 0);
+      if (cur.from !== null && d !== cur.d) g += TURN_COST;
+      if (used && used.has(`${nx},${ny}`)) g += BUSY_COST;
+      const nk = `${nx},${ny},${d}`;
+      if (best.has(nk) && best.get(nk) <= g) continue;
+      q.push({ gx: nx, gy: ny, d, g, f: g + h(nx, ny), from: cur });
+    }
+  }
+  if (!goal) return null;
+
+  const pts = [];
+  for (let n = goal; n; n = n.from) pts.push({ x: laneX(n.gx), y: laneX(n.gy) });
+  pts.reverse();
+  /* drop the points in the middle of a straight run */
+  const out = [pts[0]];
+  for (let i = 1; i < pts.length - 1; i++) {
+    const p = out[out.length - 1], c = pts[i], n = pts[i + 1];
+    const straight = (p.x === c.x && c.x === n.x) || (p.y === c.y && c.y === n.y);
+    if (!straight) out.push(c);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+
+function routeWire(a, b, fromJoint, used) {
   if (S.work.nodes.length > ROUTE_LIMIT) return null;
   const rects = wireObstacles();
-  const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB };
-  const B = { x: b.x + (b.dx || -1) * WIRE_STUB, y: b.y + (b.dy || 0) * WIRE_STUB };
-  const horizA = Math.abs(a.dx || 1) > 0.5, horizB = Math.abs(b.dx || -1) > 0.5;
-  const tries = [];
-
-  if (Math.abs(A.y - B.y) < 0.6) tries.push([A, B]);           // dead level already
-  else if (Math.abs(A.x - B.x) < 0.6) tries.push([A, B]);
-
-  if (horizA && horizB) {
-    /* A wire leaving a junction should part company with its siblings AT the
-       junction — that is what the dot is for. Left to pick the middle like
-       everything else, three branches run together for half the board and the
-       dot ends up nowhere near where the picture appears to split. */
-    const lo = Math.min(A.x, B.x), hi = Math.max(A.x, B.x);
-    const order = fromJoint ? [0.06, 0.16, 0.34, 0.5, 0.75] : [0.5, 0.32, 0.68, 0.15, 0.85];
-    for (const t of order) {
-      /* Every wire reaching for the same midpoint is what makes two of them lie
-         one on top of the other — two signals drawn as a single line, which is
-         worse than an unmarked crossing because there is nothing at all to see.
-         So a lane already spoken for is stepped off until a free one turns up. */
-      let mx = lo + (hi - lo) * t;
-      for (let step = 0; step < 8 && taken.some((u) => Math.abs(u - mx) < LANE_GAP); step++) {
-        mx += (step % 2 ? -1 : 1) * LANE_GAP * Math.ceil((step + 1) / 2);
-      }
-      tries.push([A, { x: mx, y: A.y }, { x: mx, y: B.y }, B]);
-    }
-    /* Target behind the source: out, round the outside, back in. The lane has
-       to clear the wire's own two boxes as well, or it snakes round everything
-       else and then cuts through the chip it started on. */
-    let top = Infinity, bot = -Infinity;
-    for (const r of rects) {
-      if (r.x1 < Math.min(A.x, B.x) - 60 || r.x0 > Math.max(A.x, B.x) + 60) continue;
-      top = Math.min(top, r.y0); bot = Math.max(bot, r.y1);
-    }
-    for (const base of [bot + 26, top - 26, bot + 52, top - 52]) {
-      if (!isFinite(base)) continue;
-      /* the way round is a lane too, and wires stacked on the same one going
-         round the outside look no better than wires stacked going down */
-      let lane = base;
-      for (let step = 0; step < 8 && takenH.some((u) => Math.abs(u - lane) < LANE_GAP); step++) {
-        lane = base + (step % 2 ? -1 : 1) * LANE_GAP * Math.ceil((step + 1) / 2);
-      }
-      tries.push([A, { x: A.x, y: lane }, { x: B.x, y: lane }, B]);
-      /* and out past the side first, for when the way up is blocked too */
-      const side = A.x + 30;
-      tries.push([A, { x: side, y: A.y }, { x: side, y: lane }, { x: B.x, y: lane }, B]);
-    }
-  } else {
-    /* one of them has been turned, so the two runs meet at a corner */
-    tries.push([A, { x: A.x, y: B.y }, B]);
-    tries.push([A, { x: B.x, y: A.y }, B]);
-  }
-
-  for (const mid of tries) {
-    const full = [{ x: a.x, y: a.y }, ...mid, { x: b.x, y: b.y }];
-    const trimmed = full.filter((p, i) => i === 0 || Math.abs(p.x - full[i - 1].x) > 0.4 || Math.abs(p.y - full[i - 1].y) > 0.4);
-    if (routeClear(trimmed, rects)) return trimmed;
-  }
-  return null;
+  /* out of the port on a straight stub first, so a wire always leaves square
+     to the part rather than at once heading off sideways */
+  const A = { x: a.x + (a.dx || 1) * WIRE_STUB, y: a.y + (a.dy || 0) * WIRE_STUB, port: a };
+  const B = { x: b.x + (b.dx || -1) * WIRE_STUB, y: b.y + (b.dy || 0) * WIRE_STUB, port: b };
+  const path = gridRoute(A, B, rects, used);
+  if (!path) return null;
+  const full = [{ x: a.x, y: a.y }, ...path, { x: b.x, y: b.y }];
+  return full.filter((q, i) => i === 0
+    || Math.abs(q.x - full[i - 1].x) > 0.4 || Math.abs(q.y - full[i - 1].y) > 0.4);
 }
 
 /** Every wire's route, worked out in one pass so each can see which lanes the
@@ -1381,19 +1484,21 @@ function allRoutes() {
     + '|' + S.work.wires.map((w) => w.id).join(',');
   if (routeTable.key === key) return routeTable.map;
   const map = new Map();
-  const taken = [], takenH = [];
+  /* every cell a route has claimed, so the next wire prefers a free lane —
+     this is what stops two of them lying on the same line */
+  const used = new Set();
   for (const wr of S.work.wires) {
     const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
     if (!a || !b) continue;
     const src = nodeById(S.work, wr.a.n);
-    const pts = routeWire(a, b, !!src && src.type === 'JOINT', taken, takenH);
+    const pts = routeWire(a, b, !!src && src.type === 'JOINT', used);
     map.set(wr.id, pts);
-    /* remember the long runs both ways, so the next wire steps around them */
     if (pts) {
-      for (let i = 0; i < pts.length - 1; i++) {
-        const dx = Math.abs(pts[i].x - pts[i + 1].x), dy = Math.abs(pts[i].y - pts[i + 1].y);
-        if (dx < 0.5 && dy > 18) taken.push(pts[i].x);
-        else if (dy < 0.5 && dx > 40) takenH.push(pts[i].y);
+      for (let i = 1; i < pts.length - 2; i++) {
+        const q = pts[i], r = pts[i + 1];
+        const gx0 = cellOf(Math.min(q.x, r.x)), gx1 = cellOf(Math.max(q.x, r.x));
+        const gy0 = cellOf(Math.min(q.y, r.y)), gy1 = cellOf(Math.max(q.y, r.y));
+        for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) used.add(`${gx},${gy}`);
       }
     }
   }
