@@ -777,9 +777,9 @@ const PARTS = {
      Neither of these computes anything: the compiler simply fuses the nets on
      either side, so they cost nothing and add no delay. */
   JOINT: {
-    name: 'Junction', cat: 'plumb', nick: "where wires meet", plain: "One wire in, as many out as you like. It costs nothing and adds no delay \u2014 it is only a place for wires to gather.", group: 'Routing', shape: 'joint',
-    ins: () => [''], outs: () => [''], w: 18, h: 18,
-    tip: 'A meeting point for wires: one wire in, as many out as you like. Drop a wire onto another wire to make one.',
+    name: 'Junction', cat: 'plumb', nick: "where wires meet", plain: "A meeting point for wires \u2014 as many in as out. It costs nothing and adds no delay: every wire touching it carries one and the same signal. Two different outputs meeting at one is a short, which the simulator reports rather than prevents.", group: 'Routing', shape: 'joint',
+    ins: (n) => Array.from({ length: Math.max(1, n.n || 1) }, () => ''), outs: () => [''], w: 18, h: 18,
+    tip: 'A meeting point for wires, as many in as out. Drop a wire onto another wire to make one.',
   },
   TUNNEL: {
     name: 'Tunnel', cat: 'plumb', nick: "a wire without the wire", plain: "Every tunnel with the same name is joined together, however far apart they sit. Use them instead of dragging a wire right across the board.", group: 'Routing', shape: 'tunnel',
@@ -871,7 +871,11 @@ function geom(node, ctx) {
     w = Math.max(w, textWidth(ctx, p.label, `600 ${size}px ${FONT}`) + (named ? 50 : 22));
   }
   if (node.type === 'TUNNEL' && ctx) w = Math.max(52, textWidth(ctx, node.label || 'net', '11px ' + FONT) + 30);
-  const spread = (count, i) => (count <= 1 ? h / 2 : (h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
+  /* A junction is a dot, not a box. However many wires meet at one, they meet
+     in a single place, so its ports sit on top of each other instead of
+     spreading down an edge the way a gate's do. */
+  const dot = part.shape === 'joint';
+  const spread = (count, i) => (dot || count <= 1 ? h / 2 : (h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
 
   /* Rotation. node.x/node.y stay the top-left of whatever box the part
      occupies on screen, so a quarter turn swaps the width and the height. The
@@ -975,7 +979,8 @@ function compile(def) {
           break;
         }
         case 'JOINT':
-          dsu.union(dsu.id(inK[0]), dsu.id(outK[0]));
+          // Everything that meets here is one net, however many wires arrive.
+          for (const k of inK) dsu.union(dsu.id(k), dsu.id(outK[0]));
           break;
         case 'TUNNEL': {
           dsu.union(dsu.id(inK[0]), dsu.id(outK[0]));
@@ -1859,7 +1864,8 @@ function drawNode(node, ghost) {
   {
     const p = portsOf(node);
     const rows = Math.max(p.ins.length, p.outs.length, 1);
-    const gap = (count, i) => (count <= 1 ? g.h / 2 : (g.h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
+    const gap = (count, i) => (part.shape === 'joint' || count <= 1
+      ? g.h / 2 : (g.h - (count - 1) * PORT_GAP) / 2 + i * PORT_GAP);
     g.ins = p.ins.map((name, i) => ({ name, x: g.x, y: g.y + gap(p.ins.length, i) }));
     g.outs = p.outs.map((name, i) => ({ name, x: g.x + g.w, y: g.y + gap(p.outs.length, i) }));
     void rows;
@@ -2615,16 +2621,43 @@ function duplicateSelection() {
   select(copies.map((c) => c.id));
 }
 
-/** Wires always run output -> input. Re-driving an input replaces its wire. */
+const isJoint = (id) => {
+  const n = nodeById(S.work, id);
+  return !!n && n.type === 'JOINT';
+};
+
+/** The slot an arriving wire should take on a junction: the lowest one free,
+    or a fresh one. A gate input is a socket and takes one plug, but a junction
+    is a meeting point — wires gather at it, so nothing already connected is
+    quietly pulled out to make room. */
+function jointSlot(id) {
+  const taken = new Set(S.work.wires.filter((w) => w.b.n === id).map((w) => w.b.i));
+  let i = 0;
+  while (taken.has(i)) i++;
+  return i;
+}
+
+/** Wires always run output -> input. Re-driving an input replaces its wire —
+    except at a junction, which gathers them instead. */
 function addWire(a, b) {
   if (a.s === 'in') { const t = a; a = b; b = t; }
   if (a.s !== 'out' || b.s !== 'in') { toast('Wires run from an output to an input.', true); return null; }
   if (a.n === b.n && a.i === b.i) return null;
-  const dup = S.work.wires.some((w) => w.a.n === a.n && w.a.i === a.i && w.b.n === b.n && w.b.i === b.i);
+  const joint = isJoint(b.n);
+  if (joint && a.n === b.n) return null;             // a junction cannot meet itself
+  const dup = joint
+    ? S.work.wires.some((w) => w.a.n === a.n && w.a.i === a.i && w.b.n === b.n)
+    : S.work.wires.some((w) => w.a.n === a.n && w.a.i === a.i && w.b.n === b.n && w.b.i === b.i);
   if (dup) return null;
+  const slot = joint ? jointSlot(b.n) : b.i;
   pushUndo();
-  S.work.wires = S.work.wires.filter((w) => !(w.b.n === b.n && w.b.i === b.i));
-  const w = { id: uid(), a: { n: a.n, s: 'out', i: a.i }, b: { n: b.n, s: 'in', i: b.i } };
+  if (joint) {
+    const j = nodeById(S.work, b.n);
+    if (slot + 1 > (j.n || 1)) j.n = slot + 1;
+  } else {
+    S.work.wires = S.work.wires.filter((w) => !(w.b.n === b.n && w.b.i === b.i));
+  }
+  const w = { id: uid(), a: { n: a.n, s: 'out', i: a.i }, b: { n: b.n, s: 'in', i: slot } };
   S.work.wires.push(w);
   return w;
 }
@@ -2649,6 +2682,17 @@ function snapTarget(w, want, from) {
     }
   }
   return best;
+}
+
+/** How many outputs end up driving the net a port sits on. One is a wire; two
+    is a short, and worth saying out loud at the moment it is made. */
+function driversOn(def, ref) {
+  const c = compile(def);
+  const net = c.portNet.get(ref.n + '.' + (ref.s === 'in' ? 'i' : 'o') + ref.i);
+  if (net === undefined) return 0;
+  let n = 0;
+  for (const p of c.prims) if (p.outs.includes(net)) n++;
+  return n;
 }
 
 /** Cut a joint into an existing wire, so several wires can meet at one point. */
@@ -2721,12 +2765,21 @@ function landWire(end, w, touch, restore, fromClick) {
   if (land.kind === 'wire') {
     const target = S.work.wires.find((x) => x.id === land.wire);
     if (target) {
-      if (end.s === 'out') toast('Two outputs cannot share a wire. Aim at an input.', true);
-      else {
-        // Tapping into an existing wire: put a junction where you dropped it.
-        pushUndo();
-        const j = spliceJoint(target, w);
-        made = addWire({ n: j.id, s: 'out', i: 0 }, end);
+      /* Tapping into an existing wire: a junction goes in exactly where you
+         dropped it and the end you are holding joins it. Which end that is
+         does not matter — an input is fed by the junction, an output becomes
+         another wire into it — so any wire joins any other wire at any point.
+         Two outputs meeting that way really is a short, but the circuit is
+         allowed to say so: the join is made and the clash is reported, the
+         same way the breadboard reports a short rather than refusing the
+         jumper that caused it. */
+      pushUndo();
+      const j = spliceJoint(target, w);
+      made = end.s === 'out'
+        ? addWire(end, { n: j.id, s: 'in', i: 0 })
+        : addWire({ n: j.id, s: 'out', i: 0 }, end);
+      if (made && end.s === 'out' && driversOn(S.work, { n: j.id, s: 'out', i: 0 }) > 1) {
+        toast('Joined — but two outputs drive that net now, which is a short. Ctrl+Z undoes it.', true);
       }
     }
   } else if (land.kind === 'port') {
@@ -6961,8 +7014,8 @@ function openHelp() {
   <li>To <b>move a wire you already drew</b>, point at it: a blue dot appears at each
       end. Drag a dot to take that end somewhere else. Dragging from a connected input
       does the same thing — it pulls the plug out.</li>
-  <li>Wires run output → input. An output can feed as many inputs as you like; an input
-      takes one wire, because two things driving one input is a short.</li>
+  <li>Wires run output → input. An output can feed as many inputs as you like; a gate
+      input takes one wire, so plugging a second one in pulls the first one out.</li>
   <li><kbd>Esc</kbd> mid-drag puts a wire back where it was, and a whole re-route is a
       single undo.</li>
 </ul>
@@ -6970,9 +7023,17 @@ function openHelp() {
 <h4>Junctions — more than two wires at one point</h4>
 <ul>
   <li><b>Drop a wire onto another wire</b> and a junction appears where you dropped it,
-      with both wires feeding out of it. That is the way to tap a signal on its way past.</li>
-  <li>A junction takes one wire in and as many out as you want, so drag out of one as
-      often as you need. It costs nothing and adds no delay — it is only a meeting point.</li>
+      joining the two. That is the way to tap a signal on its way past.</li>
+  <li>It works at <b>any point on any wire</b>, and it does not matter which end you are
+      holding: an input you are looking for a source for gets fed by the junction, and a
+      wire you have branched off somewhere else becomes another wire into it.</li>
+  <li>A junction takes as many wires in as out, and nothing already joined to one is ever
+      unplugged to make room. It costs nothing and adds no delay — every wire touching it
+      carries one and the same signal.</li>
+  <li>That does let you join two wires that are driven by <em>different</em> outputs, which
+      is a short. The join is made and the clash is reported — the warning bar counts the
+      nets with two outputs fighting over them, and they turn red — rather than the board
+      refusing to let you build it. <kbd>Ctrl</kbd>+<kbd>Z</kbd> if you did not mean it.</li>
   <li>Dragging from the <em>middle</em> of a wire branches it too: you get a second wire
       out of the same output, without a junction in the picture.</li>
   <li>Click an <b>input pin</b> to flip it between 0 and 1. Set it to “button” in the
@@ -7039,9 +7100,9 @@ undo history.</p>
       where they sit, so turning a whole circuit can renumber them — it says so when it
       does.</li>
   <li><kbd>J</kbd> puts a junction on the selected wire, where you are pointing. A junction
-      is one wire in and as many out as you like, so one signal can feed several inputs —
-      the T and the cross a schematic draws as a solder dot. Dropping a wire onto a wire
-      still splices one in as well.</li>
+      takes as many wires in as out, so one signal can feed several inputs — the T and the
+      cross a schematic draws as a solder dot. Dropping a wire onto a wire still splices one
+      in as well.</li>
   <li><kbd>L</kbd> lines things up: every wire that is nearly straight already has the
       part at one end nudged until it is exactly straight. With nothing selected it tidies
       the whole board, with a selection only those parts. Dragging does the same thing one

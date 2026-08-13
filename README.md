@@ -132,6 +132,34 @@ every wire meeting on it, so it reads as a deliberate join rather than two wires
 happening to cross. Dropping a wire onto a wire still splices one in too — the
 difference is that this is a way to ask for one.
 
+**Any wire joins any other wire, at any point.** A junction takes as many wires
+in as out. It used to take exactly one, and that one limitation was doing a
+surprising amount of damage: the only gesture that could make a junction was
+dragging an *unconnected input* onto a wire, and every other way of saying "join
+these two" — branching off a wire and dropping it on another, pulling a plug out
+and dropping it on the wire you wanted it fed from, dragging straight from an
+output onto a wire — was turned away with *two outputs cannot share a wire*.
+Worse, the one case that was not refused was the destructive one: dropping a
+wire onto an existing junction re-drove its single input, silently unplugging
+whatever had been feeding it and re-pointing everything downstream at the new
+source.
+
+So a junction now gathers. Each wire that arrives takes a slot of its own,
+nothing already joined is unplugged to make room, and the compiler fuses every
+wire meeting there into one net. Dropping a live end on a wire splices a
+junction in at that point and joins it whichever end you are holding: an input
+looking for a source is fed by the junction, and an end that carries a signal
+becomes another wire into it. The ports all sit on the dot rather than spreading
+down an edge, so a junction with four wires on it is still eighteen units
+across.
+
+That does let you join two wires driven by different outputs, which is a short.
+It is allowed, and reported: a toast at the moment you make it, the net counted
+in the warning bar, and the ports drawn in red once the two sources disagree.
+The breadboard has always reported a short rather than refusing the jumper that
+caused it, and this is the same bargain — you can build the wrong thing, and the
+board tells you what is wrong with it.
+
 **Wires go round things.** Parts sit on the ten-unit grid; wires run on the
 lines halfway between them — ...5 rather than ...0 — so a wire can never lie
 along a part's edge, where you cannot tell whether it is touching the part or
@@ -344,7 +372,8 @@ It opens the real page in headless Chromium and checks both halves: the
 simulator directly (adder truth tables, a latch that holds its bit, a ring
 oscillator that rings, breadboard nets, shorts, floating inputs, the 7493 →
 7447 → display chain) and the interface through synthetic mouse events (place a
-part, drag a wire, lay a jumper, package a chip, reload and find it all still
+part, drag a wire, join one wire to another, lay a jumper, package a chip,
+reload and find it all still
 there). No dependencies — it drives the browser over the DevTools protocol with
 what Node 22 already has. Set `CHROME=/path/to/chrome` if it cannot find a
 browser by itself.

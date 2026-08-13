@@ -1678,6 +1678,145 @@ const TESTS = String.raw`
       return src===c.portNet.get(g.id+'.i0') && src===c.portNet.get(nt.id+'.i0');})()`);
     report('the junction really joins all three points', bothFed === true, bothFed);
 
+    /* ---- any wire joins any other wire, at any point ----------------------
+       Junctions used to take exactly one wire in, so the only gesture that
+       could make one was dragging an unconnected input onto a wire. Every
+       other way of saying "join these two" was refused, and dropping a wire
+       onto a junction quietly threw away whatever had been feeding it. Now a
+       junction gathers: each wire that arrives takes a slot of its own, and
+       the join lands whichever end you happen to be holding. */
+    {
+      const camWas = await ev(`JSON.stringify(LogicLab.S.cam)`);
+
+      /* two signal paths that have nothing to do with each other, plus a spare
+         output with no wire on it */
+      const twoPaths = async () => {
+        await ev(`(()=>{const L=LogicLab;
+          const b=L.builder('two paths');
+          const A=b.pin('A',0,40), B=b.pin('B',0,300);
+          const n1=b.add('NOT',220,40), n2=b.add('NOT',220,300);
+          const X=b.out('X',560,40), Y=b.out('Y',560,300);
+          b.out('Z',560,170);
+          b.w(A,0,n1,0); b.w(B,0,n2,0); b.w(n1,0,X,0); b.w(n2,0,Y,0);
+          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+          L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+        await wait(300);
+      };
+      /* a screen point a fraction of the way along the wire out of NOT `ix` */
+      const along = (ix, f) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.filter(x=>x.type==='NOT')[${ix}];
+        const w=L.S.work.wires.find(x=>x.a.n===n.id);
+        const t=L.S.work.nodes.find(x=>x.id===w.b.n);
+        const pts=L.wirePoints(L.geom(n).outs[0], L.geom(t).ins[w.b.i], 40, w);
+        const p=pts[Math.max(1,Math.min(pts.length-2,Math.round(${f}*(pts.length-1))))];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const pinAt = (label) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.label==='${label}'); const p=L.geom(n).ins[0];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const oneNet = (a, b2) => ev(`(()=>{const L=LogicLab; const c=L.compile(L.S.work);
+        const at=(l)=>{const n=L.S.work.nodes.find(x=>x.label===l); return c.portNet.get(n.id+'.i0');};
+        return at('${a}')===at('${b2}');})()`);
+
+      /* a wire branched off one path, dropped on the other */
+      await twoPaths();
+      const p1 = await along(0, 0.5), p2 = await along(1, 0.5);
+      await dragAt(p1.x, p1.y, p2.x, p2.y);
+      await wait(300);
+      report('dragging one wire onto another joins them', (await oneNet('X', 'Y')) === true,
+        await oneNet('X', 'Y'));
+
+      const slots = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); if(!j) return 'no junction';
+        const ins=L.S.work.wires.filter(w=>w.b.n===j.id);
+        return ins.length+'in/'+new Set(ins.map(w=>w.b.i)).size+'slots';})()`);
+      report('and both wires arrive at the junction, in slots of their own',
+        slots === '2in/2slots', slots);
+
+      /* two outputs on one net is a real thing to have built, so it is
+         reported rather than refused — the same way the breadboard reports a
+         short instead of rejecting the jumper that made it */
+      const said = await ev(`document.querySelector('#hint').textContent`);
+      report('joining two driven wires says it is a short', /two outputs/.test(said), said);
+      const clashes = await ev(`(()=>{const L=LogicLab;
+        const c=L.compile(L.S.work);
+        L.ioOrder(L.S.work).ins.forEach((p,i)=>{p.value=i?1:0;});   // drive the ends apart
+        const sim=new L.Sim(c);
+        for(let i=0;i<40;i++) sim.tick(0);
+        let n=0; for(let i=0;i<sim.clash.length;i++) if(sim.clash[i]) n++;
+        return n;})()`);
+      report('and the simulator flags the net they are fighting over', clashes === 1, clashes);
+
+      /* the whole join is one undo */
+      await clickSel('#btn-undo');
+      await wait(300);
+      const undone = await ev(`LogicLab.S.work.nodes.filter(n=>n.type==='JOINT').length`);
+      report('joining two wires is a single undo',
+        (await oneNet('X', 'Y')) === false && undone === 0,
+        undone + ' junctions left');
+
+      /* it works all the way along a wire, not just near the middle */
+      let everywhere = true, badAt = '';
+      for (const f of [0.1, 0.35, 0.6, 0.9]) {
+        await twoPaths();
+        const q1 = await along(0, f), q2 = await along(1, 0.5);
+        await dragAt(q1.x, q1.y, q2.x, q2.y);
+        await wait(280);
+        if ((await oneNet('X', 'Y')) !== true) { everywhere = false; badAt += ' ' + f; }
+      }
+      report('and at any point along the wire, not only the middle', everywhere, badAt);
+
+      /* dropping a wire onto a junction adds to it rather than evicting the
+         wire that was feeding it, which used to rewire the board in silence */
+      await twoPaths();
+      const tap = await along(0, 0.4);
+      const zIn = await pinAt('Z');
+      await dragAt(zIn.x, zIn.y, tap.x, tap.y);        // Z now hangs off the first path
+      await wait(300);
+      const fedBefore = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        return j ? L.S.work.wires.filter(w=>w.b.n===j.id).length : -1;})()`);
+      const dot = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const otherOut = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.filter(x=>x.type==='NOT')[1]; const p=L.geom(n).outs[0];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      await dragAt(otherOut.x, otherOut.y, dot.x, dot.y);
+      await wait(300);
+      const fedAfter = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        return j ? L.S.work.wires.filter(w=>w.b.n===j.id).length : -1;})()`);
+      report('a wire dropped on a junction joins it instead of evicting what fed it',
+        fedBefore === 1 && fedAfter === 2, fedBefore + ' -> ' + fedAfter);
+
+      /* however many wires meet there, a junction is still a dot */
+      const shape2 = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j); const cy=g.y+g.h/2;
+        return {h:Math.round(g.h), ins:g.ins.length,
+          spread:Math.max(...g.ins.map(p=>Math.abs(p.y-cy)))};})()`);
+      report('a junction stays an 18-unit dot however many wires meet at it',
+        shape2.h === 18 && shape2.ins === 2 && shape2.spread === 0, JSON.stringify(shape2));
+
+      /* and it survives being written out and read back */
+      await ev(`LogicLab.saveNow()`);
+      await wait(300);
+      await send('Page.navigate', { url: PAGE });
+      await wait(2400);
+      await ev(`(()=>{const x=document.querySelector('#modal-close'); if(x) x.click(); return 1;})()`);
+      await wait(250);
+      const kept = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); if(!j) return 'no junction';
+        return L.S.work.wires.filter(w=>w.b.n===j.id).length + 'in/'
+          + L.S.work.wires.filter(w=>w.a.n===j.id).length + 'out/'
+          + L.compile(L.S.work).errors.length + 'err';})()`);
+      report('a junction with several wires into it survives a reload',
+        kept === '2in/2out/0err', kept);
+
+      /* leave the view where the checks that follow expect to find it */
+      await ev(`(()=>{LogicLab.S.cam=${camWas}; LogicLab.S.dirty=true; return 1;})()`);
+      await wait(150);
+    }
+
     /* ---- "what it's made of" panel ---- */
     await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
       L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
