@@ -113,14 +113,18 @@ actually tells you where a wire would land.
 
 **Crossings and joins look different.** Two wires meeting at a dot are one
 signal; two wires crossing are two, and drawn the same way there is no telling
-which you are looking at. A crossing gets a **bridge** — three sides of a small
-box, stepped over the wire underneath, which reads as deliberate at any zoom
-where a rounded hump blurs into the wire itself. It is as small as it can be and
-still be seen for what it is: a wire is three units wide, so the step is nine
-across and three and a half high. It was twelve by six, a box twice the height
-of the wire it stepped over, which on a busy board is a row of humps competing
-with the circuit for attention. Only one of each pair hops, and wires on the
-same signal are never bridged, because a fan-out is a join.
+which you are looking at. A crossing gets a **bridge**, and the bridge is a
+break: the wire passing over simply stops for eleven units, and the two ends of
+the break turn aside as they reach it. That is enough to read as one line
+lifting around another, and it is nothing like the row of battlements a box
+drawn over every crossing makes of a busy board — which is what a twelve by six
+square step, twice the height of the wire it stepped over, actually looked like.
+
+The gap has to be wider than a wire to clear the one hopping over it, and it is
+cut across both of them, so the wire underneath is painted back in afterwards.
+Without that both lines break at the crossing, which says nothing at all about
+which of them passes over. Only one of each pair hops, and wires on the same
+signal are never bridged, because a fan-out is a join.
 
 Routes are worked out for the whole board in one pass rather than each wire on
 its own, so every wire can see which lanes the ones before it have taken and

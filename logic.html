@@ -1556,13 +1556,14 @@ function wireRoute(wr, a, b) {
    thing a schematic must never be ambiguous about. So a crossing gets the
    little hop every schematic uses: the wire passing over is bridged, the one
    underneath runs straight through. */
-/* A bridge is as small as it can be and still be seen for what it is: a wire
-   is three units wide, so a step nine across and three and a half high clears
-   it and no more. It used to be twelve by six — a box twice the height of the
-   wire it stepped over, which on a busy board is a row of humps competing with
-   the circuit for attention. */
-const HOP_W = 4.5;                                   // half the span of a bridge
-const HOP_H = 3.5;                                   // how high it steps
+/* A bridge says "these two do not touch" without drawing a whole box over the
+   crossing. The passing wire simply breaks, and the two ends of the break turn
+   aside as they reach it — enough to read as a wire lifting over something,
+   nothing like the row of battlements a square step makes of a busy board. */
+const HOP_GAP = 5.5;                                 // half the break in the wire
+const HOP_FOOT = 6.5;                                // where an end starts to turn
+const HOP_TIP = 4.5;                                 // and where it finishes
+const HOP_RISE = 2.5;                                // how far aside it turns
 let hopCache = { key: '', hops: [] };
 
 const crossAt = (p1, p2, q1, q2) => {
@@ -1601,7 +1602,13 @@ function wireHops() {
       for (let a3 = 0; a3 < L.pts.length - 1; a3++) {
         for (let b3 = 0; b3 < M.pts.length - 1; b3++) {
           const c = crossAt(L.pts[a3], L.pts[a3 + 1], M.pts[b3], M.pts[b3 + 1]);
-          if (c) hops.push({ wire: i, x: c.x, y: c.y, dx: c.dx / c.len, dy: c.dy / c.len });
+          if (!c) continue;
+          /* the wire underneath, and which way it runs — the bridge has to put
+             back the bite its own gap takes out of it */
+          const ux = M.pts[b3 + 1].x - M.pts[b3].x, uy = M.pts[b3 + 1].y - M.pts[b3].y;
+          const ul = Math.hypot(ux, uy) || 1;
+          hops.push({ wire: i, x: c.x, y: c.y, dx: c.dx / c.len, dy: c.dy / c.len,
+            under: j, udx: ux / ul, udy: uy / ul });
         }
       }
     }
@@ -1639,17 +1646,36 @@ function drawHop(hop, colour) {
   ctx.translate(hop.x, hop.y);
   ctx.rotate(ang);
   ctx.strokeStyle = C.bg; ctx.lineWidth = 5; ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.moveTo(-HOP_W, 0); ctx.lineTo(HOP_W, 0); ctx.stroke();
-  /* a square step over rather than a rounded hump: three sides of a box, which
-     reads as deliberate at any zoom and does not blur into the wire itself */
-  ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
+  ctx.beginPath(); ctx.moveTo(-HOP_GAP, 0); ctx.lineTo(HOP_GAP, 0); ctx.stroke();
+  /* Put the wire underneath back. The gap has to be wider than a wire to clear
+     the one hopping over it, and it is cut across both of them — so without
+     this the wire below ends up nicked as well, and a crossing where BOTH
+     lines break says nothing about which of them passes over. */
+  const under = hop.under !== undefined ? S.work.wires[hop.under] : null;
+  if (under) {
+    const unet = netAt(under.a.n, under.a.s, under.a.i);
+    const uv = S.sim ? S.sim.val(unet) : 0;
+    const ubad = S.sim && unet !== undefined && S.sim.clash[unet];
+    const usel = S.selWires.has(under.id);
+    ctx.save();
+    ctx.rotate(-ang);                                // back to the world's axes
+    ctx.strokeStyle = usel ? C.sel : ubad ? C.danger : uv ? C.hi : C.lo;
+    ctx.lineWidth = usel ? 4.5 : 3; ctx.lineCap = 'butt';
+    const r = HOP_FOOT + 1;
+    ctx.beginPath();
+    ctx.moveTo(-hop.udx * r, -hop.udy * r);
+    ctx.lineTo(hop.udx * r, hop.udy * r);
+    ctx.stroke();
+    ctx.restore();
+  }
+  /* the two ends of the break, turned aside. Each starts on the wire outside
+     the gap and finishes raised just inside it, so it reads as one line lifting
+     over another rather than as a wire that simply stops. */
+  ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'round';
   ctx.beginPath();
-  ctx.moveTo(-HOP_W, 0);
-  ctx.lineTo(-HOP_W, -HOP_H);
-  ctx.lineTo(HOP_W, -HOP_H);
-  ctx.lineTo(HOP_W, 0);
+  ctx.moveTo(-HOP_FOOT, 0); ctx.lineTo(-HOP_TIP, -HOP_RISE);
+  ctx.moveTo(HOP_FOOT, 0); ctx.lineTo(HOP_TIP, -HOP_RISE);
   ctx.stroke();
-  ctx.lineCap = 'round';
   ctx.restore();
 }
 
