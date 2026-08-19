@@ -1792,10 +1792,12 @@ const TESTS = String.raw`
       /* however many wires meet there, a junction is still a dot */
       const shape2 = await ev(`(()=>{const L=LogicLab;
         const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j); const cy=g.y+g.h/2;
-        return {h:Math.round(g.h), ins:g.ins.length,
-          spread:Math.max(...g.ins.map(p=>Math.abs(p.y-cy)))};})()`);
-      report('a junction stays an 18-unit dot however many wires meet at it',
-        shape2.h === 18 && shape2.ins === 2 && shape2.spread === 0, JSON.stringify(shape2));
+        return {w:Math.round(g.w), h:Math.round(g.h), ins:g.ins.length,
+          spread:Math.max(...g.ins.map(p=>Math.abs(p.y-cy))),
+          onLane:g.ins.every(p=>Math.abs(((p.y%10)+10)%10 - 5) < 0.01)};})()`);
+      report('a junction stays one grid square however many wires meet at it',
+        shape2.w === 10 && shape2.h === 10 && shape2.ins === 2
+        && shape2.spread === 0 && shape2.onLane === true, JSON.stringify(shape2));
 
       /* and it survives being written out and read back */
       await ev(`LogicLab.saveNow()`);
@@ -2268,7 +2270,13 @@ const TESTS = String.raw`
       report('a junction really does feed every branch off it',
         tee === '0=00 1=11', tee);
 
-      /* the branches must part company AT the dot, not run together first */
+      /* The branches must part company AT the dot, not run together first —
+         two wires drawn on top of each other read as one. What matters is how
+         far they stay superimposed, which is where the FIRST of them turns
+         off: once one has left, there is nothing left to confuse. Asking where
+         the last one turns measures something else entirely, and says a wire
+         running straight on through the dot — the ordinary shape of a tap on a
+         line, and the tidiest answer there is — has gone wrong. */
       const split = await ev(`(()=>{const L=LogicLab;
         const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const gj=L.geom(j);
         const jx=gj.x+gj.w/2;
@@ -2282,8 +2290,8 @@ const TESTS = String.raw`
           const y0=pts[0].y;
           const turn=pts.find(p=>Math.abs(p.y-y0)>2);
           return turn ? Math.round(turn.x - jx) : 0;});
-        return Math.max(...runs);})()`);
-      report('branches leave the junction near the dot, not half a board later',
+        return Math.min(...runs);})()`);
+      report('branches part company at the dot, not half a board later',
         typeof split === 'number' && split < 90, split);
 
       /* and the dot itself is easy to hit */
@@ -2300,6 +2308,63 @@ const TESTS = String.raw`
       await wait(250);
       report('adding a junction is a single undo',
         (await shape()) === '0/1' || (await shape()) === '0/2', await shape());
+    }
+
+    /* ---- everything measures a whole number of grid squares ---------------
+       Wires run on the half-lines between the grid lines. A port that does not
+       land on one cannot ever have a straight wire on it — the router snaps to
+       the nearest lane and leaves a kink. Parts used to be 38, 56, 26 and 18
+       units tall, putting their ports three, two and one units off the lane
+       depending on the part, so no two kinds of part could line up at all. */
+    {
+      const kinds = ['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR', 'NOT', 'BUF',
+        'IN', 'OUT', 'CONST', 'CLOCK', 'DFF', 'DLATCH', 'LED', 'SEG7', 'HEX',
+        'ROM', 'RAM', 'NUMIN', 'NUM', 'JOINT', 'TUNNEL'];
+      const boxes = await ev(`(()=>{const L=LogicLab; const bad=[];
+        for(const t of ${JSON.stringify(kinds)}){
+          for(const n of [2,3,4]){
+            const nd=L.makeNode(t, 100, 200); if(nd.n!==undefined) nd.n=n;
+            const g=L.geom(nd);
+            const offW = g.w % 10 !== 0, offH = g.h % 10 !== 0;
+            const ports=[...g.ins,...g.outs];
+            const offLane=ports.filter(p=>Math.abs(((p.y%10)+10)%10 - 5) > 0.001);
+            if(offW||offH||offLane.length)
+              bad.push(t+'('+n+') w='+g.w+' h='+g.h+' off='+offLane.map(p=>p.y).join(','));
+          }
+        }
+        return bad;})()`);
+      report('every part is a whole number of grid squares, ports on the lanes',
+        boxes.length === 0, boxes.slice(0, 6).join(' | '));
+
+      /* a long name grows the box, and it has to grow by whole squares */
+      const named = await ev(`(()=>{const L=LogicLab;
+        const d=L.newDef('a chip with a really rather long name indeed');
+        d.nodes.push(L.makeNode('IN',0,0,{label:'in'}), L.makeNode('OUT',200,0,{label:'out'}));
+        L.lib[d.id]=d;
+        const g=L.geom(L.makeNode('CHIP',100,200,{chip:d.id}));
+        return {w:g.w, h:g.h, onGrid: g.w%10===0 && g.h%10===0};})()`);
+      report('a chip grown to fit its name still measures whole squares',
+        named.onGrid === true, JSON.stringify(named));
+
+      /* two parts placed on the grid must be able to sit exactly level */
+      const level = await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('level'); const p=b.pin('A',0,100); const g2=b.add('AND',200,100);
+        const gp=L.geom(p), gg=L.geom(g2);
+        return Math.abs(gp.outs[0].y - gg.ins[0].y);})()`);
+      report('a pin and a gate dropped at the same height are exactly level',
+        level === 0, level);
+
+      /* and every example is laid out on the grid */
+      const strays = await ev(`(()=>{const L=LogicLab; const bad=[];
+        for(const ex of L.examples.EDITOR_EXAMPLES){
+          const e=ex.make(); const def=e.work||e;
+          const defs=[def].concat(e.chips||[]);
+          for(const d of defs) for(const n of d.nodes)
+            if(n.x%10 || n.y%10) bad.push(d.name+':'+n.type+'@'+n.x+','+n.y);
+        }
+        return bad;})()`);
+      report('every built-in example sits on the grid', strays.length === 0,
+        strays.slice(0, 5).join(' '));
     }
 
     /* ---- wires route round the parts instead of through them ---- */

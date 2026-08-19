@@ -616,7 +616,7 @@ const PARTS = {
   },
   CONST: {
     name: 'Constant', cat: 'src', nick: "always 0, or always 1", plain: "Holds one value forever; click it to change which. Handy for tying an input you are not using to a fixed level.", group: 'Signals', shape: 'const',
-    ins: () => [], outs: () => [''], w: 40, h: 26,
+    ins: () => [], outs: () => [''], w: 40, h: 30,
     make: () => ({ value: 1 }),
     tip: 'A permanent 0 or 1. Click to flip it.',
     sim: (p, v, put) => put(p.outs[0], p.node.value ? 1 : 0),
@@ -688,19 +688,19 @@ const PARTS = {
   /* ---- displays -------------------------------------------------------- */
   LED: {
     name: 'LED', cat: 'disp', nick: "a light", plain: "Lights up while its input is 1. It has no effect on the circuit \u2014 it is there for you to watch. This is the one part with no gates in it at all: a real LED is a diode, and light comes out because electrons crossing a junction give up energy as photons. Below it is physics, not logic, which is why it has no \u2018what it\u2019s made of\u2019.", group: 'Displays', shape: 'led',
-    ins: () => [''], outs: () => [], w: 26, h: 26,
+    ins: () => [''], outs: () => [], w: 30, h: 30,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Glows while its input is 1.',
   },
   SEG7: {
     name: '7-SEGMENT', cat: 'disp', nick: "a digit, bar by bar", plain: "Seven bars and a dot, each with its own input, which together can draw a digit. Seven separate lamps, in other words \u2014 there are no gates inside it, and it does not decide anything. Working out which bars to light IS gates: that is a decoder, and the 7447 on the breadboard is exactly that chip. Wire one to this and you can see the whole job split in two.", group: 'Displays', shape: 'seg7',
-    ins: () => ['a', 'b', 'c', 'd', 'e', 'f', 'g', '.'], outs: () => [], w: 104, h: 8 * PORT_GAP + 16,
+    ins: () => ['a', 'b', 'c', 'd', 'e', 'f', 'g', '.'], outs: () => [], w: 104, h: 8 * PORT_GAP + GRID,
     make: () => ({ color: '#ff5b4a' }),
     tip: 'Eight segments, driven one bit each — a through g plus the dot.',
   },
   HEX: {
     name: 'HEX DIGIT', cat: 'disp', nick: "a digit, worked out for you", plain: "Reads four bits as a number from 0 to 15 and draws it as one digit, 0 to F. Two halves, and only one is gates: deciding which of the seven bars to light for each number is pure logic \u2014 a decoder, which you could build here from ANDs and ORs \u2014 while the bars themselves are just lamps. This part does the deciding for you. The 7-SEGMENT part hands it back, and the 7447 on the breadboard is the real decoder chip.", group: 'Displays', shape: 'seg7',
-    ins: () => ['8', '4', '2', '1'], outs: () => [], w: 76, h: 92,
+    ins: () => ['8', '4', '2', '1'], outs: () => [], w: 76, h: 90,
     make: () => ({ color: '#ffc247' }),
     tip: 'Shows a 4-bit number as one hex digit, 0–F. Decoding is done for you.',
   },
@@ -778,12 +778,12 @@ const PARTS = {
      either side, so they cost nothing and add no delay. */
   JOINT: {
     name: 'Junction', cat: 'plumb', nick: "where wires meet", plain: "A meeting point for wires \u2014 as many in as out. It costs nothing and adds no delay: every wire touching it carries one and the same signal. Two different outputs meeting at one is a short, which the simulator reports rather than prevents.", group: 'Routing', shape: 'joint',
-    ins: (n) => Array.from({ length: Math.max(1, n.n || 1) }, () => ''), outs: () => [''], w: 18, h: 18,
+    ins: (n) => Array.from({ length: Math.max(1, n.n || 1) }, () => ''), outs: () => [''], w: GRID, h: GRID,
     tip: 'A meeting point for wires, as many in as out. Drop a wire onto another wire to make one.',
   },
   TUNNEL: {
     name: 'Tunnel', cat: 'plumb', nick: "a wire without the wire", plain: "Every tunnel with the same name is joined together, however far apart they sit. Use them instead of dragging a wire right across the board.", group: 'Routing', shape: 'tunnel',
-    ins: () => [''], outs: () => [''], w: 62, h: 24,
+    ins: () => [''], outs: () => [''], w: 62, h: 30,
     make: () => ({ label: 'net' }),
     tip: 'Every tunnel with the same name is wired together — a wire without the wire.',
   },
@@ -862,7 +862,14 @@ function geom(node, ctx) {
   const part = node.type === 'CHIP' ? CHIP_PART : PARTS[node.type] || {};
   const rows = Math.max(p.ins.length, p.outs.length, 1);
   let w = part.w || 64;
-  const h = part.h || Math.max(38, rows * PORT_GAP + 16);
+  /* Every part is a whole number of grid squares tall, with its ports on the
+     half-lines — which is exactly where wires run. Ten units of padding above
+     the first port and below the last puts the row at h/2 for one port and at
+     15, 35, 55... for several, whatever the part. Get that wrong by a couple
+     of units and no wire can ever be straight: the router snaps to the nearest
+     lane, so a port three units off one leaves a kink at every port on the
+     board. Heights are therefore always 10 more than a multiple of 20. */
+  const h = part.h || Math.max(GRID * 3, rows * PORT_GAP + GRID);
   /* Plain boxes grow to hold their name and their port labels; a part with a
      long name and named ports would otherwise print over itself. */
   if (ctx && !part.shape) {
@@ -871,6 +878,9 @@ function geom(node, ctx) {
     w = Math.max(w, textWidth(ctx, p.label, `600 ${size}px ${FONT}`) + (named ? 50 : 22));
   }
   if (node.type === 'TUNNEL' && ctx) w = Math.max(52, textWidth(ctx, node.label || 'net', '11px ' + FONT) + 30);
+  /* ...and a whole number of squares wide too, so a part measures the same in
+     grid squares wherever it is and whatever its name happens to be. */
+  w = Math.ceil(w / GRID) * GRID;
   /* A junction is a dot, not a box. However many wires meet at one, they meet
      in a single place, so its ports sit on top of each other instead of
      spreading down an edge the way a gate's do. */
@@ -1264,6 +1274,7 @@ function endPos(def, e) {
    awkwardly is far better than a wire that is not drawn. */
 const WIRE_STUB = 13;                                // straight bit off a port
 const WIRE_ROUND = 9;                                // corner radius
+const JOINT_DOT = 3.5;                               // radius of a solder dot
 const OBSTACLE_PAD = 7;
 const ROUTE_LIMIT = 320;                             // parts, above which routing is skipped
 
@@ -2005,10 +2016,12 @@ function drawNode(node, ghost) {
       break;
     }
     case 'joint': {
-      /* A solder dot, drawn the way a schematic draws one: big enough to read
-         as deliberate rather than as two wires happening to cross. How many
-         wires actually meet decides whether it is a T, a cross or a corner —
-         all it has to do is look like a join. */
+      /* A solder dot, drawn the way a schematic draws one: a little fatter
+         than the wire, so it reads as deliberate rather than as two wires
+         happening to cross — and no fatter, because a blob the size of a gate
+         is not a join, it is an obstruction. Wires are three units wide, so
+         seven across is the right dot; it is a fixed size rather than half the
+         part's box, which is what let it grow into a ball. */
       const v = ghost ? 0 : valAt(node.id, 'in', 0);
       const cx2 = g.x + g.w / 2, cy2 = g.y + g.h / 2;
       const legs = ghost ? [] : S.work.wires.filter((x) => x.a.n === node.id || x.b.n === node.id);
@@ -2024,10 +2037,10 @@ function drawNode(node, ghost) {
         ctx.stroke();
       }
       ctx.fillStyle = v ? C.hi : C.lo;
-      ctx.beginPath(); ctx.arc(cx2, cy2, Math.max(4, g.w / 2), 0, 7); ctx.fill();
+      ctx.beginPath(); ctx.arc(cx2, cy2, JOINT_DOT, 0, 7); ctx.fill();
       if (selected && !ghost) {
         ctx.strokeStyle = C.sel; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(cx2, cy2, Math.max(4, g.w / 2) + 4, 0, 7); ctx.stroke();
+        ctx.beginPath(); ctx.arc(cx2, cy2, JOINT_DOT + 4, 0, 7); ctx.stroke();
       }
       break;
     }
@@ -2272,10 +2285,10 @@ function hitTest(w, touch) {
   }
   for (let i = nodes.length - 1; i >= 0; i--) {
     const n = nodes[i], g = gm(n);
-    /* A junction is eighteen units across, which is a hard thing to hit and an
-       even harder thing to hit on a phone. It gets a bigger catch than it draws,
-       and it is checked before the boxes so a junction sitting on top of a chip
-       still wins its own clicks. */
+    /* A junction is one grid square, which is a hard thing to hit and an
+       even harder thing to hit on a phone. It gets a much bigger catch than it
+       draws, and it is checked before the boxes so a junction sitting on top of
+       a chip still wins its own clicks. */
     const pad = n.type === 'JOINT' ? (touch ? 16 : 10) / z : 0;
     if (w.x >= g.x - pad && w.x <= g.x + g.w + pad && w.y >= g.y - pad && w.y <= g.y + g.h + pad) {
       return { kind: 'node', node: n.id };
@@ -2464,9 +2477,15 @@ function deleteSelection() {
    can sit perfectly on the grid and the wire between them still has a kink in
    it. What has to line up is the ports, not the boxes — so while a part is
    being dragged, any wire it already has is checked, and if one of its ends is
-   within a few pixels of level with the other, it is nudged the rest of the
-   way and a guide is drawn to say why it moved. */
-const ALIGN_REACH = 7;                              // screen pixels of pull
+   within reach of level with the other, it is nudged the rest of the way and a
+   guide is drawn to say why it moved.
+
+   Ports now sit on the wire lanes, so a part dragged around the grid is either
+   exactly level with what it feeds or a whole square out — never three units
+   out, the way it used to be. The pull is therefore a square rather than a few
+   pixels: a square is the smallest miss there is, and closing it leaves the
+   part on the grid instead of parking it between two lines. */
+const ALIGN_REACH = GRID;                           // world units of pull
 
 let alignGuides = [];                               // drawn for one frame
 
@@ -2475,7 +2494,7 @@ let alignGuides = [];                               // drawn for one frame
     should not have them fight each other. */
 function alignOffset(moving) {
   const ids = new Set(moving.map((n) => n.id));
-  const reach = ALIGN_REACH / Math.max(0.15, S.cam.z);
+  const reach = ALIGN_REACH;
   let best = null;
   for (const wire of S.work.wires) {
     const insideA = ids.has(wire.a.n), insideB = ids.has(wire.b.n);
@@ -6327,7 +6346,15 @@ function builder(name, color) {
   d.color = color || CHIP_COLORS[0];
   const api = {
     def: d,
-    add: (type, x, y, extra) => { const n = makeNode(type, x, y, extra); d.nodes.push(n); return n; },
+    /* Coordinates go on the grid on the way in. Everything you place by hand
+       already lands there, and a part half a square off is a part whose ports
+       miss the wire lanes — so a few examples written with a stray 75 or 124
+       in them were the only things on the board that could not line up. */
+    add: (type, x, y, extra) => {
+      const n = makeNode(type, snap(x), snap(y), extra);
+      d.nodes.push(n);
+      return n;
+    },
     pin: (label, x, y) => api.add('IN', x, y, { label }),
     out: (label, x, y) => api.add('OUT', x, y, { label }),
     w: (a, ai, b, bi) => {

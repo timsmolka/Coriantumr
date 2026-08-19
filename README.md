@@ -121,9 +121,9 @@ the edge, so a line disappearing behind a chip is never mistaken for a line that
 stops there.
 
 **Junctions.** One signal often has to feed several inputs. A junction catches
-clicks from a little way outside the dot it draws, in both the body and the
-ports — eighteen units across is a hard thing to hit with a mouse and a harder
-one with a finger.  Select a wire and
+clicks from a long way outside the dot it draws, in both the body and the
+ports — one grid square is a hard thing to hit with a mouse and a harder one
+with a finger, so the catch is three times the dot.  Select a wire and
 press <kbd>J</kbd> (or the **Add a junction** button) and one is spliced in
 where you are pointing — the wire becomes two, with a junction between them you
 can run as many more wires from as you like. That is the T, and the cross, that
@@ -150,8 +150,7 @@ wire meeting there into one net. Dropping a live end on a wire splices a
 junction in at that point and joins it whichever end you are holding: an input
 looking for a source is fed by the junction, and an end that carries a signal
 becomes another wire into it. The ports all sit on the dot rather than spreading
-down an edge, so a junction with four wires on it is still eighteen units
-across.
+down an edge, so a junction with four wires on it is still one grid square.
 
 That does let you join two wires driven by different outputs, which is a short.
 It is allowed, and reported: a toast at the moment you make it, the net counted
@@ -159,6 +158,29 @@ in the warning bar, and the ports drawn in red once the two sources disagree.
 The breadboard has always reported a short rather than refusing the jumper that
 caused it, and this is the same bargain — you can build the wrong thing, and the
 board tells you what is wrong with it.
+
+**Everything measures a whole number of grid squares.** Parts land on the
+ten-unit grid, and wires run on the half-lines between those lines — …5 rather
+than …0. That only works if the two agree, and for a long time they did not.
+Box heights were 38 for a one-input part, 56 for two, 26 for an LED, 18 for a
+junction, so ports came out at 19, 18, 13 and 9 units down: three different
+sub-grid offsets, none of them on a lane. The consequence is easy to miss and
+impossible to unsee. Two parts sitting perfectly on the grid could not have a
+straight wire between them, because their ports were a couple of units apart in
+a direction the grid could not express — the router snapped to the nearest lane
+and left a kink at every port on the board. The tidy-up button papered over it
+by shoving parts a few units off the grid, which fixed the wire and broke the
+thing the grid was for.
+
+So heights are now always ten more than a multiple of twenty — 30, 50, 70 — with
+ten units of padding above the first port and below the last. That puts every
+port at h/2 for one port, and at 15, 35, 55… for several, whatever the part is:
+one lane, shared by every kind of part. Widths round up to whole squares too, so
+a chip measures the same in squares however long its name is. Across the
+built-in examples that took ports off the lane from 193 to zero, and the number
+of dead-level wires up by two thirds. Because a miss is now a whole square
+rather than three units, the drag-time pull is a whole square as well, and
+closing it leaves the part on the grid instead of parked between two lines.
 
 **Wires go round things.** Parts sit on the ten-unit grid; wires run on the
 lines halfway between them — ...5 rather than ...0 — so a wire can never lie
