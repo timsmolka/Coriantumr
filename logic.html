@@ -1286,10 +1286,15 @@ function wireObstacles() {
   if (obstacleCache.key === key) return obstacleCache.rects;
   const rects = S.work.nodes.map((n) => {
     const g = gm(n);
+    /* Clearance in proportion to the thing. A junction is one grid square, and
+       fencing it off like a chip put a twenty-four unit no-go area round a dot
+       seven across — so wires went the long way round something they could
+       have passed within a hair of. */
+    const pad = Math.max(g.w, g.h) <= GRID * 2 ? 2 : OBSTACLE_PAD;
     return {
       id: n.id,
-      x0: g.x - OBSTACLE_PAD, y0: g.y - OBSTACLE_PAD,
-      x1: g.x + g.w + OBSTACLE_PAD, y1: g.y + g.h + OBSTACLE_PAD,
+      x0: g.x - pad, y0: g.y - pad,
+      x1: g.x + g.w + pad, y1: g.y + g.h + pad,
     };
   });
   obstacleCache = { key, rects };
@@ -1338,7 +1343,14 @@ const CELL = GRID;                                   // one step of the search
 const HALF = GRID / 2;                               // wires live on the half lines
 const TURN_COST = 12;                                // corners are expensive
 const BUSY_COST = 6;                                 // so is somebody else's lane
-const THROUGH_COST = 400;                            // going over a part: allowed, but dear
+/* Going over a part: allowed, and dear enough that a wire goes round anything
+   it can get round. Four hundred was not "dear", it was "never": a wire would
+   walk the width of the board rather than step over one gate, and the long way
+   round is what you actually saw. Sixty prices a crossing at about what going
+   round a gate costs, so the detour still wins whenever there is room for it
+   and only a wire that is genuinely boxed in goes over the top — where the
+   crossing is bridged, so it reads correctly. */
+const THROUGH_COST = 60;
 /* Zero, not one: the obstacle rects already carry a seven-unit pad, and a
    further whole cell on top made the blocked ring wider than the stub is long,
    so a wire was walled in at its own port before it had gone anywhere. */
@@ -1456,7 +1468,10 @@ function gridRoute(A, B, rects, used) {
          crossing is bridged. */
       let g = cur.g + 1 + (blocked[idx(nx, ny)] ? THROUGH_COST : 0);
       if (cur.from !== null && d !== cur.d) g += TURN_COST;
-      if (used && used.has(`${nx},${ny}`)) g += BUSY_COST;
+      /* Only somebody else's lane in the direction we are travelling costs
+         anything. Crossing one is free: a crossing gets a bridge, and paying
+         to avoid it is what sent wires the long way round. */
+      if (used && used.has(`${nx},${ny},${DIRS[d][0] ? 'h' : 'v'}`)) g += BUSY_COST;
       const nk = `${nx},${ny},${d}`;
       if (best.has(nk) && best.get(nk) <= g) continue;
       q.push({ gx: nx, gy: ny, d, g, f: g + h(nx, ny), from: cur });
@@ -1510,11 +1525,19 @@ function allRoutes() {
     const pts = routeWire(a, b, !!src && src.type === 'JOINT', used);
     map.set(wr.id, pts);
     if (pts) {
+      /* Which way each lane was claimed, not merely that it was. Two wires
+         lying along the same lane are one line to look at and must be kept
+         apart; two wires crossing are a crossing, which is drawn with a bridge
+         and reads perfectly well. Recording the direction lets the next wire
+         pay for the first and cross for nothing. */
       for (let i = 1; i < pts.length - 2; i++) {
         const q = pts[i], r = pts[i + 1];
+        const axis = Math.abs(r.x - q.x) >= Math.abs(r.y - q.y) ? 'h' : 'v';
         const gx0 = cellOf(Math.min(q.x, r.x)), gx1 = cellOf(Math.max(q.x, r.x));
         const gy0 = cellOf(Math.min(q.y, r.y)), gy1 = cellOf(Math.max(q.y, r.y));
-        for (let gy = gy0; gy <= gy1; gy++) for (let gx = gx0; gx <= gx1; gx++) used.add(`${gx},${gy}`);
+        for (let gy = gy0; gy <= gy1; gy++) {
+          for (let gx = gx0; gx <= gx1; gx++) used.add(`${gx},${gy},${axis}`);
+        }
       }
     }
   }
@@ -1841,6 +1864,19 @@ function xorBackPath(c, x, y, h) {
   c.quadraticCurveTo(x + 9, y + h / 2, x, y + h);
 }
 
+/** Which ports have a wire on them. Rebuilt once at the top of each frame —
+    every port on the board asks, so working it out on demand would walk the
+    whole wire list once per port. */
+let wired = new Set();
+function refreshWiredPorts() {
+  wired.clear();
+  for (const w of S.work.wires) {
+    wired.add(w.a.n + 'out' + w.a.i);
+    wired.add(w.b.n + 'in' + w.b.i);
+  }
+}
+const wiredPorts = () => wired;
+
 function drawNode(node, ghost) {
   const world = gm(node);
   const part = node.type === 'CHIP' ? CHIP_PART : PARTS[node.type] || {};
@@ -1886,22 +1922,28 @@ function drawNode(node, ghost) {
   const chipDef = node.type === 'CHIP' ? LIB[node.chip] : null;
   ctx.globalAlpha = ghost ? 0.55 : 1;
 
-  /* --- port stubs and dots (drawn under the body) --- */
+  /* --- ports (drawn under the body) -------------------------------------
+     A port that has a wire on it needs no decoration: the wire is already
+     there, running up to the edge of the part, and anything drawn on top of
+     its end can only be a lump on an otherwise clean line. Every port used to
+     get a stub and a dot nearly seven across — more than twice the width of
+     the wire — so every connection on the board ended in a little whisker
+     poking out past the body.
+
+     What the marks were really for is the ports with nothing on them: those
+     still need to say "you can attach here", so they keep a dot, and it is
+     drawn no wider than a wire. Hovering rings whichever port you are pointing
+     at, connected or not, which is what tells you where a wire would land. */
   const drawPorts = () => {
     for (const [side, list] of [['in', g.ins], ['out', g.outs]]) {
       list.forEach((p, i) => {
         const v = ghost ? 0 : valAt(node.id, side, i);
         const bad = !ghost && clashAt(node.id, side, i);
-        ctx.strokeStyle = bad ? C.danger : v ? C.hi : C.lo;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(p.x, p.y);
-        ctx.lineTo(p.x + (side === 'in' ? 5 : -5), p.y);
-        ctx.stroke();
-        ctx.fillStyle = bad ? C.danger : v ? C.hi : C.lo;
-        ctx.beginPath(); ctx.arc(p.x, p.y, 3.4, 0, 7); ctx.fill();
         const hov = S.hover && S.hover.kind === 'port' && S.hover.node === node.id
           && S.hover.side === side && S.hover.i === i;
+        if (!ghost && !hov && wiredPorts().has(node.id + side + i)) return;
+        ctx.fillStyle = bad ? C.danger : v ? C.hi : C.lo;
+        ctx.beginPath(); ctx.arc(p.x, p.y, 1.6, 0, 7); ctx.fill();
         if (hov) {
           ctx.strokeStyle = C.sel; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.arc(p.x, p.y, 6.5, 0, 7); ctx.stroke();
@@ -2128,6 +2170,7 @@ function drawNode(node, ghost) {
 /** The circuit itself — wires then parts — with the world transform already
     applied. Split out so the inspector's diagrams can reuse it. */
 function drawWorld() {
+  refreshWiredPorts();                               // once, for every port below
   /* wires */
   ctx.lineCap = 'round';
   /* grouped by which wire carries them, so each is drawn with its own wire */
@@ -7306,6 +7349,7 @@ window.LogicLab = {
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
   addJointToSelection, spliceJoint, hitTest, wireHops, recSevenSeg, SEG_BITS,
+  wiredPorts, refreshWiredPorts,
   get lib() { return LIB; },
 };
 

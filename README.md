@@ -101,6 +101,16 @@ of ANDs and ORs, or drop on the breadboard as the **7447**, which is exactly
 that chip and nothing else. The **hex digit** part does both halves for you;
 7-segment hands the deciding back.
 
+**A port with a wire on it is not decorated.** Every port used to draw a stub
+and a dot nearly seven across — more than twice the width of a wire — so every
+connection on the board ended in a little whisker poking out past the body of
+the part. The wire is already there and already runs up to the edge; anything
+drawn on top of its end is a lump on an otherwise clean line. What the marks
+were really for is the ports with *nothing* on them, which do need to say
+"attach here", so those keep a dot and it is no wider than a wire. Hovering
+rings whichever port you are pointing at, connected or not, which is what
+actually tells you where a wire would land.
+
 **Crossings and joins look different.** Two wires meeting at a dot are one
 signal; two wires crossing are two, and drawn the same way there is no telling
 which you are looking at. A crossing gets a **bridge** — three sides of a small
@@ -188,15 +198,36 @@ along a part's edge, where you cannot tell whether it is touching the part or
 passing it. From there routing is a shortest-path search over those half-lines,
 with two things added to the price of a step. **Turning costs twelve times what
 going straight does**, so a route comes out with as few corners as it can manage
-instead of staircasing. And **a lane somebody else is already on costs more than
-an empty one**, so wires spread out rather than piling onto the same line, which
-is what makes their crossings visible.
+instead of staircasing. And **a lane somebody else is already on, in the
+direction you are travelling, costs more than an empty one**, so wires spread
+out rather than piling onto the same line.
 
-A part is dear to cross, not impossible — four hundred times the price of an
-empty cell. Hard walls meant a wire that was boxed in found no route at all and
-fell back to a curve straight across the board, which is worse in every way than
-stepping over one chip. At that price it will walk a very long way round first,
-and where it does cross, the crossing is bridged.
+That last one used to cost the same whether you were running *along* somebody
+else's lane or *crossing* it, and the two are not remotely the same thing. Two
+wires lying along one lane are a single line to look at, which is the ambiguity
+the whole scheme exists to prevent; two wires crossing are a crossing, drawn
+with a bridge, and perfectly readable. Charging for both meant wires bent round
+each other to dodge crossings that were never a problem. The lane now records
+which way it was claimed, so running along it still costs and crossing it is
+free.
+
+A part is dear to cross, not impossible. Hard walls meant a wire that was boxed
+in found no route at all and fell back to a curve straight across the board,
+which is worse in every way than stepping over one chip. But the price was four
+hundred times an empty cell, and that is not "dear", it is "never": a wire would
+walk the width of the board sooner than step over a single gate, and that long
+way round is what you actually saw on screen. Sixty prices a crossing at roughly
+what going round a gate costs, so the detour still wins wherever there is room
+for it, and only a genuinely boxed-in wire goes over the top — where the
+crossing is bridged.
+
+Clearance is in proportion to the thing, too. Every part was fenced off by seven
+units on each side, which is sensible for a chip and absurd for a junction: a
+twenty-four unit no-go area around a dot seven across, which sent wires a long
+way round something they could have passed within a hair of. Anything a couple
+of grid squares or smaller gets two. Together those took the total slack across
+the built-in examples — how much longer every wire is than the straight line
+between its ports — from 6610 down to about 4950.
 
 Routes are worked out for the whole board in one pass, so each wire can see the
 lanes the ones before it have taken, and remembered until something moves.

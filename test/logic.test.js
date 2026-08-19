@@ -2367,6 +2367,80 @@ const TESTS = String.raw`
         strays.slice(0, 5).join(' '));
     }
 
+    /* ---- wires take the short way ----------------------------------------
+       Going over a part used to cost four hundred, which is not "dear" but
+       "never": a wire would walk the width of the board rather than step over
+       one gate. And a lane another wire had claimed cost the same whether you
+       ran along it or crossed it, so wires bent round crossings — which are
+       drawn with a bridge and read perfectly well. Both showed up as wires
+       taking a long way round for no reason a reader could see.
+
+       Measured as total slack: how much longer every wire is than the straight
+       Manhattan distance between its two ports, summed over every built-in
+       example. Some slack is real — a wire that genuinely has to get round a
+       chip is longer than the crow flies — so this is a ceiling, not a target.
+       It stood at 6610 before and runs at about 4950 now. */
+    {
+      /* Loading every example installs their chips; put the library and the
+         view back afterwards so the checks that follow see what they expect. */
+      const libWas = await ev(`JSON.stringify(Object.keys(LogicLab.lib))`);
+      const camWas = await ev(`JSON.stringify(LogicLab.S.cam)`);
+      let slack = 0;
+      const howMany = await ev(`LogicLab.examples.EDITOR_EXAMPLES.length`);
+      for (let i = 0; i < howMany; i++) {
+        await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[${i}].make();
+          if(e.chips) for(const c of e.chips) L.lib[c.id]=c;
+          L.S.work=e.work||e; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+          L.fitView(); return 1;})()`);
+        await wait(400);
+        slack += await ev(`(()=>{const L=LogicLab;
+          const at=(e)=>{const nd=L.S.work.nodes.find(x=>x.id===e.n); if(!nd) return null;
+            const g=L.geom(nd); return (e.s==='in'?g.ins:g.outs)[e.i];};
+          let sum=0;
+          for(const w of L.S.work.wires){
+            const a=at(w.a), b=at(w.b); if(!a||!b) continue;
+            const pts=L.wirePoints(a,b,80,w);
+            let run=0; for(let k=1;k<pts.length;k++)
+              run+=Math.abs(pts[k].x-pts[k-1].x)+Math.abs(pts[k].y-pts[k-1].y);
+            sum += run - (Math.abs(a.x-b.x)+Math.abs(a.y-b.y));
+          }
+          return sum;})()`);
+      }
+      slack = Math.round(slack);
+      report('wires do not wander: total slack across the examples',
+        slack < 5600, slack);
+      await ev(`(()=>{const L=LogicLab;
+        const keep=new Set(${libWas});
+        for(const k of Object.keys(L.lib)) if(!keep.has(k)) delete L.lib[k];
+        L.S.cam=${camWas}; L.S.dirty=true; L.renderPalette(); return 1;})()`);
+      await wait(200);
+    }
+
+    /* ---- a port with a wire on it is not decorated ------------------------
+       Every port used to draw a stub and a dot nearly seven across, more than
+       twice the width of a wire, so every connection on the board ended in a
+       little whisker poking out past the body. The marks belong on the ports
+       with nothing on them, which do need to say "attach here". */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('wired and not');
+        const A=b.pin('A',0,100); const g=b.add('AND',200,100); const X=b.out('X',400,100);
+        b.w(A,0,g,0); b.w(g,0,X,0);            // g's second input is left free
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`);
+      await wait(350);
+      const marks = await ev(`(()=>{const L=LogicLab;
+        L.refreshWiredPorts();
+        const w=L.wiredPorts();
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        const a=L.S.work.nodes.find(n=>n.label==='A');
+        return {fedInput:w.has(g.id+'in0'), freeInput:w.has(g.id+'in1'),
+          usedOutput:w.has(g.id+'out0'), pinOutput:w.has(a.id+'out0')};})()`);
+      report('a port carrying a wire is marked as taken, a free one is not',
+        marks.fedInput === true && marks.freeInput === false
+        && marks.usedOutput === true && marks.pinOutput === true,
+        JSON.stringify(marks));
+    }
+
     /* ---- wires route round the parts instead of through them ---- */
     {
       const crossings = async (exampleIx) => {
