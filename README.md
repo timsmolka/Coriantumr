@@ -115,8 +115,12 @@ actually tells you where a wire would land.
 signal; two wires crossing are two, and drawn the same way there is no telling
 which you are looking at. A crossing gets a **bridge** — three sides of a small
 box, stepped over the wire underneath, which reads as deliberate at any zoom
-where a rounded hump blurs into the wire itself. Only one of each pair hops, and
-wires on the same signal are never bridged, because a fan-out is a join.
+where a rounded hump blurs into the wire itself. It is as small as it can be and
+still be seen for what it is: a wire is three units wide, so the step is nine
+across and three and a half high. It was twelve by six, a box twice the height
+of the wire it stepped over, which on a busy board is a row of humps competing
+with the circuit for attention. Only one of each pair hops, and wires on the
+same signal are never bridged, because a fan-out is a join.
 
 Routes are worked out for the whole board in one pass rather than each wire on
 its own, so every wire can see which lanes the ones before it have taken and
@@ -137,9 +141,14 @@ with a finger, so the catch is three times the dot.  Select a wire and
 press <kbd>J</kbd> (or the **Add a junction** button) and one is spliced in
 where you are pointing — the wire becomes two, with a junction between them you
 can run as many more wires from as you like. That is the T, and the cross, that
-a schematic draws as a solder dot; it is drawn as one, with a short stub towards
-every wire meeting on it, so it reads as a deliberate join rather than two wires
-happening to cross. Dropping a wire onto a wire still splices one in too — the
+a schematic draws as a solder dot, and it is drawn as one: a dot a little
+fatter than the wire and nothing else. There used to be a stub drawn from the
+middle towards each wire meeting there, to make the join read as a T or a
+cross, but it was aimed at the far *end* of the wire — and a wire leaves square
+and then turns, so the stub pointed somewhere the wire never went. What you got
+was a dot with two or three diagonal spikes coming off it at angles that
+matched nothing else on the board. The wires run right up to the dot; they draw
+the T themselves. Dropping a wire onto a wire still splices one in too — the
 difference is that this is a way to ask for one.
 
 **Any wire joins any other wire, at any point.** A junction takes as many wires

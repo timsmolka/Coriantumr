@@ -2441,6 +2441,49 @@ const TESTS = String.raw`
         JSON.stringify(marks));
     }
 
+    /* ---- a junction is a dot, not a dot with spikes ----------------------
+       There used to be a stub drawn from the middle of a junction towards each
+       wire meeting there, meant to make the join read as a T or a cross. It
+       was aimed at the far END of the wire — but a wire leaves square and then
+       turns, so the stub pointed somewhere the wire never went, and the dot
+       sprouted diagonal spikes at angles that matched nothing on the board.
+       Checked by looking at the pixels where those spikes used to land. */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('spikes');
+        const A=b.pin('A',0,100), X=b.out('X',560,100), Y=b.out('Y',560,320);
+        const j=b.add('JOINT',260,100);
+        b.w(A,0,j,0); b.w(j,0,X,0); b.w(j,0,Y,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+        const gj=L.geom(j); const cx=gj.x+gj.w/2, cy=gj.y+gj.h/2;
+        const r=document.querySelector('#cv').getBoundingClientRect();
+        L.S.cam={z:4, x:r.width/2-cx*4, y:r.height/2-cy*4};
+        return 1;})()`);
+      await wait(700);
+      const spikes = await ev(`(()=>{const L=LogicLab;
+        const cv=document.querySelector('#cv'); const g2=cv.getContext('2d');
+        const dpr=cv.width/cv.getBoundingClientRect().width;
+        const at=(wx,wy)=>{const s=L.toScreen(wx,wy);
+          const d=g2.getImageData(Math.round(s.x*dpr), Math.round(s.y*dpr),1,1).data;
+          return d[0]+','+d[1]+','+d[2];};
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const gj=L.geom(j);
+        const cx=gj.x+gj.w/2, cy=gj.y+gj.h/2;
+        const bg=at(cx, cy-70);                        // empty board above it
+        let checked=0, lit=0;
+        for(const w of L.S.work.wires){
+          const far = w.a.n===j.id ? w.b : w.a;
+          const n=L.S.work.nodes.find(x=>x.id===far.n); const gn=L.geom(n);
+          const p=(far.s==='in'?gn.ins:gn.outs)[far.i];
+          const dx=p.x-cx, dy=p.y-cy, len=Math.hypot(dx,dy)||1;
+          if(Math.abs(dy/len) < 0.3) continue;         // level with the dot: the wire is there
+          checked++;
+          if(at(cx+dx/len*7, cy+dy/len*7) !== bg) lit++;
+        }
+        return {checked, lit, bg};})()`);
+      report('a junction draws no spikes off the dot',
+        spikes.checked > 0 && spikes.lit === 0, JSON.stringify(spikes));
+    }
+
     /* ---- wires route round the parts instead of through them ---- */
     {
       const crossings = async (exampleIx) => {

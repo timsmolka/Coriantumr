@@ -1556,7 +1556,13 @@ function wireRoute(wr, a, b) {
    thing a schematic must never be ambiguous about. So a crossing gets the
    little hop every schematic uses: the wire passing over is bridged, the one
    underneath runs straight through. */
-const HOP_R = 6;
+/* A bridge is as small as it can be and still be seen for what it is: a wire
+   is three units wide, so a step nine across and three and a half high clears
+   it and no more. It used to be twelve by six — a box twice the height of the
+   wire it stepped over, which on a busy board is a row of humps competing with
+   the circuit for attention. */
+const HOP_W = 4.5;                                   // half the span of a bridge
+const HOP_H = 3.5;                                   // how high it steps
 let hopCache = { key: '', hops: [] };
 
 const crossAt = (p1, p2, q1, q2) => {
@@ -1632,16 +1638,16 @@ function drawHop(hop, colour) {
   ctx.save();
   ctx.translate(hop.x, hop.y);
   ctx.rotate(ang);
-  ctx.strokeStyle = C.bg; ctx.lineWidth = 7; ctx.lineCap = 'butt';
-  ctx.beginPath(); ctx.moveTo(-HOP_R, 0); ctx.lineTo(HOP_R, 0); ctx.stroke();
+  ctx.strokeStyle = C.bg; ctx.lineWidth = 5; ctx.lineCap = 'butt';
+  ctx.beginPath(); ctx.moveTo(-HOP_W, 0); ctx.lineTo(HOP_W, 0); ctx.stroke();
   /* a square step over rather than a rounded hump: three sides of a box, which
      reads as deliberate at any zoom and does not blur into the wire itself */
   ctx.strokeStyle = colour; ctx.lineWidth = 3; ctx.lineCap = 'butt'; ctx.lineJoin = 'miter';
   ctx.beginPath();
-  ctx.moveTo(-HOP_R, 0);
-  ctx.lineTo(-HOP_R, -HOP_R);
-  ctx.lineTo(HOP_R, -HOP_R);
-  ctx.lineTo(HOP_R, 0);
+  ctx.moveTo(-HOP_W, 0);
+  ctx.lineTo(-HOP_W, -HOP_H);
+  ctx.lineTo(HOP_W, -HOP_H);
+  ctx.lineTo(HOP_W, 0);
   ctx.stroke();
   ctx.lineCap = 'round';
   ctx.restore();
@@ -2064,20 +2070,15 @@ function drawNode(node, ghost) {
          is not a join, it is an obstruction. Wires are three units wide, so
          seven across is the right dot; it is a fixed size rather than half the
          part's box, which is what let it grow into a ball. */
+      /* Just the dot. There used to be a stub drawn from the middle towards
+         each wire meeting here, to make the join read as a T or a cross — but
+         it was aimed at the far END of the wire, and a wire leaves square and
+         then turns, so the stub pointed nowhere the wire actually went. The
+         result was a dot with two or three diagonal spikes coming off it at
+         angles that matched nothing on the board. The wires already run right
+         up to the dot; they draw the T themselves. */
       const v = ghost ? 0 : valAt(node.id, 'in', 0);
       const cx2 = g.x + g.w / 2, cy2 = g.y + g.h / 2;
-      const legs = ghost ? [] : S.work.wires.filter((x) => x.a.n === node.id || x.b.n === node.id);
-      ctx.strokeStyle = v ? C.hi : C.lo;
-      ctx.lineWidth = 3; ctx.lineCap = 'round';
-      for (const leg of legs) {                        // a short stub towards each
-        const far = endPos(S.work, leg.a.n === node.id ? leg.b : leg.a);
-        if (!far) continue;
-        const dx = far.x - cx2, dy = far.y - cy2, len = Math.hypot(dx, dy) || 1;
-        ctx.beginPath();
-        ctx.moveTo(cx2, cy2);
-        ctx.lineTo(cx2 + dx / len * 7, cy2 + dy / len * 7);
-        ctx.stroke();
-      }
       ctx.fillStyle = v ? C.hi : C.lo;
       ctx.beginPath(); ctx.arc(cx2, cy2, JOINT_DOT, 0, 7); ctx.fill();
       if (selected && !ghost) {
