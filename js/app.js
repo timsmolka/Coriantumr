@@ -219,16 +219,22 @@ function initMap() {
     zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
   });
 
-  // CARTO "Voyager" basemap — a clean, colorful, Google-Maps-like style built
-  // on OpenStreetMap data. It is free and keyless. The attribution (OSM + CARTO)
-  // is REQUIRED and must stay visible, so we set it here on the tile layer.
-  // The {r} placeholder lets Leaflet load sharper @2x tiles on retina screens.
+  // Esri "World Street Map" basemap — a clean, colorful, Google-Maps-like
+  // style (labeled roads, tan/green land, blue water). It is free and
+  // keyless, no account needed. The attribution is REQUIRED and must stay
+  // visible, so we set it here on the tile layer.
+  //
+  // (This used to be CARTO's "Voyager" basemap, also free-and-keyless at the
+  // time — CARTO has since started requiring an API key, and unregistered
+  // requests now come back stamped "API KEY REQUIRED". Esri's tile path also
+  // orders y before x, unlike the {z}/{x}/{y} convention most tile servers
+  // use — that is not a typo below.)
   L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     {
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-      subdomains: "abcd",
-      maxZoom: 20,
+      attribution:
+        "&copy; OpenStreetMap contributors — Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
+      maxZoom: 19,
     }
   ).addTo(map);
 
