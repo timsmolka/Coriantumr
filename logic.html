@@ -2674,6 +2674,55 @@ function duplicateSelection() {
   select(copies.map((c) => c.id));
 }
 
+/* ---- copy / paste --------------------------------------------------------
+   Duplicate drops a copy right where it stands, which is right for "one more
+   of these". Copy and paste are for the other reason to select something:
+   to carry it somewhere else — into a different chip you are editing, onto a
+   board you switched to and back from, or just to a spot your hand is
+   already resting on. The clipboard outlives the selection, so it is still
+   there after you click away, open a chip, or reload the page. */
+let clipboard = null;                                  // { nodes, wires } or null
+
+function copySelection() {
+  if (S.mode !== 'editor' || !S.sel.size) return;
+  const nodes = S.work.nodes.filter((n) => S.sel.has(n.id)).map(clone);
+  const ids = new Set(nodes.map((n) => n.id));
+  const wires = S.work.wires.filter((w) => ids.has(w.a.n) && ids.has(w.b.n)).map(clone);
+  clipboard = { nodes, wires };
+  toast(`Copied ${nodes.length} part${nodes.length === 1 ? '' : 's'}.`);
+}
+
+/* Repeated pastes with nowhere better to go step diagonally, the way most
+   editors do, so ten pastes in a row make a staircase instead of one stack
+   nothing can be told apart in. Pointing at the board beats that: paste lands
+   centred under the pointer instead, because that is where you meant it. */
+let pasteStep = 0;
+
+function pasteClipboard() {
+  if (S.mode !== 'editor' || !clipboard || !clipboard.nodes.length) return;
+  pushUndo();
+  const b = contentBoundsOf(clipboard.nodes);
+  let ox, oy;
+  if (S.hover && S.hover.world && b) {
+    ox = snap(S.hover.world.x - (b.x0 + b.x1) / 2); oy = snap(S.hover.world.y - (b.y0 + b.y1) / 2);
+    pasteStep = 0;
+  } else {
+    pasteStep += 20; ox = oy = pasteStep;
+  }
+  const map = new Map();
+  const copies = clipboard.nodes.map((n) => {
+    const c = clone(n); const newId = uid();
+    map.set(n.id, newId); c.id = newId; c.x += ox; c.y += oy;
+    return c;
+  });
+  const newWires = clipboard.wires.map((w) => ({
+    id: uid(), a: { n: map.get(w.a.n), s: w.a.s, i: w.a.i }, b: { n: map.get(w.b.n), s: w.b.s, i: w.b.i },
+  }));
+  S.work.nodes.push(...copies); S.work.wires.push(...newWires);
+  select(copies.map((c) => c.id));
+  toast(`Pasted ${copies.length} part${copies.length === 1 ? '' : 's'}.`);
+}
+
 const isJoint = (id) => {
   const n = nodeById(S.work, id);
   return !!n && n.type === 'JOINT';
@@ -3196,6 +3245,8 @@ window.addEventListener('keydown', (ev) => {
   if (mod && k === 'z') { ev.preventDefault(); ev.shiftKey ? redo() : undo(); return; }
   if (mod && k === 'y') { ev.preventDefault(); redo(); return; }
   if (mod && k === 'd') { ev.preventDefault(); duplicateSelection(); return; }
+  if (mod && k === 'c') { ev.preventDefault(); copySelection(); return; }
+  if (mod && k === 'v') { ev.preventDefault(); pasteClipboard(); return; }
   if (mod && k === 'a') {
     ev.preventDefault();
     select(S.work.nodes.map((n) => n.id), S.work.wires.map((w) => w.id));
@@ -3483,6 +3534,7 @@ function renderInspector() {
           h('button', { class: 'btn', title: 'Turn the whole group a quarter turn (R)', onclick: () => rotateSelection(1) }, '↻')),
         h('button', { class: 'btn', title: 'Nudge these so their wires run dead straight (L)', onclick: () => straightenWires(selNodes) }, 'Line up the wires'),
         h('button', { class: 'btn', onclick: duplicateSelection }, 'Duplicate (Ctrl+D)'),
+        h('button', { class: 'btn', title: 'Copy, then hover the board and Ctrl+V to drop it there', onclick: copySelection }, 'Copy (Ctrl+C)'),
         h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete'))));
   } else if (S.selWires.size) {
     host.append(h('div', { class: 'insp-sec' },
@@ -3626,6 +3678,7 @@ function nodeInspector(node) {
       h('button', { class: 'btn', title: 'Turn it a quarter turn (Shift+R)', onclick: () => rotateSelection(-1) }, '↺'),
       h('span', {}, turnOf(node) ? `Turned ${turnOf(node)}°` : 'Upright'),
       h('button', { class: 'btn', title: 'Turn it a quarter turn (R)', onclick: () => rotateSelection(1) }, '↻')),
+    h('button', { class: 'btn', title: 'Copy, then hover the board and Ctrl+V to drop it there', onclick: copySelection }, 'Copy (Ctrl+C)'),
     h('button', { class: 'btn danger', onclick: deleteSelection }, 'Delete part')));
 
   if (node.type === 'ROM' || node.type === 'RAM') sec.append(memoryEditor(node));
@@ -7172,7 +7225,9 @@ undo history.</p>
   <li><kbd>Space</kbd> run / pause · <kbd>F</kbd> fit to view · <kbd>Shift</kbd>+<kbd>F</kbd>
       fullscreen · <kbd>Esc</kbd> deselect</li>
   <li><kbd>Ctrl</kbd>+<kbd>Z</kbd> undo · <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Z</kbd> redo ·
-      <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>A</kbd> select all</li>
+      <kbd>Ctrl</kbd>+<kbd>D</kbd> duplicate · <kbd>Ctrl</kbd>+<kbd>A</kbd> select all ·
+      <kbd>Ctrl</kbd>+<kbd>C</kbd> copy · <kbd>Ctrl</kbd>+<kbd>V</kbd> paste (under the pointer,
+      if it is over the board)</li>
   <li><kbd>Delete</kbd> remove the selection · arrow keys nudge</li>
   <li>Middle-drag, right-drag or <kbd>Space</kbd>-drag to pan · scroll to zoom · two fingers on a touchscreen</li>
 </ul>
@@ -7340,6 +7395,7 @@ window.LogicLab = {
   expandOnce, anySimpler, partsCensus, openableTypes,
   saveNow, setPlay, rotateSelection, turnOf, straightenWires, alignOffset, wirePoints,
   addJointToSelection, spliceJoint, hitTest, wireHops, recSevenSeg, SEG_BITS,
+  copySelection, pasteClipboard, duplicateSelection, get clipboard() { return clipboard; },
   wiredPorts, refreshWiredPorts,
   get lib() { return LIB; },
 };
