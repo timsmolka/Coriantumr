@@ -1571,23 +1571,27 @@ const crossAt = (p1, p2, q1, q2) => {
   if (Math.abs(den) < 1e-6) return null;             // parallel, so no crossing
   const t = ((q1.x - p1.x) * d2y - (q1.y - p1.y) * d2x) / den;
   const u = ((q1.x - p1.x) * d1y - (q1.y - p1.y) * d1x) / den;
-  const edge = 0.12;                                 // keep hops off the corners
+  const edge = 0.05;                                 // keep hops off the corners
   if (t < edge || t > 1 - edge || u < edge || u > 1 - edge) return null;
   return { x: p1.x + d1x * t, y: p1.y + d1y * t, dx: d1x, dy: d1y, len: Math.hypot(d1x, d1y) };
 };
 
-/** Every place two wires cross without being the same signal. The later wire
-    carries the tick, so exactly one of each pair does. */
+/** Every place two wires cross without sharing an end. The later wire carries
+    the tick, so exactly one of each pair does — and it marks the crossing
+    even when both wires are the same net: two branches of one signal still
+    read as two lines to the eye, and a crossing with no mark looks exactly
+    like a bridge that was forgotten, not like a crossing that is safe. */
 function wireHops() {
   if (S.work.nodes.length > ROUTE_LIMIT) return [];
-  const key = wireObstacles().length + '|' + S.work.wires.length + '|'
+  const key = wireObstacles().length + '|'
+    + S.work.wires.map((w) => `${w.id}:${w.a.n}.${w.a.s}${w.a.i}-${w.b.n}.${w.b.s}${w.b.i}`).join(';') + '|'
     + S.work.nodes.map((n) => `${n.x},${n.y},${n.rot || 0}`).join(';');
   if (hopCache.key === key) return hopCache.hops;
   const lines = [];
   for (const w of S.work.wires) {
     const a2 = endPos(S.work, w.a), b2 = endPos(S.work, w.b);
     if (!a2 || !b2) { lines.push(null); continue; }
-    lines.push({ pts: wireRoute(w, a2, b2) || wirePoints(a2, b2, 14), net: netAt(w.a.n, w.a.s, w.a.i) });
+    lines.push({ pts: wireRoute(w, a2, b2) || wirePoints(a2, b2, 14) });
   }
   const hops = [];
   for (let i = 0; i < lines.length; i++) {
@@ -1596,7 +1600,6 @@ function wireHops() {
     for (let j = 0; j < i; j++) {
       const M = lines[j];
       if (!M) continue;
-      if (L.net !== undefined && L.net === M.net) continue;   // same signal, so no crossing to show
       for (let a3 = 0; a3 < L.pts.length - 1; a3++) {
         for (let b3 = 0; b3 < M.pts.length - 1; b3++) {
           const c = crossAt(L.pts[a3], L.pts[a3 + 1], M.pts[b3], M.pts[b3 + 1]);
