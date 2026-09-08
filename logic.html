@@ -2331,7 +2331,12 @@ function hitTest(w, touch) {
       return { kind: 'node', node: n.id };
     }
   }
-  const tol = (touch ? 12 : 7) / z;
+  /* A wire is three units wide and used to catch clicks within seven — barely
+     more than its own edge. A port gets thirteen and a junction eighteen,
+     because both are known to be hard to land on; a wire joining another wire
+     is exactly that same gesture and deserves the same reach, so it gets one
+     to match. */
+  const tol = (touch ? 16 : 10) / z;
   for (let i = S.work.wires.length - 1; i >= 0; i--) {
     const wr = S.work.wires[i];
     const a = endPos(S.work, wr.a), b = endPos(S.work, wr.b);
