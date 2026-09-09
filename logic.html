@@ -1460,7 +1460,14 @@ function gridRoute(A, B, rects, used) {
   }
   if (!inside(sx, sy) || !inside(tx, ty)) return null;
 
-  const best = new Map();
+  /* The best cost seen at each (cell, direction) so far, keyed as a plain
+     index rather than a "x,y,d" string. A search box can hold tens of
+     thousands of cells, and a wire that spans most of the board needs one of
+     these for every cell it even looks at — building and hashing a string for
+     each was the actual cost of routing a long wire, far more than the search
+     itself. -1 marks a state never reached. */
+  const bestG = new Int32Array(W * H * 4).fill(-1);
+  const stateOf = (gx, gy, d) => idx(gx, gy) * 4 + d;
   const q = heap();
   const h = (gx, gy) => (Math.abs(gx - tx) + Math.abs(gy - ty));
   for (let d = 0; d < 4; d++) q.push({ gx: sx, gy: sy, d, g: 0, f: h(sx, sy), from: null });
@@ -1468,9 +1475,9 @@ function gridRoute(A, B, rects, used) {
   while (q.size() && steps++ < 120000) {
     const cur = q.pop();
     if (cur.gx === tx && cur.gy === ty) { goal = cur; break; }
-    const key = `${cur.gx},${cur.gy},${cur.d}`;
-    if (best.has(key) && best.get(key) <= cur.g) continue;
-    best.set(key, cur.g);
+    const key = stateOf(cur.gx, cur.gy, cur.d);
+    if (bestG[key] !== -1 && bestG[key] <= cur.g) continue;
+    bestG[key] = cur.g;
     for (let d = 0; d < 4; d++) {
       const nx = cur.gx + DIRS[d][0], ny = cur.gy + DIRS[d][1];
       if (!inside(nx, ny)) continue;
@@ -1485,8 +1492,8 @@ function gridRoute(A, B, rects, used) {
          anything. Crossing one is free: a crossing gets a bridge, and paying
          to avoid it is what sent wires the long way round. */
       if (used && used.has(`${nx},${ny},${DIRS[d][0] ? 'h' : 'v'}`)) g += BUSY_COST;
-      const nk = `${nx},${ny},${d}`;
-      if (best.has(nk) && best.get(nk) <= g) continue;
+      const nk = stateOf(nx, ny, d);
+      if (bestG[nk] !== -1 && bestG[nk] <= g) continue;
       q.push({ gx: nx, gy: ny, d, g, f: g + h(nx, ny), from: cur });
     }
   }
@@ -1578,6 +1585,10 @@ const HOP_TICK = 4.5;                                // half the length of the t
 let hopCache = { key: '', hops: [] };
 
 const crossAt = (p1, p2, q1, q2) => {
+  /* Cheaper than the determinant below, and it rejects almost everything: two
+     segments that cannot possibly cross never reach the division at all. */
+  if (Math.max(p1.x, p2.x) < Math.min(q1.x, q2.x) || Math.max(q1.x, q2.x) < Math.min(p1.x, p2.x)
+    || Math.max(p1.y, p2.y) < Math.min(q1.y, q2.y) || Math.max(q1.y, q2.y) < Math.min(p1.y, p2.y)) return null;
   const d1x = p2.x - p1.x, d1y = p2.y - p1.y;
   const d2x = q2.x - q1.x, d2y = q2.y - q1.y;
   const den = d1x * d2y - d1y * d2x;
@@ -1588,6 +1599,16 @@ const crossAt = (p1, p2, q1, q2) => {
   if (t < edge || t > 1 - edge || u < edge || u > 1 - edge) return null;
   return { x: p1.x + d1x * t, y: p1.y + d1y * t, dx: d1x, dy: d1y, len: Math.hypot(d1x, d1y) };
 };
+
+/** The box a routed path's points all fall inside — cheap to compare, and it
+    is what turns "check every wire against every other wire" into "check
+    every wire against the handful that are anywhere near it". */
+const boxOf = (pts) => {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const p of pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+  return { x0, y0, x1, y1 };
+};
+const boxesMeet = (a, b) => a.x0 <= b.x1 && b.x0 <= a.x1 && a.y0 <= b.y1 && b.y0 <= a.y1;
 
 /** Every place two wires cross without sharing an end. The later wire carries
     the tick, so exactly one of each pair does — and it marks the crossing
@@ -1604,7 +1625,8 @@ function wireHops() {
   for (const w of S.work.wires) {
     const a2 = endPos(S.work, w.a), b2 = endPos(S.work, w.b);
     if (!a2 || !b2) { lines.push(null); continue; }
-    lines.push({ pts: wireRoute(w, a2, b2) || wirePoints(a2, b2, 14) });
+    const pts = wireRoute(w, a2, b2) || wirePoints(a2, b2, 14);
+    lines.push({ pts, box: boxOf(pts) });
   }
   const hops = [];
   for (let i = 0; i < lines.length; i++) {
@@ -1612,7 +1634,7 @@ function wireHops() {
     if (!L) continue;
     for (let j = 0; j < i; j++) {
       const M = lines[j];
-      if (!M) continue;
+      if (!M || !boxesMeet(L.box, M.box)) continue;
       for (let a3 = 0; a3 < L.pts.length - 1; a3++) {
         for (let b3 = 0; b3 < M.pts.length - 1; b3++) {
           const c = crossAt(L.pts[a3], L.pts[a3 + 1], M.pts[b3], M.pts[b3 + 1]);
@@ -1631,6 +1653,7 @@ function wireHops() {
     const own = new Set([S.work.wires[i].a.n, S.work.wires[i].b.n]);
     for (const r of rects) {
       if (own.has(r.id)) continue;
+      if (!boxesMeet(L.box, r)) continue;
       const edges = [
         [{ x: r.x0, y: r.y0 }, { x: r.x1, y: r.y0 }], [{ x: r.x1, y: r.y0 }, { x: r.x1, y: r.y1 }],
         [{ x: r.x1, y: r.y1 }, { x: r.x0, y: r.y1 }], [{ x: r.x0, y: r.y1 }, { x: r.x0, y: r.y0 }],
