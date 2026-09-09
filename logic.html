@@ -1021,12 +1021,25 @@ function compile(def) {
     }
   }
 
+  /* A wire can outlive the pin it was plugged into: lower a gate's input
+     count, or edit a chip's definition to drop one of its IN/OUT pins, and
+     every wire that pointed at the pin that is now gone is left holding a
+     reference to nothing. Every other broken thing in a circuit — a missing
+     chip, one that contains itself — gets said out loud rather than quietly
+     dropped, so this does too, instead of the wire just vanishing with no
+     word about why. */
   function endKey(def, path, e) {
     const node = nodeById(def, e.n);
-    if (!node) return null;
+    if (!node) {
+      errors.push(`A wire in "${def.name}" runs to a part that isn't there any more.`);
+      return null;
+    }
     const ports = portsOf(node);
     const count = e.s === 'in' ? ports.ins.length : ports.outs.length;
-    if (e.i >= count) return null;                    // port disappeared (input count lowered)
+    if (e.i >= count) {
+      errors.push(`A wire in "${def.name}" is left over from a pin that "${ports.label}" no longer has.`);
+      return null;                                     // port disappeared (input count lowered)
+    }
     return K(path, e.n, e.s === 'in' ? 'i' : 'o', e.i);
   }
 
