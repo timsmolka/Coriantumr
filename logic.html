@@ -5409,7 +5409,7 @@ const chipRowHi = (p) => BB.row(partBoard(p), 4);
 function partHoles(p) {
   const out = [];
   const lo = chipRowLo(p), hi = chipRowHi(p);
-  if (p.k === 'wire' || p.k === 'res' || p.k === 'led') {
+  if (p.k === 'wire' || p.k === 'res' || p.k === 'led' || p.k === 'diode' || p.k === 'cap' || p.k === 'bat') {
     out.push({ ...p.a, pin: 1 }, { ...p.b, pin: 2 });
   } else if (p.k === 'vcc' || p.k === 'gnd') {
     out.push({ ...p.a, pin: 1 });
@@ -5514,20 +5514,26 @@ function compileBoard(b) {
   for (const k of keys) holeNet.set(k, netOfKey(k));
 
   /* Resolve each part's pins to nets. */
-  const supplies = [], resistors = [], leds = [], chips = [], displays = [], transistors = [];
+  const supplies = [], resistors = [], diodes = [], leds = [], chips = [], displays = [], transistors = [];
   for (const p of b.parts) {
     const holes = partHoles(p);
     p._nets = {};
     for (const hpin of holes) p._nets[hpin.pin] = holeNet.get(tieKey(hpin.r, hpin.c));
     if (p.k === 'vcc') supplies.push({ p, net: p._nets[1], v: 1 });
     else if (p.k === 'gnd') supplies.push({ p, net: p._nets[1], v: 0 });
+    else if (p.k === 'bat') supplies.push({ p, net: p._nets[1], v: 1 }, { p, net: p._nets[2], v: 0 });
     else if (p.k === 'res') resistors.push({ p, a: p._nets[1], b: p._nets[2] });
+    else if (p.k === 'diode') diodes.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'led') leds.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'ic') chips.push({ p, spec: ICS[p.type] });
     else if (p.k === 'seg') displays.push({ p });
     else if (p.k === 'npn' || p.k === 'pnp') {
       transistors.push({ p, npn: p.k === 'npn', e: p._nets[1], b: p._nets[2], c: p._nets[3], on: false });
     }
+    /* A capacitor gets holes like anything else, and nothing else: in a real
+       circuit it smooths a supply that is already perfect here, or times a
+       delay this simulator does not have. It is on the board for a schematic
+       to look complete, not because current goes through it. */
   }
 
   /* An LED with no resistor anywhere on either leg will not survive long. */
@@ -5541,7 +5547,7 @@ function compileBoard(b) {
   const used = new Set();
   for (const p of b.parts) for (const k in p._nets) used.add(p._nets[k]);
 
-  return { board: b, nets: count, used: used.size, holeNet, supplies, resistors, leds, chips, displays, transistors, errors };
+  return { board: b, nets: count, used: used.size, holeNet, supplies, resistors, diodes, leds, chips, displays, transistors, errors };
 }
 
 class BoardSim {
@@ -5672,6 +5678,15 @@ class BoardSim {
       for (const r of this.c.resistors) {
         if (str[r.a] !== FLOAT && str[r.b] === FLOAT) { str[r.b] = WEAK; val[r.b] = val[r.a]; changed = true; }
         else if (str[r.b] !== FLOAT && str[r.a] === FLOAT) { str[r.a] = WEAK; val[r.a] = val[r.b]; changed = true; }
+      }
+      /* A diode only carries a level anode to cathode, and only while forward
+         biased — a high anode. Reverse it, or leave the anode low or
+         floating, and it blocks: the cathode gets nothing from this diode at
+         all, same as an open switch. */
+      for (const d of this.c.diodes) {
+        if (str[d.a] !== FLOAT && val[d.a] === 1 && str[d.k] < str[d.a]) {
+          str[d.k] = str[d.a]; val[d.k] = 1; changed = true;
+        }
       }
       if (!changed) break;
     }
@@ -5908,6 +5923,55 @@ function drawBoardPart(p) {
       ctx.stroke();
       break;
     }
+    case 'diode': {
+      const ang = Math.atan2(B.y - A.y, B.x - A.x);
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const len = Math.min(28, Math.hypot(B.x - A.x, B.y - A.y) * 0.5), hgt = 10;
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+      roundRect(-len / 2, -hgt / 2, len, hgt, 3);
+      ctx.fillStyle = '#2a2c30'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#111214'; ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+      /* the cathode band, on the side current cannot leave by */
+      ctx.fillStyle = '#e8e8e0';
+      ctx.fillRect(len / 2 - 6, -hgt / 2 + 1, 2.4, hgt - 2);
+      ctx.restore();
+      break;
+    }
+    case 'cap': {
+      const ang = Math.atan2(B.y - A.y, B.x - A.x);
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+      ctx.beginPath(); ctx.ellipse(0, 0, 9, 10, 0, 0, 7);
+      ctx.fillStyle = '#4a7dc9'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#2c4a78'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.beginPath(); ctx.ellipse(-2.5, -3, 2.6, 3.2, 0.5, 0, 7); ctx.fill();
+      ctx.restore();
+      break;
+    }
+    case 'bat': {
+      const ang = Math.atan2(B.y - A.y, B.x - A.x);
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const len = Math.min(40, Math.hypot(B.x - A.x, B.y - A.y) * 0.6), hgt = 15;
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+      roundRect(-len / 2, -hgt / 2, len, hgt, 3);
+      ctx.fillStyle = '#3a3d33'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#1c1e19'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
+      ctx.fillStyle = '#e8e2c8'; ctx.font = `700 9px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      /* the leads run out of the ends this part was drawn between, so the
+         terminal a wire actually lands on is the one printed here */
+      ctx.fillText('+', -len / 2 + 6, 0.5);
+      ctx.fillText('−', len / 2 - 6, 0.5);
+      ctx.restore();
+      break;
+    }
     case 'vcc': case 'gnd': {
       const red = p.k === 'vcc';
       ctx.fillStyle = red ? '#c0392b' : '#2c3038';
@@ -6122,7 +6186,7 @@ function hitBoardPart(w) {
   return null;
 }
 
-const BOARD_2T = { wire: 1, res: 1, led: 1 };
+const BOARD_2T = { wire: 1, res: 1, led: 1, diode: 1, cap: 1, bat: 1 };
 const BOARD_1T = { vcc: 1, gnd: 1 };
 
 function ghostColumn(hole) {
@@ -6136,6 +6200,9 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'wire') return { k: 'wire', id, a: hole, b: second, color: a.color || WIRE_COLORS[0] };
   if (a.type === 'res') return { k: 'res', id, a: hole, b: second, ohms: a.ohms || 220 };
   if (a.type === 'led') return { k: 'led', id, a: hole, b: second, color: a.color || '#ff4436' };
+  if (a.type === 'diode') return { k: 'diode', id, a: hole, b: second };
+  if (a.type === 'cap') return { k: 'cap', id, a: hole, b: second };
+  if (a.type === 'bat') return { k: 'bat', id, a: hole, b: second };
   if (a.type === 'vcc') return { k: 'vcc', id, a: hole };
   if (a.type === 'gnd') return { k: 'gnd', id, a: hole };
   if (a.type === 'npn' || a.type === 'pnp') {
@@ -6366,6 +6433,11 @@ function renderBoardPalette(host, q) {
     { name: '+5 V clip', color: '#c0392b', desc: 'Feeds 5 V into a hole.', arm: { type: 'vcc' } },
     { name: 'Ground clip', color: '#2c3038', desc: 'Ties a hole to 0 V.', arm: { type: 'gnd' } },
   ]);
+  add('More components', [
+    { name: 'Battery', color: '#3a3d33', desc: 'Click two holes. First is +, second is −.', arm: { type: 'bat' } },
+    { name: 'Diode', color: '#2a2c30', desc: 'Click two holes. First is the anode (+); it only conducts that way round.', arm: { type: 'diode' } },
+    { name: 'Capacitor', color: '#4a7dc9', desc: "Click two holes. Sits on the board like the real thing; nothing here is analogue enough to need one.", arm: { type: 'cap' } },
+  ]);
   add('Transistors — build a gate yourself', [
     { name: 'NPN transistor', color: '#1c1f24', sub: 'a switch a wire closes',
       desc: 'Conducts when its base is high.', arm: { type: 'npn' } },
@@ -6499,6 +6571,9 @@ function renderBoardInspector(host) {
     wire: ['Jumper wire', 'Joins two holes, so they become the same electrical point. Colour means nothing to the circuit — it is for your own sanity.'],
     res: ['Resistor', 'Holds current back. Put one in front of an LED so it does not burn out, or use one to gently hold a wire at 5 V or at ground when nothing else is driving it.'],
     led: ['LED', 'A light. Current flows from the anode (+, the first hole you clicked) to the cathode, and only that way round. Always give it a resistor.'],
+    diode: ['Diode', 'A one-way valve for current: it conducts from the anode (+, the first hole you clicked) to the cathode — the end with the light band — and blocks the other way entirely. An LED is one of these that happens to glow; this is the plain kind, the sort a real board uses to stop current going somewhere it should not.'],
+    cap: ['Capacitor', "Sits between two holes and does nothing to either of them. A real one smooths a jittery supply or times a delay — both jobs this simulator has no room for, since power here is already perfect and there is no such thing as “almost 1”. It is on the board because a real circuit has one, not because leaving it off would change anything."],
+    bat: ['Battery', 'A power source with two legs instead of two separate clips: the first hole you clicked is + (5 V), the second is ground. Electrically identical to a +5 V clip and a ground clip together — this is just what actually sits on a real bench instead of a bench supply.'],
     vcc: ['+5 V clip', 'Whatever hole it sits in becomes 5 volts — a logical 1. Chips need one on their VCC pin or they do nothing at all.'],
     gnd: ['Ground clip', 'Whatever hole it sits in becomes 0 volts — a logical 0. Every chip needs one on its GND pin too.'],
     btn: ['Push button', 'Its two legs on each side are joined all the time; pressing it joins the two sides together. Held down, it is a wire; released, it is a gap.'],
@@ -6546,6 +6621,18 @@ function renderBoardInspector(host) {
       class: 'btn', style: 'margin-bottom:7px',
       onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
     }, 'Turn it round (swap anode and cathode)'));
+  }
+  if (part.k === 'diode') {
+    s2.append(h('button', {
+      class: 'btn', style: 'margin-bottom:7px',
+      onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
+    }, 'Turn it round (swap anode and cathode)'));
+  }
+  if (part.k === 'bat') {
+    s2.append(h('button', {
+      class: 'btn', style: 'margin-bottom:7px',
+      onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
+    }, 'Turn it round (swap + and −)'));
   }
   if (part.k === 'seg') {
     s2.append(h('div', { class: 'row' },
