@@ -363,6 +363,38 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
 #modal{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center;padding:16px}
 #modal.open{display:flex}
 #modal .scrim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+
+/* ---- the Operate view ----------------------------------------------------
+   A screen and a keyboard, and nothing else — no palette, no wires, no
+   inspector. What is on it is entirely up to whatever the circuit underneath
+   was made to print; this is only the glass it prints onto. */
+#operate{
+  position:fixed;inset:0;z-index:60;background:#0b0f0c;
+  display:flex;flex-direction:column;padding:var(--safe-top) 0 var(--safe-bot);
+}
+#op-bar{
+  display:flex;align-items:center;gap:10px;padding:9px 14px;background:#0f140f;
+  border-bottom:1px solid #1c2b1c;flex:0 0 auto;
+}
+#op-label{
+  font-family:var(--mono);font-size:11px;letter-spacing:.16em;color:#5a8f5a;font-weight:700;
+}
+#op-bar .btn{background:#132013;border-color:#254025;color:#8fd98f}
+#op-bar .btn:hover{background:#1a2e1a}
+#op-screen{
+  flex:1 1 auto;min-height:0;overflow-y:auto;padding:22px 26px;
+  font-family:var(--mono);font-size:15px;line-height:1.5;color:#7fe27f;
+  text-shadow:0 0 6px rgba(127,226,127,.35);
+}
+#op-text{margin:0;white-space:pre-wrap;word-break:break-word;display:inline}
+#op-cursor{animation:op-blink 1s step-end infinite}
+@media (prefers-reduced-motion:reduce){#op-cursor{animation:none}}
+@keyframes op-blink{50%{opacity:0}}
+#op-empty{
+  margin:auto;max-width:440px;text-align:center;padding:0 24px;
+  font-family:var(--ui);color:#5a8f5a;font-size:14px;line-height:1.5;
+}
+#op-empty b{color:#8fd98f;font-family:var(--mono)}
 .sheet{
   position:relative;background:var(--panel);border:1px solid var(--line);border-radius:14px;
   box-shadow:var(--shadow);max-width:640px;width:100%;max-height:86vh;overflow:auto;
@@ -474,6 +506,7 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
     <div class="tools">
       <button class="btn icon" id="btn-undo" title="Undo (Ctrl+Z)">↶</button>
       <button class="btn icon wide-only" id="btn-redo" title="Redo (Ctrl+Shift+Z)">↷</button>
+      <button class="btn primary" id="btn-operate" title="Switch to the screen and keyboard this circuit is wired to" hidden>▶ Operate</button>
       <button class="btn wide-only" id="btn-chip" title="Package this circuit as a reusable chip">Make chip</button>
       <button class="btn wide-only" id="btn-examples">Examples</button>
       <button class="btn wide-only" id="btn-file">File</button>
@@ -530,6 +563,22 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
 <div id="modal" aria-modal="true" role="dialog">
   <div class="scrim" data-close="1"></div>
   <div class="sheet" id="modal-sheet"></div>
+</div>
+
+<!-- ==================== OPERATE VIEW ====================
+     What TERMINAL prints and KEYBOARD reads, full size — the screen and
+     keyboard the circuit underneath is actually wired to, instead of the
+     gates that make it work. The simulation keeps running behind this;
+     leaving does not pause anything. -->
+<div id="operate" hidden>
+  <div id="op-bar">
+    <span id="op-label">OPERATE</span>
+    <span class="grow"></span>
+    <button class="btn" id="op-close" title="Back to the circuit (Esc)">✎ Back to circuit</button>
+  </div>
+  <div id="op-screen"><pre id="op-text"></pre><span id="op-cursor">█</span></div>
+  <p id="op-empty" hidden>Nothing is wired to a screen or a keyboard yet — drop a <b>TERMINAL</b> or
+    <b>KEYBOARD</b> part (under Computer, in the palette) to give this circuit something to run on.</p>
 </div>
 
 <input type="file" id="file-input" accept="application/json,.json" hidden>
@@ -771,6 +820,51 @@ const PARTS = {
     ins: (n) => Array.from({ length: n.bits || 8 }, (_, i) => String(i)), outs: () => [],
     make: () => ({ bits: 8 }), w: 92,
     tip: 'Shows its inputs as a single number.',
+  },
+
+  /* ---- a computer's I/O ------------------------------------------------
+     Neither of these is a gate. A real computer's screen and keyboard are
+     not part of its logic either — they sit on the same bus as everything
+     else, at addresses a program reads and writes like any other memory.
+     These two are that idea in its plainest form: a byte in becomes a
+     character on screen, a keypress becomes a byte a program can read. What
+     the program DOES with that is entirely up to what is wired to it — the
+     part knows nothing about text adventures or calculators. */
+  TERMINAL: {
+    name: 'TERMINAL', cat: 'disp', group: 'Computer', nick: 'a screen a program writes to',
+    plain: "Eight data bits and a write strobe. The instant the strobe rises, whatever byte is on the data pins becomes a character on screen — the same trick a real memory-mapped display uses: the program does not know it is talking to a screen, it just stores a number somewhere the screen happens to be watching. Open the Operate view to read it full size.",
+    ins: () => ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'WR'], outs: () => [],
+    make: () => ({ buf: '' }), w: 100, h: 9 * PORT_GAP + GRID,
+    tip: 'Eight data bits and a write strobe. On the strobe’s rising edge, the byte on the data pins is printed.',
+    sim: (p, v, put) => {
+      const wr = v[p.ins[8]];
+      if (wr && !p.st.pwr) {
+        let byte = 0;
+        for (let i = 0; i < 8; i++) if (v[p.ins[i]]) byte |= 1 << i;
+        const n = p.node;
+        const buf = n.buf || '';
+        if (byte === 8) n.buf = buf.slice(0, -1);                    // backspace
+        else if (byte === 10 || byte === 13) n.buf = (buf + '\n').slice(-4000);
+        else if (byte >= 32 && byte < 127) n.buf = (buf + String.fromCharCode(byte)).slice(-4000);
+      }
+      p.st.pwr = wr;
+    },
+  },
+  KEYBOARD: {
+    name: 'KEYBOARD', cat: 'src', group: 'Computer', nick: 'a key at a time',
+    plain: "Holds the ASCII code of the last key you pressed on its data pins, and pulses its ready line high for one tick when a new one arrives — clock that pulse into whatever should catch it, or just poll the data pins yourself. It only listens for keys while the Operate view is open; the rest of the time there is nothing to press.",
+    ins: () => [], outs: () => ['D0', 'D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'RDY'],
+    make: () => ({}), w: 100, h: 9 * PORT_GAP + GRID,
+    tip: 'Eight data bits (the last key’s ASCII code) and a ready pulse, one tick wide, for each new key.',
+    sim: (p, v, put) => {
+      const n = p.node;
+      const q = n._queue;
+      let rdy = 0;
+      if (q && q.length) { n._last = q.shift(); rdy = 1; }
+      const byte = n._last || 0;
+      for (let i = 0; i < 8; i++) put(p.outs[i], (byte >> i) & 1);
+      put(p.outs[8], rdy);
+    },
   },
 
   /* ---- routing ---------------------------------------------------------
@@ -1178,6 +1272,7 @@ const S = {
      crowded board keeps starting a wire you did not want, and the fix for
      that should not be "be more careful". */
   play: false,
+  operating: false,                             // the Operate view is covering the board
   run: true, speedIx: 6,
   dirty: true, compiled: null, sim: null,
   armed: null,                                  // part waiting to be placed
@@ -3279,6 +3374,7 @@ const typing = () => {
 };
 
 window.addEventListener('keydown', (ev) => {
+  if (S.operating) { operateKey(ev); return; }
   if (ev.key === ' ' && !typing()) { spaceDown = true; }
   if (typing()) {
     if (ev.key === 'Escape') document.activeElement.blur();
@@ -3366,6 +3462,64 @@ function setRunning(on) {
   $('#btn-run').title = on ? 'Pause (Space)' : 'Run (Space)';
 }
 
+/* ---- the Operate view -----------------------------------------------------
+   A TERMINAL or a KEYBOARD anywhere in the circuit means there is something
+   to run it as, not just watch it — so the button that opens this view is
+   shown or hidden by whether one is on the board, never toggled by hand. */
+function hasComputerIO() {
+  return S.mode === 'editor' && S.work.nodes.some((n) => n.type === 'TERMINAL' || n.type === 'KEYBOARD');
+}
+
+function refreshOperateButton() {
+  $('#btn-operate').hidden = !hasComputerIO();
+}
+
+function openOperate() {
+  S.operating = true;
+  $('#operate').hidden = false;
+  const hasTerminal = S.work.nodes.some((n) => n.type === 'TERMINAL');
+  $('#op-empty').hidden = hasTerminal || S.work.nodes.some((n) => n.type === 'KEYBOARD');
+  updateOperateScreen();
+}
+
+function closeOperate() {
+  S.operating = false;
+  $('#operate').hidden = true;
+}
+
+/** What every TERMINAL on the board has printed, one under the next — most
+    circuits will only have the one, but nothing stops wiring up several. */
+function updateOperateScreen() {
+  const terms = S.work.nodes.filter((n) => n.type === 'TERMINAL');
+  const text = terms.map((n) => n.buf || '').join('\n───\n');
+  const el = $('#op-text');
+  if (el.textContent !== text) {
+    el.textContent = text;
+    $('#op-screen').scrollTop = $('#op-screen').scrollHeight;
+  }
+}
+
+/** A keypress while Operate is open feeds every KEYBOARD on the board — there
+    is only one keyboard on a real desk, however many parts are listening. */
+function operateKey(ev) {
+  if (ev.key === 'Escape') { closeOperate(); return; }
+  if (ev.key === 'Backspace' || ev.key === 'Tab') ev.preventDefault();  // don't navigate or shift focus
+  const code = asciiOf(ev.key);
+  if (code == null) return;
+  for (const n of S.work.nodes) {
+    if (n.type !== 'KEYBOARD') continue;
+    if (!n._queue) n._queue = [];
+    n._queue.push(code);
+  }
+}
+function asciiOf(key) {
+  if (key.length === 1) return key.charCodeAt(0);
+  if (key === 'Enter') return 13;
+  if (key === 'Backspace') return 8;
+  if (key === 'Tab') return 9;
+  return null;                          // arrows, modifiers, function keys: nothing to send yet
+}
+
 /* ==========================================================================
    8 · THE FRAME LOOP
    ========================================================================== */
@@ -3391,7 +3545,7 @@ function frame(now) {
       for (let i = 0; i < n; i++) S.sim.tick(now);
       tickN += n;
     }
-    drawEditor();
+    if (S.operating) updateOperateScreen(); else drawEditor();
   } else {
     if (S.bdirty) recompileBoard();
     if (S.bsim) {
@@ -3540,6 +3694,7 @@ function renderInspector() {
   const host = $('#inspector');
   if (previewObs) previewObs.disconnect();       // the old preview canvases are about to go
   host.innerHTML = '';
+  refreshOperateButton();
   if (S.mode === 'board') { renderBoardInspector(host); return; }
 
   const selNodes = S.work.nodes.filter((n) => S.sel.has(n.id));
@@ -7212,6 +7367,20 @@ and why the breadboard has so many of them.</p>
 <p>The same panel works on your own chips, so you can look inside something you built
 last week without opening it for editing.</p>
 
+<h4>Running something you built as a computer</h4>
+<p>Wire a <b>TERMINAL</b> or a <b>KEYBOARD</b> onto the board (under Computer in the
+palette) and an <b>▶ Operate</b> button appears in the top bar. It switches to a plain
+screen and keyboard — the circuit's own screen and keyboard, not a debugging view of it —
+and the simulation keeps running behind it the whole time you are there.</p>
+<p>Neither part knows what it is being used for. A <b>TERMINAL</b> is eight data pins and a
+write strobe: on the strobe's rising edge, whatever byte is on the data pins becomes one
+character on screen — the same trick a real memory-mapped display uses. A <b>KEYBOARD</b>
+is the same idea backwards: eight data pins carry the last key's code, and a ready pin
+pulses once when a new key arrives for something to catch. What either one becomes — a
+teletype, a text adventure, a login prompt — is entirely down to what you wire to them and
+what you put in the ROM that drives it. <kbd>Esc</kbd>, or the button in the corner, comes
+back to the circuit.</p>
+
 <h4>Breadboard</h4>
 <ul>
   <li>The copper is real: five holes in a column are one strip, the four rails run the
@@ -7377,6 +7546,9 @@ function boot() {
   $('#act-toggle').onclick = () => setPlay(!S.play);
   $('#btn-undo').onclick = undo;
   $('#btn-redo').onclick = redo;
+  $('#btn-operate').onclick = openOperate;
+  $('#op-close').onclick = closeOperate;
+  refreshOperateButton();
   $('#btn-chip').onclick = openMakeChip;
   $('#btn-examples').onclick = openExamples;
   $('#btn-file').onclick = openFileMenu;
@@ -7441,6 +7613,7 @@ window.LogicLab = {
   addJointToSelection, spliceJoint, hitTest, wireHops, recSevenSeg, SEG_BITS,
   copySelection, pasteClipboard, duplicateSelection, get clipboard() { return clipboard; },
   wiredPorts, refreshWiredPorts,
+  hasComputerIO, openOperate, closeOperate, operateKey, asciiOf, updateOperateScreen,
   get lib() { return LIB; },
 };
 
