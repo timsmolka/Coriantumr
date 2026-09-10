@@ -4995,10 +4995,18 @@ const boardH = () => (BB.height * boardCount() + BB.gap * (boardCount() - 1)) * 
     run a jumper — the rails included. */
 function tieKey(r, c) {
   const b = BB.boardOf(r), local = BB.local(r);
+  /* A breadboard's copper comes pre-wired: five holes in a column are already
+     one strip, and the rails run the board's whole length, before a single
+     part goes on. Perfboard has none of that — every pad is its own island,
+     bare copper with nothing under it, and the only connections that exist
+     are the ones you put there yourself. One line is the entire difference:
+     the board's plastic decides what breadboard ties for free; perfboard
+     just never asks the question. */
+  if (S.board && S.board.style === 'pcb') return `pcb-b${b}-${local}-${c}`;
   return local >= 100 ? `b${b}rail${local}` : `b${b}c${c}.${local < 5 ? 0 : 1}`;
 }
 
-function makeBoard() { return { cols: 90, boards: 2, parts: [] }; }
+function makeBoard() { return { cols: 90, boards: 2, parts: [], style: 'breadboard' }; }
 
 /* ---- the parts bin ------------------------------------------------------ */
 
@@ -5513,8 +5521,14 @@ function compileBoard(b) {
   const keys = [];
   const nBoards = clamp(b.boards || 1, 1, BB.maxBoards);
   for (let bd = 0; bd < nBoards; bd++) {
-    for (let c = 0; c < b.cols; c++) { keys.push(`b${bd}c${c}.0`); keys.push(`b${bd}c${c}.1`); }
-    for (const rail of [100, 101, 102, 103]) keys.push(`b${bd}rail${rail}`);
+    if (b.style === 'pcb') {
+      /* Bare copper: every pad gets its own tie, full stop — nothing on a
+         perfboard is joined to anything else until a trace says so. */
+      for (const local of BB.localRows) for (let c = 0; c < b.cols; c++) keys.push(`pcb-b${bd}-${local}-${c}`);
+    } else {
+      for (let c = 0; c < b.cols; c++) { keys.push(`b${bd}c${c}.0`); keys.push(`b${bd}c${c}.1`); }
+      for (const rail of [100, 101, 102, 103]) keys.push(`b${bd}rail${rail}`);
+    }
   }
   keys.forEach((k) => dsu.id(k));
 
@@ -5785,6 +5799,7 @@ function netOfHole(r, c) {
 
 function drawBoard() {
   const cm = S.bcam;
+  const isPcb = S.board.style === 'pcb';
   ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, VW, VH);
   ctx.save();
@@ -5803,21 +5818,26 @@ function drawBoard() {
     ctx.fillText(BB.railPlus(r) ? '+' : '−', holeX(boardCols() - 1) + P * 1.0, holeY(r));
   };
 
-  /* one slab of plastic per board, each with its own rails and channel */
+  /* one slab per board. A breadboard's plastic has rails and a channel
+     printed on before anything is plugged in; perfboard is fibreglass with
+     nothing on it but a grid of bare pads — no rails to paint, because there
+     are none until a trace makes one. */
   for (let bd = 0; bd < nBoards; bd++) {
     const top = boardTop(bd);
-    roundRect(0, top, W, BB.height * P, 10);
-    ctx.fillStyle = C.board; ctx.fill();
-    ctx.strokeStyle = C.boardLine; ctx.lineWidth = 2; ctx.stroke();
+    roundRect(0, top, W, BB.height * P, isPcb ? 3 : 10);
+    ctx.fillStyle = isPcb ? '#0c4d2e' : C.board; ctx.fill();
+    ctx.strokeStyle = isPcb ? '#083821' : C.boardLine; ctx.lineWidth = 2; ctx.stroke();
 
-    railLine(BB.row(bd, 100), '#c0392b'); railLine(BB.row(bd, 101), '#2b6cb0');
-    railLine(BB.row(bd, 102), '#2b6cb0'); railLine(BB.row(bd, 103), '#c0392b');
+    if (!isPcb) {
+      railLine(BB.row(bd, 100), '#c0392b'); railLine(BB.row(bd, 101), '#2b6cb0');
+      railLine(BB.row(bd, 102), '#2b6cb0'); railLine(BB.row(bd, 103), '#c0392b');
 
-    const chTop = holeY(BB.row(bd, 4)) + P * 0.55, chBot = holeY(BB.row(bd, 5)) - P * 0.55;
-    ctx.fillStyle = C.boardLine;
-    ctx.globalAlpha = 0.45;
-    ctx.fillRect(P * 0.4, chTop, W - P * 0.8, chBot - chTop);
-    ctx.globalAlpha = 1;
+      const chTop = holeY(BB.row(bd, 4)) + P * 0.55, chBot = holeY(BB.row(bd, 5)) - P * 0.55;
+      ctx.fillStyle = C.boardLine;
+      ctx.globalAlpha = 0.45;
+      ctx.fillRect(P * 0.4, chTop, W - P * 0.8, chBot - chTop);
+      ctx.globalAlpha = 1;
+    }
   }
 
   /* holes */
@@ -5835,8 +5855,16 @@ function drawBoard() {
         ctx.beginPath(); ctx.arc(x, y, P * 0.48, 0, 7); ctx.fill();
         ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = C.boardHole;
-      roundRect(x - s, y - s, s * 2, s * 2, 2); ctx.fill();
+      if (isPcb) {
+        /* a bare copper pad, not a hole punched in plastic */
+        ctx.fillStyle = '#c9924f';
+        ctx.beginPath(); ctx.arc(x, y, s * 1.05, 0, 7); ctx.fill();
+        ctx.fillStyle = '#0c4d2e';
+        ctx.beginPath(); ctx.arc(x, y, s * 0.55, 0, 7); ctx.fill();
+      } else {
+        ctx.fillStyle = C.boardHole;
+        roundRect(x - s, y - s, s * 2, s * 2, 2); ctx.fill();
+      }
       // A small centre pip carries the live level. Filling the whole hole
       // turns a powered board into a wall of colour and stops meaning anything.
       if (col) {
@@ -5849,7 +5877,7 @@ function drawBoard() {
   }
 
   /* labels */
-  ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.46}px ${FONT}`;
+  ctx.fillStyle = isPcb ? '#6fae8c' : '#8d8880'; ctx.font = `${P * 0.46}px ${FONT}`;
   ctx.textBaseline = 'middle';
   for (let bd = 0; bd < nBoards; bd++) {
     ctx.textAlign = 'center';
@@ -5902,6 +5930,20 @@ function drawBoardPart(p) {
 
   switch (p.k) {
     case 'wire': {
+      if (S.board.style === 'pcb') {
+        /* A trace, not a jumper: solder does not arc through the air on its
+           way over, it runs straight, and it ends in a blob, not a bare tip
+           poking into a hole it can fall back out of. */
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = sel ? C.sel : '#c9924f'; ctx.lineWidth = 3.2;
+        ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+        for (const e of [A, B]) {
+          ctx.fillStyle = '#e8c07a';
+          ctx.beginPath(); ctx.arc(e.x, e.y, 4, 0, 7); ctx.fill();
+          ctx.strokeStyle = '#8a5f2a'; ctx.lineWidth = 1; ctx.stroke();
+        }
+        break;
+      }
       const c = jumperPath(A, B);
       ctx.lineCap = 'round';
       ctx.strokeStyle = 'rgba(0,0,0,.25)'; ctx.lineWidth = 7;
@@ -6405,8 +6447,21 @@ function renderBoardPalette(host, q) {
   if (!q) {
     host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Board'), h('span', { class: 'rule' })));
     const n = boardCount();
+    const isPcb = S.board.style === 'pcb';
+    const setStyle = async (style) => {
+      if (style === S.board.style) return;
+      if (S.board.parts.length
+        && !await ask('Switch board type?', style === 'pcb'
+          ? 'A breadboard’s rows and rails are already wired together; a perfboard’s pads are not. Everything already placed stays, but nothing it relied on being pre-wired will still be joined — Ctrl+Z undoes this.'
+          : 'Any trace you soldered stays; the breadboard’s own rows and rails come back pre-wired underneath it, same as always.', 'Switch it')) return;
+      pushUndo();
+      S.board.style = style; S.bdirty = true; scheduleSave(); renderPalette(); renderInspector();
+    };
+    host.append(h('div', { class: 'seg', style: 'width:100%;margin-bottom:8px' },
+      h('button', { class: isPcb ? '' : 'on', style: 'flex:1', onclick: () => setStyle('breadboard') }, 'Breadboard'),
+      h('button', { class: isPcb ? 'on' : '', style: 'flex:1', onclick: () => setStyle('pcb') }, 'Perfboard')));
     host.append(h('div', { class: 'stack' },
-      h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
+      isPcb ? null : h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails'),
       h('div', { class: 'row', style: 'margin:0' },
         h('label', { style: 'flex:1 1 auto' }, `${boardCols()} columns wide`),
         h('button', {
