@@ -368,10 +368,15 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
    A screen and a keyboard, and nothing else — no palette, no wires, no
    inspector. What is on it is entirely up to whatever the circuit underneath
    was made to print; this is only the glass it prints onto. */
+/* An ID selector setting display outranks the UA stylesheet's [hidden]{display:
+   none}, so display has to be set per hidden-state explicitly here — otherwise
+   the [hidden] attribute toggles nothing and this covers the screen forever. */
 #operate{
+  display:none;
   position:fixed;inset:0;z-index:60;background:#0b0f0c;
-  display:flex;flex-direction:column;padding:var(--safe-top) 0 var(--safe-bot);
+  flex-direction:column;padding:var(--safe-top) 0 var(--safe-bot);
 }
+#operate:not([hidden]){display:flex}
 #op-bar{
   display:flex;align-items:center;gap:10px;padding:9px 14px;background:#0f140f;
   border-bottom:1px solid #1c2b1c;flex:0 0 auto;
