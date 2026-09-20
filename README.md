@@ -448,7 +448,7 @@ browser by itself.
 
 ## Data sources (all free, no API keys)
 
-- **Map & tiles:** [Leaflet](https://leafletjs.com/) + [CARTO Voyager](https://carto.com/basemaps/) basemap (built on [OpenStreetMap](https://www.openstreetmap.org/) data) — a clean, Google-Maps-like style
+- **Map & tiles:** [Leaflet](https://leafletjs.com/) for markers and the route line, with the map itself drawn by [MapLibre GL](https://maplibre.org/) in our own style (`js/mapstyle.js`) from [OpenStreetMap](https://www.openstreetmap.org/) data served by [OpenFreeMap](https://openfreemap.org/) — no API key. If the browser cannot do WebGL or the tile server is unreachable, it falls back to Esri's World Street Map pictures.
 - **Search (geocoding):** [Nominatim](https://nominatim.org/)
 - **Routing & turn-by-turn:** [OSRM](https://project-osrm.org/) public demo (car routing only)
 - **Weather:** [Open-Meteo](https://open-meteo.com/) — keyless, used for the speed-of-sound math

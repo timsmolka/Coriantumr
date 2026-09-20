@@ -48,6 +48,8 @@ import {
 
 import { distanceFact, speedFact } from "./facts.js";
 
+import { buildStyle, registerMarkers, ATTRIBUTION } from "./mapstyle.js";
+
 import {
   geocode,
   reverseGeocode,
@@ -207,28 +209,50 @@ let destinationMarker = null; // marker for the destination
 let routeLine = null; // the polyline drawn along the route
 
 /**
- * Create the Leaflet map, add the OpenStreetMap tile layer (keeping the
- * required attribution), and let the user click the map to set a destination.
+ * Draw the map itself: our own style (js/mapstyle.js) rendered in the browser
+ * from OpenStreetMap vector data. If this browser cannot do that — no WebGL,
+ * or the libraries or the tile server could not be reached — fall back to a
+ * ready-made picture map so there is always something to look at.
  */
-function initMap() {
-  // Start with a gentle world view (centered roughly on the Atlantic) so the
-  // map looks sensible before we know where the user is.
-  map = L.map("map", {
-    center: [20, 0],
-    zoom: 3,
-    zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
-  });
+function addBasemap() {
+  const canUseVector = (() => {
+    try {
+      if (typeof maplibregl === "undefined" || typeof L.maplibreGL !== "function") return false;
+      const probe = document.createElement("canvas");
+      return !!(probe.getContext("webgl2") || probe.getContext("webgl"));
+    } catch (err) {
+      return false;
+    }
+  })();
 
-  // Esri "World Street Map" basemap — a clean, colorful, Google-Maps-like
-  // style (labeled roads, tan/green land, blue water). It is free and
-  // keyless, no account needed. The attribution is REQUIRED and must stay
-  // visible, so we set it here on the tile layer.
-  //
-  // (This used to be CARTO's "Voyager" basemap, also free-and-keyless at the
-  // time — CARTO has since started requiring an API key, and unregistered
-  // requests now come back stamped "API KEY REQUIRED". Esri's tile path also
-  // orders y before x, unlike the {z}/{x}/{y} convention most tile servers
-  // use — that is not a typo below.)
+  if (!canUseVector) {
+    addPictureBasemap();
+    return;
+  }
+
+  const vector = L.maplibreGL({ style: buildStyle(), attribution: ATTRIBUTION });
+  vector.addTo(map);
+
+  // If the style never loads (tile server down, blocked network), swap in the
+  // picture map rather than leaving an empty grey rectangle.
+  let loaded = false;
+  const inner = vector.getMaplibreMap();
+  registerMarkers(inner); // draws our own round place markers on demand
+  inner.once("load", () => { loaded = true; });
+  inner.on("error", () => {
+    if (loaded || !map.hasLayer(vector)) return;
+    map.removeLayer(vector);
+    addPictureBasemap();
+  });
+}
+
+/**
+ * The fallback basemap: Esri's "World Street Map", free and keyless. Its path
+ * orders y before x, unlike the {z}/{x}/{y} most tile servers use — that is
+ * not a typo. (This used to be CARTO's basemap until CARTO began requiring an
+ * API key.) The attribution is required and must stay visible.
+ */
+function addPictureBasemap() {
   L.tileLayer(
     "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
     {
@@ -237,6 +261,24 @@ function initMap() {
       maxZoom: 19,
     }
   ).addTo(map);
+}
+
+/**
+ * Create the Leaflet map, add the basemap (keeping the required attribution),
+ * and let the user click the map to set a destination.
+ */
+function initMap() {
+  // Start with a gentle world view (centered roughly on the Atlantic) so the
+  // map looks sensible before we know where the user is.
+  map = L.map("map", {
+    center: [20, 0],
+    zoom: 3,
+    minZoom: 2,
+    maxZoom: 19, // a vector layer has no limit of its own, so say it here
+    zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
+  });
+
+  addBasemap();
 
   // Zoom buttons in the bottom-right corner, like Google Maps. The required
   // attribution keeps its default bottom-right spot — the bottom sheet sits at

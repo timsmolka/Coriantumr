@@ -35,6 +35,10 @@
   <!-- Leaflet's stylesheet (the map library). Loaded from a CDN, no key. -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
+  <!-- MapLibre GL draws the map itself from vector data, in our own style
+       (js/mapstyle.js), instead of showing someone else's pre-made pictures. -->
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+
   <!-- Our own styles. -->
   <link rel="stylesheet" href="css/style.css" />
 </head>
@@ -261,6 +265,11 @@
 
   <!-- Leaflet library (must load BEFORE our app.js so L is defined). -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- MapLibre GL, and the small bridge that lets it draw inside a Leaflet map
+       (so the markers, route line and zoom buttons keep working as they are). -->
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 
   <!-- Our app, loaded as a native ES module so it can `import` the engines. -->
   <script type="module" src="js/app.js"></script>
