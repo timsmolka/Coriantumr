@@ -5703,6 +5703,44 @@ function compileBoard(b) {
        to look complete, not because current goes through it. */
   }
 
+  /* The battery is 9 V, and the only thing on the bench built to take that is
+     the Arduino's VIN pin, which has a regulator behind it. Anything else that
+     the + terminal reaches — directly, or through a resistor too small to
+     bring it down to something an LED survives (under 470 Ω) — is fried, and
+     stays fried until it is replaced. */
+  const hot = new Set();
+  for (const p of b.parts) if (p.k === 'ext' && p.type === 'battery') hot.add(p._nets[1]);
+  if (hot.size) {
+    for (let grew = true; grew;) {
+      grew = false;
+      for (const r of resistors) {
+        if (r.ldr || r.ohms >= 470) continue;
+        if (hot.has(r.a) !== hot.has(r.b)) { hot.add(r.a); hot.add(r.b); grew = true; }
+      }
+      for (const d of diodes) if (hot.has(d.a) && !hot.has(d.k)) { hot.add(d.k); grew = true; }
+    }
+    const fragile = { led: 1, laser: 1, buzzer: 1, motor: 1, diode: 1, ic: 1, seg: 1, npn: 1, pnp: 1, relay: 1 };
+    let burned = 0;
+    for (const p of b.parts) {
+      let victim = false;
+      if (fragile[p.k]) victim = Object.keys(p._nets).some((i) => hot.has(p._nets[i]));
+      else if (p.k === 'ext' && p.type === 'uno') victim = Object.keys(p._nets).some((i) => i !== '1' && hot.has(p._nets[i]));
+      if (victim && !p.fried) { p.fried = true; burned++; }
+    }
+    if (burned && typeof toast === 'function') {
+      toast(`9 V from the battery reached ${burned === 1 ? 'a part' : burned + ' parts'} not built for it — fried. Battery + goes to the Arduino’s VIN only.`, true);
+    }
+  }
+  /* A fried part is out of the circuit: no light, no output, no switching. */
+  for (const list of [diodes, leds, loads, lasers, chips, transistors, displays, relays, unos]) {
+    for (let i = list.length - 1; i >= 0; i--) {
+      const q = list[i].p;
+      if (!q.fried) continue;
+      q._lit = false; q._on = false; q._bits = 0; q._dp = 0; q._d13 = 0; q._beam = false;
+      list.splice(i, 1);
+    }
+  }
+
   /* An LED with no resistor anywhere on either leg will not survive long. */
   for (const l of leds) {
     const guarded = resistors.some((r) => r.a === l.a || r.b === l.a || r.a === l.k || r.b === l.k);
@@ -6438,6 +6476,31 @@ function drawBoardPart(p) {
     }
     case 'ic': case 'seg': case 'btn': case 'dip': case 'relay': drawModule(p, sel); break;
   }
+  if (p.fried) drawScorch(p, A, B);
+}
+
+/** What is left of a part that was given more than it could take: a black
+    scorch mark and a curl of smoke, over wherever it sits. */
+function drawScorch(p, A, B) {
+  let x, y;
+  const span = partSpan(p);
+  if (p.k === 'ext') { x = p.x + EXT[p.type].w / 2; y = p.y + EXT[p.type].h / 2; }
+  else if (span) { x = (holeX(span[0]) + holeX(span[1])) / 2; y = (holeY(chipRowHi(p)) + holeY(chipRowLo(p))) / 2; }
+  else if (p.k === 'npn' || p.k === 'pnp') { x = holeX(p.c + 1); y = holeY(p.r) - BB.P; }
+  else if (A && B) { x = (A.x + B.x) / 2; y = (A.y + B.y) / 2; }
+  else return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,8,6,.72)';
+  ctx.beginPath(); ctx.ellipse(x, y, 12, 8, 0.4, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(200,190,175,.6)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  const t = performance.now() / 700;
+  for (let k = 0; k < 2; k++) {
+    const ph = (t + k * 0.5) % 1;
+    ctx.globalAlpha = 0.7 * (1 - ph);
+    ctx.beginPath(); ctx.moveTo(x + k * 5 - 2, y - 6);
+    ctx.bezierCurveTo(x + 6 + k * 4, y - 14 - ph * 18, x - 6, y - 20 - ph * 18, x + 2, y - 30 - ph * 22); ctx.stroke();
+  }
+  ctx.restore();
 }
 
 const LASER_NM = {
@@ -6509,9 +6572,9 @@ function drawExt(p, sel) {
     ctx.strokeStyle = sel ? C.sel : '#6d5710'; ctx.lineWidth = sel ? 2.6 : 1.6; ctx.stroke();
     ctx.fillStyle = '#22252b'; ctx.fillRect(x + 8, y + 8, w - 16, 26);
     ctx.fillStyle = '#e8e2c8'; ctx.font = `700 12px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('BATTERY 5V', x + w / 2, y + 21);
+    ctx.fillText('BATTERY 9V', x + w / 2, y + 21);
     ctx.fillStyle = '#5a4a12'; ctx.font = `10px ${FONT}`;
-    ctx.fillText('external power', x + w / 2, y + 44);
+    ctx.fillText('into VIN only', x + w / 2, y + 44);
   } else {
     roundRect(x, y, w, hh, 8);
     ctx.fillStyle = '#0d6e7d'; ctx.fill();
@@ -7053,7 +7116,6 @@ function renderBoardPalette(host, q) {
       h('button', { class: isPcb ? 'on' : '', style: 'flex:1', onclick: () => setStyle('pcb') }, 'Perfboard')));
     host.append(h('div', { class: 'stack' },
       h('button', { class: 'btn primary', onclick: addBenchPower }, 'Add bench power'),
-      isPcb ? null : h('button', { class: 'btn', onclick: powerTheRails }, 'Power the rails (clips)'),
       h('div', { class: 'row', style: 'margin:0' },
         h('label', { style: 'flex:1 1 auto' }, `${boardCols()} columns wide`),
         h('button', {
@@ -7116,8 +7178,6 @@ function renderBoardPalette(host, q) {
   add('Wiring', [
     { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
     { name: 'Resistor', color: '#d8c9a3', desc: 'Click two holes. 220 Ω by default.', arm: { type: 'res', ohms: 220 } },
-    { name: '+5 V clip', color: '#c0392b', desc: 'Feeds 5 V into a hole.', arm: { type: 'vcc' } },
-    { name: 'Ground clip', color: '#2c3038', desc: 'Ties a hole to 0 V.', arm: { type: 'gnd' } },
   ]);
   add('LEDs', [
     ['Red LED', '#ff5b4a'], ['Yellow LED', '#ffc247'], ['Green LED', '#4bd684'],
@@ -7229,21 +7289,6 @@ async function setBoardCount(n) {
   toast(n === 1 ? 'One board on the bench.' : `${n} boards on the bench.`);
 }
 
-function powerTheRails() {
-  pushUndo();
-  const has = (k, r) => S.board.parts.some((p) => p.k === k && p.a && p.a.r === r);
-  for (let bd = 0; bd < boardCount(); bd++) {
-    for (const [kind, local] of [['vcc', 100], ['gnd', 101], ['gnd', 102], ['vcc', 103]]) {
-      const r = BB.row(bd, local);
-      if (!has(kind, r)) S.board.parts.push({ k: kind, id: uid(), a: { r, c: 0 } });
-    }
-  }
-  S.bdirty = true; scheduleSave();
-  toast(boardCount() > 1
-    ? 'Every board’s + rails are at 5 V and − rails at ground.'
-    : 'Both + rails are at 5 V and both − rails at ground.');
-}
-
 let inspT = 0;
 function renderBoardInspectorSoon() { clearTimeout(inspT); inspT = setTimeout(renderInspector, 30); }
 
@@ -7281,8 +7326,8 @@ function renderBoardInspector(host) {
     diode: ['Diode', 'A one-way valve for current: it conducts from the anode (+, the first hole you clicked) to the cathode — the end with the light band — and blocks the other way entirely. An LED is one of these that happens to glow; this is the plain kind, the sort a real board uses to stop current going somewhere it should not.'],
     cap: ['Capacitor', "Sits between two holes and does nothing to either of them. A real one smooths a jittery supply or times a delay — both jobs this simulator has no room for, since power here is already perfect and there is no such thing as “almost 1”. It is on the board because a real circuit has one, not because leaving it off would change anything."],
     bat: ['Battery', 'A power source with two legs instead of two separate clips: the first hole you clicked is + (5 V), the second is ground. Electrically identical to a +5 V clip and a ground clip together — this is just what actually sits on a real bench instead of a bench supply.'],
-    vcc: ['+5 V clip', 'Whatever hole it sits in becomes 5 volts — a logical 1. Chips need one on their VCC pin or they do nothing at all.'],
-    gnd: ['Ground clip', 'Whatever hole it sits in becomes 0 volts — a logical 0. Every chip needs one on its GND pin too.'],
+    vcc: ['+5 V clip', 'Whatever hole it sits in becomes 5 volts — a logical 1. A shortcut from before there was an Arduino to power things: it is no longer in the palette, and only turns up on boards saved with one.'],
+    gnd: ['Ground clip', 'Whatever hole it sits in becomes 0 volts — a logical 0. A shortcut from before there was an Arduino to power things: it is no longer in the palette, and only turns up on boards saved with one.'],
     btn: ['Push button', 'Its two legs on each side are joined all the time; pressing it joins the two sides together. Held down, it is a wire; released, it is a gap.'],
     dip: ['DIP switch', 'Four separate switches. Each one joins the hole above it to the hole below it while it is on. Click a lever to flip it.'],
     npn: ['NPN transistor', "A switch that another wire closes. Put a 1 on the base \u2014 the middle leg \u2014 and the collector and emitter are joined; take it away and they part. Legs left to right: emitter, base, collector. Every chip in this list is millions of these, and you can build the gates yourself out of a transistor and a couple of resistors."],
@@ -7295,8 +7340,8 @@ function renderBoardInspector(host) {
     ldr: ['Photoresistor', 'A resistor whose value follows the light on it: a couple of hundred ohms in full light, up to a megohm in the dark. On its own it is a gap in the dark and a resistor in the light. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the light — a night-light, built out of two parts. A laser aimed at it counts as full light.'],
     laser: ['Laser diode', 'An LED that lases: past a threshold current its light stops being a dim glow and becomes a beam. The resistor beside it sets how hard it is driven, and that decides what kind of laser it is — read the panel below. With no resistor it dies the instant it is switched on.'],
     relay: ['Relay', "An electromagnet that works a switch. Put 5 V across the coil (C+ high, C− low) and the middle contact COM swings from NC over to NO; take it away and it springs back. It is how a small signal switches something big, and how the first computers did their logic — every one of them was a room of these."],
-    battery: ['Battery pack', 'Sits beside the board, not in it. Its + terminal is 5 V and its − terminal is ground, and nothing goes anywhere until you run leads from them: click a terminal, then a hole, or the terminal of another device. Wire it to an Arduino’s VIN and GND and the Arduino wakes up.'],
-    uno: ['Arduino Uno', 'A whole computer on a board, sitting beside the breadboard the way one really does. It runs off a battery on VIN and GND — or off USB, which you can toggle below — and only then puts 5 V on its 5V terminal and levels on D2–D13. Lead 5V and GND to the rails and it powers the breadboard. Pick what its “sketch” does below.'],
+    battery: ['Battery pack', 'A 9 V battery, sitting beside the board. Its + and − terminals go nowhere until you run leads: click a terminal, then the terminal of another device. 9 V is more than a chip or an LED will take — connect + to the Arduino’s VIN (which has a regulator behind it) and − to its GND, and never to the breadboard itself. Anything on the board that + reaches, directly or through a resistor under 470 Ω, is fried.'],
+    uno: ['Arduino Uno', 'The board’s power supply, and a computer besides. Feed its VIN and GND from a battery — or switch on USB below — and it turns the 9 V into a clean 5 V on its 5V terminal, plus levels on D2–D13. Lead 5V and GND to the breadboard’s rails and that is what powers everything on it: the Arduino stands between the battery and the parts, which is the whole point. Pick what its “sketch” does below.'],
   };
 
   const spec0 = part.k === 'ic' ? ICS[part.type] : null;
@@ -7328,6 +7373,14 @@ function renderBoardInspector(host) {
         type: 'number', min: '1', value: String(part.ohms), step: '10',
         onchange: (e) => { part.ohms = Math.max(1, parseInt(e.target.value, 10) || 220); S.bdirty = true; scheduleSave(); renderInspector(); },
       }))));
+  }
+  if (part.fried) {
+    s2.append(h('p', { class: 'muted', style: 'color:var(--danger);margin:0 0 6px' },
+      'Fried. It was given more than it can take — most likely 9 V straight from the battery. It does nothing until you replace it.'));
+    s2.append(h('button', {
+      class: 'btn primary', style: 'margin-bottom:7px',
+      onclick: () => { pushUndo(); part.fried = false; S.bdirty = true; scheduleSave(); renderInspector(); },
+    }, 'Fit a new one'));
   }
   if (part.k === 'fuse') {
     s2.append(h('div', { class: 'kv' }, h('span', {}, 'State'),
@@ -8026,10 +8079,13 @@ const W_ = (ar, ac, br, bc, color) => ({ k: 'wire', id: uid(), a: { r: ar, c: ac
 const R_ = (ar, ac, br, bc, ohms) => ({ k: 'res', id: uid(), a: { r: ar, c: ac }, b: { r: br, c: bc }, ohms: ohms || 220 });
 const L_ = (ar, ac, br, bc, color) => ({ k: 'led', id: uid(), a: { r: ar, c: ac }, b: { r: br, c: bc }, color: color || '#ff4436' });
 const IC_ = (type, col, extra) => Object.assign({ k: 'ic', id: uid(), type, col }, extra);
-const POWER = () => [
-  { k: 'vcc', id: uid(), a: { r: 100, c: 0 } }, { k: 'gnd', id: uid(), a: { r: 101, c: 0 } },
-  { k: 'gnd', id: uid(), a: { r: 102, c: 0 } }, { k: 'vcc', id: uid(), a: { r: 103, c: 0 } },
-];
+/** What powers every example: a battery beside the board into an Arduino's VIN,
+    the Arduino's 5V and GND onto the top rails, and a jumper apiece across to
+    the bottom pair — no magic 5 V clips, the way a bench is really wired. */
+const POWER = () => {
+  const [bat, uno] = benchPowerParts();
+  return [bat, uno, W_(100, 1, 103, 1, '#e04b3c'), W_(101, 1, 102, 1, '#4a4f58')];
+};
 
 function bbBlink() {
   return {
@@ -8399,6 +8455,12 @@ to unplug it; drag the body to move it. <b>Add bench power</b> does all of it in
 battery's + and − go to the Arduino's VIN and GND, and the Arduino's 5V and GND go to the
 top rails. The Arduino only puts anything out once it has power — VIN from a battery, or the
 USB switch in its inspector — and you choose what its “sketch” does there too.</p>
+<p>The battery is <b>9 V</b>, which is more than a chip or an LED will take; the Arduino's VIN
+pin has a regulator behind it that turns it into the clean 5 V everything else runs on.
+That is why there are no “+5 V” and “ground” clips any more: the Arduino <i>is</i> the supply.
+Connect the battery's + anywhere else — a rail, a chip, an LED, even a small resistor (under
+470 Ω) leading to one — and whatever it reaches is <b>fried</b>, with a scorch mark, until you
+select it and fit a new one.</p>
 
 <h4>More things to build with</h4>
 <ul>
@@ -8544,6 +8606,8 @@ function refreshRuntimeWarnings() {
     if (burnt) out.push({ text: `<b>${burnt} laser diode${burnt > 1 ? 's are' : ' is'} burnt out.</b> Select ${burnt > 1 ? 'one' : 'it'} to fit a new one.`, bad: true });
     const blown = S.board.parts.filter((p) => p.k === 'fuse' && p.blown).length;
     if (blown) out.push({ text: `<b>${blown} fuse${blown > 1 ? 's have' : ' has'} blown.</b> Fix the short, then fit a new one.`, bad: true });
+    const fried = S.board.parts.filter((p) => p.fried).length;
+    if (fried) out.push({ text: `<b>${fried} part${fried > 1 ? 's are' : ' is'} fried.</b> 9 V from the battery reached ${fried > 1 ? 'them' : 'it'}. Battery + goes to the Arduino’s VIN only; select a fried part to replace it.`, bad: true });
     const flat = S.board.parts.filter((p) => p.k === 'ext' && p.type === 'uno' && !p._on).length;
     if (flat) out.push({ text: `<b>${flat} Arduino${flat > 1 ? 's are' : ' is'} not powered.</b> Lead a battery to VIN and GND, or switch on USB.`, bad: false });
   }
