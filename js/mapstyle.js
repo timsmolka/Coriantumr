@@ -262,9 +262,9 @@ function poiLayers(ov) {
     ? ["all", ["==", ["geometry-type"], "Point"], isOneOf("class", POI_KINDS.filter((k) => ["green", "sight", "travel"].includes(k.kind)).flatMap((k) => k.classes))]
     : ["==", ["geometry-type"], "Point"];
   const tiers = [
-    { id: "r1", minzoom: 14, rank: ["all", [">=", ["get", "rank"], 1], ["<", ["get", "rank"], 7]] },
-    { id: "r7", minzoom: 15, rank: ["all", [">=", ["get", "rank"], 7], ["<", ["get", "rank"], 20]] },
-    { id: "r20", minzoom: 16, rank: [">=", ["get", "rank"], 20] },
+    { id: "r1", minzoom: 12.5, rank: ["all", [">=", ["get", "rank"], 1], ["<", ["get", "rank"], 7]] },
+    { id: "r7", minzoom: 13.6, rank: ["all", [">=", ["get", "rank"], 7], ["<", ["get", "rank"], 20]] },
+    { id: "r20", minzoom: 14.8, rank: [">=", ["get", "rank"], 20] },
   ];
   const layers = [];
   for (const t of tiers) {
@@ -273,6 +273,26 @@ function poiLayers(ov) {
       minzoom: t.minzoom, filter: ["all", point, t.rank, ["has", "name"]],
       layout: {
         // Marker and name are one symbol, so they appear or vanish together.
+        "icon-image": POI_ICON, "icon-allow-overlap": false,
+        "text-field": NAME, "text-font": REGULAR, "text-size": 11,
+        "text-anchor": "top", "text-offset": [0, 1.35], "text-max-width": 7,
+        "text-optional": true, "text-padding": 3, "symbol-sort-key": ["get", "rank"],
+      },
+      paint: { "text-color": POI_COLOR, "text-halo-color": COLOR.halo, "text-halo-width": 1.6 },
+    });
+  }
+  if (ov) {
+    // Overture's businesses only exist from about street-block zoom, so until
+    // then the big everyday landmarks — hospitals, hotels, colleges, stadiums
+    // and shopping centres — come from OpenStreetMap, from much further out.
+    // They hand over to Overture where its labels start, so nothing doubles up.
+    layers.push({
+      id: "poi-label-early", type: "symbol", source: SRC, "source-layer": "poi",
+      minzoom: 12.5, maxzoom: 14,
+      filter: ["all", ["==", ["geometry-type"], "Point"], ["has", "name"], ["<", ["get", "rank"], 7],
+        ["any", isOneOf("class", ["hospital", "lodging", "college", "stadium"]),
+          isOneOf("subclass", ["mall", "department_store"])]],
+      layout: {
         "icon-image": POI_ICON, "icon-allow-overlap": false,
         "text-field": NAME, "text-font": REGULAR, "text-size": 11,
         "text-anchor": "top", "text-offset": [0, 1.35], "text-max-width": 7,
@@ -338,9 +358,9 @@ KIND_COLOR.other = POI_OTHER;
 function overturePlaceLayers() {
   const tiers = [
     { id: "first", minzoom: 14, filter: isOneOf("basic_category", OV_FIRST) },
-    { id: "middle", minzoom: 14.6, filter: ["all", isOneOf("basic_category", OV_ALL),
+    { id: "middle", minzoom: 14.15, filter: ["all", isOneOf("basic_category", OV_ALL),
       ["!", isOneOf("basic_category", OV_FIRST)], ["!", isOneOf("basic_category", OV_LAST)]] },
-    { id: "last", minzoom: 15.4, filter: isOneOf("basic_category", OV_LAST) },
+    { id: "last", minzoom: 14.5, filter: isOneOf("basic_category", OV_LAST) },
   ];
   return tiers.map((t) => ({
     id: `ov-place-${t.id}`, type: "symbol", source: "ovplaces", "source-layer": "place", minzoom: t.minzoom,
@@ -394,7 +414,7 @@ function overtureAddressLayer() {
 /** Every layer whose labels can be clicked to select what they name. */
 export const CLICKABLE_LAYERS = [
   "ov-place-first", "ov-place-middle", "ov-place-last", "ov-address",
-  "poi-label-r1", "poi-label-r7", "poi-label-r20", "poi-transit", "housenumber",
+  "poi-label-early", "poi-label-r1", "poi-label-r7", "poi-label-r20", "poi-transit", "housenumber",
 ];
 
 // ---- places (countries, cities, neighbourhoods) ----------------------------
@@ -599,7 +619,7 @@ export function buildStyle(options = {}) {
     ...poiLayers(ov),
     ...(ov ? overturePlaceLayers() : []),
     {
-      id: "poi-transit", type: "symbol", source: SRC, "source-layer": "poi", minzoom: 15,
+      id: "poi-transit", type: "symbol", source: SRC, "source-layer": "poi", minzoom: 13.5,
       filter: ["all", ["==", ["geometry-type"], "Point"], ["match", ["get", "class"], ["railway", "airport"], true, false], ["has", "name"]],
       layout: {
         "text-field": NAME, "text-font": REGULAR, "text-size": 11, "text-anchor": "left",
