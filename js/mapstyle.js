@@ -376,6 +376,27 @@ function overtureLandCover() {
   };
 }
 
+/** House numbers from the National Address Database, via Overture: small grey
+    numbers that appear once you are zoomed right in, one per address, and each
+    one can be clicked to pin that address. */
+function overtureAddressLayer() {
+  return {
+    id: "ov-address", type: "symbol", source: "ovaddr", "source-layer": "address", minzoom: 17,
+    filter: ["has", "number"],
+    layout: {
+      "text-field": ["get", "number"], "text-font": REGULAR,
+      "text-size": zoomed(17, 10, 19.5, 13), "text-padding": 3,
+    },
+    paint: { "text-color": "#5f6368", "text-halo-color": COLOR.halo, "text-halo-width": 1.3 },
+  };
+}
+
+/** Every layer whose labels can be clicked to select what they name. */
+export const CLICKABLE_LAYERS = [
+  "ov-place-first", "ov-place-middle", "ov-place-last", "ov-address",
+  "poi-label-r1", "poi-label-r7", "poi-label-r20", "poi-transit", "housenumber",
+];
+
 // ---- places (countries, cities, neighbourhoods) ----------------------------
 function placeLabel(id, cls, extra) {
   return {
@@ -563,11 +584,11 @@ export function buildStyle(options = {}) {
       },
       paint: { "text-color": ["match", ["get", "network"], "us-interstate", "#ffffff", COLOR.text] },
     },
-    {
+    ...(ov ? [overtureAddressLayer()] : [{
       id: "housenumber", type: "symbol", source: SRC, "source-layer": "housenumber", minzoom: 18,
       layout: { "text-field": ["get", "housenumber"], "text-font": REGULAR, "text-size": 10 },
       paint: { "text-color": COLOR.textFaint, "text-halo-color": COLOR.halo, "text-halo-width": 1.2 },
-    },
+    }]),
     {
       id: "peak", type: "symbol", source: SRC, "source-layer": "mountain_peak", minzoom: 11,
       filter: ["has", "name"],
@@ -651,6 +672,7 @@ export function buildStyle(options = {}) {
       ...(ov ? {
         ovbase: { type: "vector", url: `pmtiles://${OVERTURE}/base.pmtiles` },
         ovplaces: { type: "vector", url: `pmtiles://${OVERTURE}/places.pmtiles` },
+        ovaddr: { type: "vector", url: `pmtiles://${OVERTURE}/addresses.pmtiles` },
       } : {}),
     },
     glyphs: GLYPHS,

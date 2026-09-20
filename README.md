@@ -449,6 +449,7 @@ browser by itself.
 ## Data sources (all free, no API keys)
 
 - **Map & tiles:** [Leaflet](https://leafletjs.com/) for markers and the route line, with the map itself drawn by [MapLibre GL](https://maplibre.org/) in our own style (`js/mapstyle.js`) from [OpenStreetMap](https://www.openstreetmap.org/) data served by [OpenFreeMap](https://openfreemap.org/), plus [Overture Maps](https://overturemaps.org/) for satellite land cover and real businesses (read straight from its PMTiles files) — no API key. If the browser cannot do WebGL or the tile server is unreachable, it falls back to Esri's World Street Map pictures.
+- **Places, addresses and recent searches:** click a business marker or (zoomed in) a house number to select it as the destination; type a business name or an address in the search box (places already on the map are suggested instantly, plus online results); every place you choose is remembered in *Recent searches* (stored only in your browser, removable one by one or all at once). Logic in `js/places.js`.
 - **Search (geocoding):** [Nominatim](https://nominatim.org/)
 - **Routing & turn-by-turn:** [OSRM](https://project-osrm.org/) public demo (car routing only)
 - **Weather:** [Open-Meteo](https://open-meteo.com/) — keyless, used for the speed-of-sound math

@@ -48,7 +48,24 @@ import {
 
 import { distanceFact, speedFact } from "./facts.js";
 
-import { buildStyle, registerMarkers, ATTRIBUTION, ATTRIBUTION_OVERTURE } from "./mapstyle.js";
+import {
+  buildStyle,
+  registerMarkers,
+  ATTRIBUTION,
+  ATTRIBUTION_OVERTURE,
+  CLICKABLE_LAYERS,
+} from "./mapstyle.js";
+
+import {
+  placeFromFeature,
+  matchPlaces,
+  looksLikeAddress,
+  loadRecents,
+  addRecent,
+  removeRecent,
+  clearRecents,
+  filterRecents,
+} from "./places.js";
 
 import {
   geocode,
@@ -207,6 +224,7 @@ let map = null; // the Leaflet map instance
 let originMarker = null; // marker for the start point
 let destinationMarker = null; // marker for the destination
 let routeLine = null; // the polyline drawn along the route
+let glMap = null; // the vector map drawing underneath Leaflet (null on the picture fallback)
 
 /**
  * Draw the map itself: our own style (js/mapstyle.js) rendered in the browser
@@ -241,21 +259,34 @@ function addBasemap() {
   });
   vector.addTo(map);
 
-  // If the style never loads (tile server down, blocked network), swap in the
-  // picture map rather than leaving an empty grey rectangle.
-  let loaded = false;
+  // If the main map data cannot be had (tile server down, blocked network),
+  // swap in the picture map rather than leaving an empty grey rectangle. One
+  // stray error is not enough — a single tile can fail while the rest load —
+  // so this waits a few seconds and only gives up if nothing ever arrived.
   const inner = vector.getMaplibreMap();
+  glMap = inner;
   registerMarkers(inner); // draws our own round place markers on demand
-  inner.once("load", () => { loaded = true; });
+
+  let mainDataArrived = false;
+  inner.on("sourcedata", (event) => {
+    if (event.sourceId === "openmaptiles" && event.isSourceLoaded) mainDataArrived = true;
+  });
+  let checking = false;
   inner.on("error", (event) => {
-    // Only the main map data failing means there is no map. If the extras from
-    // Overture are unreachable, carry on without them.
+    // Only the main map data (or the style itself) failing means there is no
+    // map. If the extras from Overture are unreachable, carry on without them.
     if (event.sourceId && event.sourceId !== "openmaptiles") return;
-    if (loaded || !map.hasLayer(vector)) return;
-    map.removeLayer(vector);
-    addPictureBasemap();
+    if (checking) return;
+    checking = true;
+    setTimeout(() => {
+      if (mainDataArrived || inner.isSourceLoaded("openmaptiles") || !map.hasLayer(vector)) return;
+      map.removeLayer(vector);
+      glMap = null;
+      addPictureBasemap();
+    }, 8000);
   });
 }
+
 
 /**
  * The fallback basemap: Esri's "World Street Map", free and keyless. Its path
@@ -296,12 +327,104 @@ function initMap() {
   // the bottom-left, so it won't cover the credits.
   L.control.zoom({ position: "bottomright" }).addTo(map);
 
-  // Clicking anywhere on the map sets that point as the destination. This is a
-  // handy alternative to typing a search query.
+  // Clicking a named place or a house number selects it as the destination;
+  // clicking bare map drops a pin there. Either way it is a quick alternative
+  // to typing a search query.
   map.on("click", (event) => {
+    const place = placeAtPoint(event.latlng);
+    if (place) {
+      selectPlace(place);
+      return;
+    }
     const { lat, lng } = event.latlng;
     setDestination(lat, lng, "Dropped pin");
   });
+
+  // A pointing hand over anything clickable, so it is obvious what is.
+  map.on("mousemove", (event) => {
+    map.getContainer().style.cursor = placeAtPoint(event.latlng) ? "pointer" : "";
+  });
+}
+
+/**
+ * The named place or house number under a spot on the map, or null. Looks a few
+ * pixels around it, so a small label is easy to hit, and takes whichever label
+ * is nearest. The vector map is drawn a little larger than the visible window
+ * (so panning never shows an edge), which means its pixels are not Leaflet's
+ * pixels — so the spot goes in as a latitude and longitude and is converted.
+ * @param {{lat:number, lng:number}} latlng
+ */
+function placeAtPoint(latlng) {
+  if (!glMap || !latlng) return null;
+  const point = glMap.project([latlng.lng, latlng.lat]);
+  const layers = CLICKABLE_LAYERS.filter((id) => glMap.getLayer(id));
+  if (!layers.length) return null;
+  const pad = 14;
+  const found = glMap.queryRenderedFeatures(
+    [[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]],
+    { layers }
+  );
+  let best = null;
+  let bestDistance = Infinity;
+  for (const feature of found) {
+    const place = placeFromFeature(feature);
+    if (!place) continue;
+    const at = glMap.project([place.lon, place.lat]);
+    const distance = Math.hypot(at.x - point.x, at.y - point.y);
+    if (distance < bestDistance) {
+      best = place;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/**
+ * Choose a place — from the map, a search result or the recent list — as the
+ * destination: remember it, show its name in the search box, and (when it came
+ * from a search, so it may be off screen) bring it into view.
+ * @param {{kind:string, name:string, detail?:string, lat:number, lon:number}} place
+ * @param {{show?: boolean}} [options] show: move the map to it
+ */
+function selectPlace(place, { show = false } = {}) {
+  addRecent(place);
+  el("search-input").value = place.name;
+  el("search-results").hidden = true;
+  if (show) {
+    const broad = ["city", "town", "village", "hamlet", "suburb", "administrative", "state", "county", "country", "island", "peak", "lake", "bay"];
+    const zoom = place.kind === "address" ? 18 : broad.includes(place.placeType) ? 12 : 17;
+    map.setView([place.lat, place.lon], Math.max(map.getZoom(), zoom));
+  }
+  return setDestination(place.lat, place.lon, place.name, place);
+}
+
+/**
+ * A small popup body built from plain text, never HTML — place names come from
+ * outside and must not be able to inject anything.
+ * @param {string} title
+ * @param {string} [detail]
+ * @param {{label:string, onClick:Function}} [action]
+ */
+function popupNode(title, detail, action) {
+  const box = document.createElement("div");
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  box.appendChild(strong);
+  if (detail) {
+    const line = document.createElement("div");
+    line.className = "popup-detail";
+    line.textContent = detail;
+    box.appendChild(line);
+  }
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "popup-action";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    box.appendChild(button);
+  }
+  return box;
 }
 
 /**
@@ -323,7 +446,7 @@ function placeOriginMarker(lat, lon, label) {
   } else {
     originMarker = L.marker([lat, lon], { icon, title: "Start" }).addTo(map);
   }
-  originMarker.bindPopup(`<strong>Start</strong><br>${label}`);
+  originMarker.bindPopup(popupNode("Start", label));
 }
 
 /**
@@ -332,7 +455,7 @@ function placeOriginMarker(lat, lon, label) {
  * @param {number} lon
  * @param {string} label - a popup label
  */
-function placeDestinationMarker(lat, lon, label) {
+function placeDestinationMarker(lat, lon, label, place) {
   // A Google-style red map pin, drawn as an inline SVG so it needs no image file.
   const icon = L.divIcon({
     className: "gm-pin-icon",
@@ -349,7 +472,13 @@ function placeDestinationMarker(lat, lon, label) {
   } else {
     destinationMarker = L.marker([lat, lon], { icon, title: "Destination" }).addTo(map);
   }
-  destinationMarker.bindPopup(`<strong>Destination</strong><br>${label}`);
+  destinationMarker.bindPopup(
+    popupNode(place && place.name ? place.name : "Destination", place ? place.detail : label, place ? {
+      label: "Start from here",
+      onClick: () => { destinationMarker.closePopup(); setOrigin(lat, lon, place.name || label); },
+    } : null)
+  );
+  if (place) destinationMarker.openPopup();
 }
 
 /**
@@ -457,9 +586,9 @@ async function setOrigin(lat, lon, label) {
  * @param {number} lon
  * @param {string} label
  */
-async function setDestination(lat, lon, label) {
+async function setDestination(lat, lon, label, place) {
   state.destination = { lat, lon, label };
-  placeDestinationMarker(lat, lon, label);
+  placeDestinationMarker(lat, lon, label, place);
 
   if (state.origin) {
     await requestRoute();
@@ -536,21 +665,87 @@ async function runSearch(query) {
   const trimmed = query.trim();
   const list = el("search-results");
 
-  // Empty (or too-short) query: hide the dropdown and do nothing.
-  if (trimmed.length < 3) {
-    list.hidden = true;
-    list.innerHTML = "";
+  // Nothing typed: offer the places used before.
+  if (trimmed.length === 0) {
+    showRecents();
     return;
   }
 
+  // Straight away, without waiting on the network: recent places that match,
+  // and places already drawn on the map that match (businesses, addresses).
+  const recents = filterRecents(loadRecents(), trimmed).slice(0, 4);
+  const onMap = matchPlaces(loadedPlaces(trimmed), trimmed, 4);
+  const early = [
+    { title: "Recent", items: recents, icon: "🕘", removable: true },
+    { title: "On the map", items: onMap, icon: "📍" },
+  ];
+  renderSearchList(early);
+
+  // Too short to ask the online search about.
+  if (trimmed.length < 3) return;
+
   try {
-    const results = await geocode(trimmed);
-    showSearchResults(results);
+    const results = await geocode(trimmed, { viewbox: mapViewbox() });
+    // The box may have changed while we waited; drop a stale answer.
+    if (el("search-input").value.trim() !== trimmed) return;
+    const online = results.map((r) => ({
+      kind: looksLikeAddress(trimmed) ? "address" : "search",
+      name: r.name || r.displayName,
+      detail: r.displayName,
+      lat: r.lat,
+      lon: r.lon,
+      placeType: r.type,
+    }));
+    renderSearchList([...early, { title: "Places and addresses", items: online, icon: "🔎" }], true);
   } catch (err) {
-    // A failed search shouldn't break the page; show a single info row.
-    list.hidden = false;
-    list.innerHTML = `<li class="result-detail">Search failed: ${err.message}</li>`;
+    // A failed search shouldn't break the page; keep what we already have and say so.
+    renderSearchList(early, true, `Online search failed: ${err.message}`);
   }
+}
+
+/** The area currently on screen, in the shape the search service wants. */
+function mapViewbox() {
+  const b = map.getBounds();
+  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+}
+
+/**
+ * Everything the map has already loaded that a name could match: businesses and
+ * OpenStreetMap places, and — when what was typed looks like the start of a
+ * street address — house numbers. Only what is near the view is loaded, which is
+ * exactly what makes these suggestions "close to you".
+ * @param {string} query
+ */
+function loadedPlaces(query) {
+  if (!glMap) return [];
+  const out = [];
+  const collect = (source, sourceLayer, layerId) => {
+    if (!glMap.getSource(source)) return;
+    let features = [];
+    try {
+      features = glMap.querySourceFeatures(source, { sourceLayer });
+    } catch (err) {
+      return;        // the source may not have loaded yet
+    }
+    for (const f of features) {
+      const place = placeFromFeature({ ...f, layer: { id: layerId } });
+      if (place) out.push(place);
+    }
+  };
+  collect("ovplaces", "place", "ov-place");
+  collect("openmaptiles", "poi", "poi");
+  if (looksLikeAddress(query)) collect("ovaddr", "address", "ov-address");
+  return out;
+}
+
+/** With an empty box: the places used before, newest first. */
+function showRecents() {
+  const recents = loadRecents();
+  if (recents.length === 0) {
+    el("search-results").hidden = true;
+    return;
+  }
+  renderSearchList([{ title: "Recent searches", items: recents, icon: "🕘", removable: true, clearable: true }]);
 }
 
 /**
@@ -558,43 +753,98 @@ async function runSearch(query) {
  * the destination.
  * @param {Array<{name:string, displayName:string, lat:number, lon:number, type:string}>} results
  */
-function showSearchResults(results) {
+function renderSearchList(sections, final = false, note = "") {
   const list = el("search-results");
   list.innerHTML = "";
+  const seen = new Set();
+  let count = 0;
 
-  if (!results || results.length === 0) {
-    list.hidden = false;
-    list.innerHTML = `<li class="result-detail">No matches found.</li>`;
-    return;
-  }
-
-  for (const place of results) {
-    const item = document.createElement("li");
-
-    // A bold short name on top, a quieter full address underneath.
-    const name = document.createElement("div");
-    name.className = "result-name";
-    name.textContent = place.name || place.displayName;
-
-    const detail = document.createElement("div");
-    detail.className = "result-detail";
-    detail.textContent = place.displayName;
-
-    item.appendChild(name);
-    item.appendChild(detail);
-
-    // Clicking a result: hide the dropdown, set the destination, center there.
-    item.addEventListener("click", () => {
-      list.hidden = true;
-      el("search-input").value = place.name || place.displayName;
-      map.setView([place.lat, place.lon], 13);
-      setDestination(place.lat, place.lon, place.name || place.displayName);
+  for (const section of sections) {
+    // The same place can turn up in more than one section (a recent one that
+    // is also on the map); show it once, under the first heading it fits.
+    const items = section.items.filter((place) => {
+      const key = `${place.name}|${place.lat.toFixed(4)}|${place.lon.toFixed(4)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
+    if (items.length === 0) continue;
 
-    list.appendChild(item);
+    const header = document.createElement("li");
+    header.className = "result-heading";
+    header.textContent = section.title;
+    if (section.clearable) {
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "result-clear";
+      clear.textContent = "Clear";
+      clear.addEventListener("mousedown", (e) => e.preventDefault());
+      clear.addEventListener("click", () => {
+        clearRecents();
+        list.hidden = true;
+      });
+      header.appendChild(clear);
+    }
+    list.appendChild(header);
+
+    for (const place of items) {
+      count++;
+      const item = document.createElement("li");
+      item.className = "result-row";
+
+      const icon = document.createElement("span");
+      icon.className = "result-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = place.kind === "address" ? "🏠" : section.icon;
+
+      // A bold short name on top, a quieter line underneath (its kind and address).
+      const text = document.createElement("div");
+      text.className = "result-text";
+      const name = document.createElement("div");
+      name.className = "result-name";
+      name.textContent = place.name;
+      const detail = document.createElement("div");
+      detail.className = "result-detail";
+      detail.textContent = place.detail || "";
+      text.appendChild(name);
+      text.appendChild(detail);
+
+      item.appendChild(icon);
+      item.appendChild(text);
+
+      if (section.removable) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "result-remove";
+        remove.title = "Remove from recent searches";
+        remove.textContent = "×";
+        remove.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeRecent(place);
+          item.remove();
+        });
+        item.appendChild(remove);
+      }
+
+      // Choosing a result: remember it, set it as the destination, go there.
+      item.addEventListener("click", () => selectPlace(place, { show: true }));
+      list.appendChild(item);
+    }
   }
 
-  list.hidden = false;
+  if (note) {
+    const li = document.createElement("li");
+    li.className = "result-detail";
+    li.textContent = note;
+    list.appendChild(li);
+  } else if (count === 0 && final) {
+    const li = document.createElement("li");
+    li.className = "result-detail";
+    li.textContent = "No matches found.";
+    list.appendChild(li);
+  }
+
+  list.hidden = list.children.length === 0;
 }
 
 
@@ -1147,6 +1397,25 @@ function wireUpControls() {
   const debouncedSearch = debounce((value) => runSearch(value), 400);
   el("search-input").addEventListener("input", (e) => {
     debouncedSearch(e.target.value);
+  });
+
+  // Clicking into an empty box shows the places used before, like any map app.
+  el("search-input").addEventListener("focus", (e) => {
+    if (!e.target.value.trim()) showRecents();
+  });
+  // Enter picks the first suggestion, so a typed name or address needs no mouse.
+  el("search-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const pickFirst = () => {
+        const first = el("search-results").querySelector(".result-row");
+        if (first) first.click();
+      };
+      // If suggestions are not up yet (Enter came quickly), fetch them first.
+      if (el("search-results").querySelector(".result-row")) pickFirst();
+      else runSearch(e.target.value).then(pickFirst);
+    } else if (e.key === "Escape") {
+      el("search-results").hidden = true;
+    }
   });
 
   // Hide the search dropdown when the user clicks elsewhere on the page.

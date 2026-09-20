@@ -114,14 +114,20 @@ export async function fetchJson(url, options) {
  *   A list of up to 5 matches. Returns an empty array if nothing is found.
  * @throws {Error} If the network request fails or returns a non-OK status.
  */
-export async function geocode(query) {
+export async function geocode(query, { viewbox } = {}) {
   // Build the URL. We always encode the user's query so special characters
   // (spaces, &, #, etc.) don't break the request.
   const url =
     "https://nominatim.openstreetmap.org/search" +
     "?format=jsonv2" +
-    "&limit=5" +
+    "&limit=6" +
     "&addressdetails=1" +
+    // `viewbox` (usually what is on screen) makes Nominatim prefer matches inside
+    // it — which is what turns "123 Main St" into the one near you rather than
+    // the one in the biggest city. It is a preference, not a limit.
+    (viewbox
+      ? `&viewbox=${viewbox.west},${viewbox.north},${viewbox.east},${viewbox.south}`
+      : "") +
     "&q=" +
     encodeURIComponent(query);
 
