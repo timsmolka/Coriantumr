@@ -28,20 +28,20 @@ export const ATTRIBUTION =
 
 // ---- palette ---------------------------------------------------------------
 const COLOR = {
-  land: "#f5f4f0",
-  water: "#a8d2f2",
-  waterLabel: "#4c7fbf",
-  park: "#cbe7b6",
-  wood: "#d5e9c3",
-  grass: "#dcedca",
-  sand: "#f1ebd8",
-  building: "#edeae3",
-  buildingEdge: "#e2ded5",
+  land: "#f5f5f5",
+  water: "#90daee",
+  waterLabel: "#5b8fc9",
+  park: "#c4f0d4",
+  wood: "#cdf5dc",
+  grass: "#d6f7e3",
+  sand: "#f6eee6",
+  building: "#e9e9ea",
+  buildingEdge: "#dcdcde",
   text: "#3c4043",
   textSoft: "#5f6368",
   textFaint: "#80868b",
   halo: "#ffffff",
-  boundary: "#b4b6bb",
+  boundary: "#a8adb8",
 };
 
 // Label fonts must exist on the glyph server; these three do.
@@ -68,20 +68,20 @@ const isOneOf = (property, list) => ["match", ["get", property], list, true, fal
 // Ordered from the smallest street to the biggest, so bigger roads paint over
 // smaller ones where they cross.
 const ROADS = [
-  { id: "service", classes: ["service", "track", "busway", "bus_guideway", "raceway"], minzoom: 14,
-    fill: "#ffffff", casing: "#dedcd5", w: [14, 0.5, 16, 3, 19, 12] },
-  { id: "minor", classes: ["minor"], minzoom: 12.5,
-    fill: "#ffffff", casing: "#d8d6ce", w: [12.5, 0.5, 14, 2.5, 16, 7, 19, 20] },
-  { id: "tertiary", classes: ["tertiary"], minzoom: 11,
-    fill: "#ffffff", casing: "#d4d2ca", w: [11, 0.6, 14, 3.5, 16, 9, 19, 24] },
+  { id: "service", classes: ["service", "track", "busway", "bus_guideway", "raceway"], minzoom: 13.2,
+    fill: "#ffffff", casing: "#d3d6db", w: [13.2, 0.5, 15, 1.6, 16, 3, 19, 12] },
+  { id: "minor", classes: ["minor"], minzoom: 11,
+    fill: "#ffffff", casing: "#cdd1d6", w: [11, 0.5, 12.5, 1.1, 14, 2.6, 16, 7, 19, 20] },
+  { id: "tertiary", classes: ["tertiary"], minzoom: 9.5,
+    fill: "#ffffff", casing: "#c4c9cf", w: [9.5, 0.5, 11, 1, 12.5, 2, 14, 3.8, 16, 9, 19, 24] },
   { id: "secondary", classes: ["secondary"], minzoom: 9,
-    fill: "#fffbe8", casing: "#d6d0bb", w: [9, 0.6, 12, 2, 14, 4.5, 16, 11, 19, 28] },
+    fill: "#ffffff", casing: "#bcc2ca", w: [9, 0.6, 12, 2, 14, 4.5, 16, 11, 19, 28] },
   { id: "primary", classes: ["primary"], minzoom: 7, ramps: true,
-    fill: "#fff0b4", casing: "#dfc06c", w: [7, 0.6, 10, 1.6, 12, 3, 14, 5.5, 16, 13, 19, 32] },
+    fill: "#a9bfd8", casing: "#8b9db4", w: [7, 0.6, 10, 1.6, 12, 3, 14, 5.5, 16, 13, 19, 32] },
   { id: "trunk", classes: ["trunk"], minzoom: 5, ramps: true,
-    fill: "#ffdf88", casing: "#e3a83f", w: [5, 0.5, 8, 1, 10, 2, 12, 3.4, 14, 6.5, 16, 14, 19, 34] },
+    fill: "#94acc8", casing: "#7c90a8", w: [5, 0.5, 8, 1, 10, 2, 12, 3.4, 14, 6.5, 16, 14, 19, 34] },
   { id: "motorway", classes: ["motorway"], minzoom: 4, ramps: true,
-    fill: "#fbc65d", casing: "#df992d", w: [4, 0.5, 8, 1.2, 10, 2.2, 12, 3.8, 14, 7, 16, 15, 19, 36] },
+    fill: "#94acc8", casing: "#7c90a8", w: [4, 0.5, 8, 1.2, 10, 2.2, 12, 3.8, 14, 7, 16, 15, 19, 36] },
 ];
 
 /** Roads as a stack of layers for one situation: on the ground, on a bridge
@@ -167,18 +167,69 @@ const POI_ICON = kindMatch((k) => `poi-${k.kind}`, "poi-other");
 export function registerMarkers(glMap) {
   const colors = { other: POI_OTHER };
   for (const k of POI_KINDS) colors[k.kind] = k.color;
+
+  /* A small white picture in the middle of each disc — a fork, a bag, a bed, a
+     cross, a tree, a star, a bus — so a marker says what it is before you read
+     it. Each is a handful of strokes on a 0-24 grid centred on the disc. */
+  const glyphs = {
+    food(g) {                                          // fork and knife
+      g.lineWidth = 1.6; g.beginPath();
+      g.moveTo(-3.4, -5); g.lineTo(-3.4, -0.6); g.moveTo(-1.5, -5); g.lineTo(-1.5, -0.6);
+      g.moveTo(-5.3, -5); g.lineTo(-5.3, -0.6);
+      g.moveTo(-3.4, -0.6); g.lineTo(-3.4, 5.5);
+      g.moveTo(3, 5.5); g.lineTo(3, -5); g.quadraticCurveTo(5.4, -2.5, 3.6, 0.6); g.lineTo(3, 0.6);
+      g.stroke();
+    },
+    shop(g) {                                          // shopping bag
+      g.lineWidth = 1.6; g.beginPath();
+      g.rect(-4.6, -2, 9.2, 7.4); g.moveTo(-2.2, -2); g.quadraticCurveTo(-2.2, -5.6, 0, -5.6);
+      g.quadraticCurveTo(2.2, -5.6, 2.2, -2); g.stroke();
+    },
+    stay(g) {                                          // bed
+      g.lineWidth = 1.6; g.beginPath();
+      g.moveTo(-5.5, -4); g.lineTo(-5.5, 5); g.moveTo(-5.5, 2.4); g.lineTo(5.5, 2.4); g.lineTo(5.5, 5);
+      g.moveTo(-5.5, 0); g.lineTo(5.5, 0); g.lineTo(5.5, 2.4); g.stroke();
+      g.beginPath(); g.arc(-3, -1.6, 1.3, 0, Math.PI * 2); g.fill();
+    },
+    health(g) {                                        // cross
+      g.fillRect(-1.7, -5.6, 3.4, 11.2); g.fillRect(-5.6, -1.7, 11.2, 3.4);
+    },
+    green(g) {                                         // tree
+      g.beginPath(); g.moveTo(0, -6); g.lineTo(4.8, 1.2); g.lineTo(-4.8, 1.2); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(0, -2.6); g.lineTo(5.6, 4); g.lineTo(-5.6, 4); g.closePath(); g.fill();
+      g.fillRect(-0.9, 3.5, 1.8, 3);
+    },
+    sight(g) {                                         // star
+      g.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 ? 2.7 : 6.2, a = -Math.PI / 2 + (i * Math.PI) / 5;
+        g[i ? "lineTo" : "moveTo"](Math.cos(a) * r, Math.sin(a) * r);
+      }
+      g.closePath(); g.fill();
+    },
+    travel(g) {                                        // bus
+      g.lineWidth = 1.6; g.beginPath();
+      g.rect(-4.6, -5.4, 9.2, 9); g.moveTo(-4.6, 0.4); g.lineTo(4.6, 0.4); g.stroke();
+      g.beginPath(); g.arc(-2.6, 2.2, 0.9, 0, 7); g.arc(2.6, 2.2, 0.9, 0, 7); g.fill();
+      g.fillRect(-3.4, 4.6, 1.8, 1.6); g.fillRect(1.6, 4.6, 1.8, 1.6);
+    },
+    other(g) { g.beginPath(); g.arc(0, 0, 2.8, 0, Math.PI * 2); g.fill(); },
+  };
+
   glMap.on("styleimagemissing", (e) => {
     if (!e.id.startsWith("poi-")) return;
-    const color = colors[e.id.slice(4)] || POI_OTHER;
-    const size = 28, c = document.createElement("canvas");
+    const kind = e.id.slice(4), color = colors[kind] || POI_OTHER;
+    const size = 40, mid = size / 2, c = document.createElement("canvas");
     c.width = c.height = size;
     const g = c.getContext("2d");
-    g.beginPath(); g.arc(size / 2, size / 2, 11, 0, Math.PI * 2);
-    g.fillStyle = "#ffffff"; g.fill();
-    g.beginPath(); g.arc(size / 2, size / 2, 8.2, 0, Math.PI * 2);
+    g.beginPath(); g.arc(mid, mid, 17, 0, Math.PI * 2);           // soft shadow
+    g.fillStyle = "rgba(60,64,67,0.28)"; g.fill();
+    g.beginPath(); g.arc(mid, mid - 0.6, 16, 0, Math.PI * 2);      // the coloured disc
     g.fillStyle = color; g.fill();
-    g.beginPath(); g.arc(size / 2, size / 2, 2.6, 0, Math.PI * 2);
-    g.fillStyle = "rgba(255,255,255,0.9)"; g.fill();
+    g.save(); g.translate(mid, mid - 0.6); g.scale(1.25, 1.25);
+    g.fillStyle = "#ffffff"; g.strokeStyle = "#ffffff"; g.lineCap = "round"; g.lineJoin = "round";
+    (glyphs[kind] || glyphs.other)(g);
+    g.restore();
     glMap.addImage(e.id, g.getImageData(0, 0, size, size), { pixelRatio: 2 });
   });
 }
@@ -186,9 +237,9 @@ export function registerMarkers(glMap) {
 function poiLayers() {
   const point = ["==", ["geometry-type"], "Point"];
   const tiers = [
-    { id: "r1", minzoom: 15, rank: ["all", [">=", ["get", "rank"], 1], ["<", ["get", "rank"], 7]] },
-    { id: "r7", minzoom: 16, rank: ["all", [">=", ["get", "rank"], 7], ["<", ["get", "rank"], 20]] },
-    { id: "r20", minzoom: 17, rank: [">=", ["get", "rank"], 20] },
+    { id: "r1", minzoom: 14, rank: ["all", [">=", ["get", "rank"], 1], ["<", ["get", "rank"], 7]] },
+    { id: "r7", minzoom: 15, rank: ["all", [">=", ["get", "rank"], 7], ["<", ["get", "rank"], 20]] },
+    { id: "r20", minzoom: 16, rank: [">=", ["get", "rank"], 20] },
   ];
   const layers = [];
   for (const t of tiers) {
@@ -199,7 +250,7 @@ function poiLayers() {
         // Marker and name are one symbol, so they appear or vanish together.
         "icon-image": POI_ICON, "icon-allow-overlap": false,
         "text-field": NAME, "text-font": REGULAR, "text-size": 11,
-        "text-anchor": "top", "text-offset": [0, 0.9], "text-max-width": 7,
+        "text-anchor": "top", "text-offset": [0, 1.35], "text-max-width": 7,
         "text-optional": true, "text-padding": 3, "symbol-sort-key": ["get", "rank"],
       },
       paint: { "text-color": POI_COLOR, "text-halo-color": COLOR.halo, "text-halo-width": 1.6 },
@@ -234,20 +285,20 @@ export function buildStyle() {
         "fill-color": ["match", ["get", "class"],
           "wood", COLOR.wood, "grass", COLOR.grass, "sand", COLOR.sand,
           "ice", "#ffffff", "wetland", "#d7ebdf", NOTHING],
-        "fill-opacity": zoomed(3, 0.35, 10, 0.8),
+        "fill-opacity": zoomed(3, 0.5, 9, 1),
       },
     },
     {
       id: "landuse", type: "fill", source: SRC, "source-layer": "landuse", minzoom: 8,
       paint: {
         "fill-color": ["match", ["get", "class"],
-          ["retail", "commercial"], "#f2ecdf",
-          "industrial", "#eceae4",
-          "hospital", "#fbe6e4",
+          ["retail", "commercial"], "#f9f0dc",
+          ["industrial", "military", "quarry", "garages"], "#e2e2e6",
+          "hospital", "#fde8e6",
           ["school", "college", "university", "kindergarten"], "#f1ecdf",
-          "cemetery", "#dcecd2",
-          ["stadium", "pitch", "playground", "theme_park", "zoo"], "#d0e8c0",
-          "railway", "#eeede9",
+          "cemetery", "#c4f0d4",
+          ["stadium", "pitch", "playground", "theme_park", "zoo"], "#c4f0d4",
+          "railway", "#eeeeee",
           NOTHING],
         "fill-opacity": zoomed(8, 0.4, 13, 1),
       },
@@ -273,7 +324,7 @@ export function buildStyle() {
     // Airports.
     {
       id: "aeroway-area", type: "fill", source: SRC, "source-layer": "aeroway", minzoom: 10,
-      filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#eceae6" },
+      filter: ["==", ["geometry-type"], "Polygon"], paint: { "fill-color": "#e0e0e4" },
     },
     {
       id: "aeroway-line", type: "line", source: SRC, "source-layer": "aeroway", minzoom: 10,
@@ -417,8 +468,8 @@ export function buildStyle() {
     }),
     placeLabel("place-suburb", ["suburb", "hamlet"], {
       top: { minzoom: 11 },
-      layout: { "text-size": zoomed(11, 10, 16, 14) },
-      paint: { "text-color": COLOR.textSoft },
+      layout: { "text-size": zoomed(11, 9.5, 16, 12.5), "text-transform": "uppercase", "text-letter-spacing": 0.1 },
+      paint: { "text-color": COLOR.textFaint },
     }),
     placeLabel("place-village", "village", {
       top: { minzoom: 9 },
