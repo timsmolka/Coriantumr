@@ -3670,7 +3670,8 @@ function armPart(p) {
   if (p) { S.pendingWire = null; S.blead = null; }
   const sub = p ? (p.chip || p.ic || '') : '';
   $$('.pal-item').forEach((e) => e.classList.toggle('armed',
-    !!p && e.dataset.type === p.type && e.dataset.chip === sub));
+    !!p && e.dataset.type === p.type && e.dataset.chip === sub
+    && (p.type !== 'led' || e.dataset.color === undefined || e.dataset.color === p.color)));
   if (p) {
     toast(S.mode === 'board' && BOARD_2T[p.type]
       ? 'Click one hole, then the other.'
@@ -6264,12 +6265,21 @@ function drawBoardPart(p) {
       ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
       const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      /* An electrolytic, lying down: a can with a pale stripe of minus signs
+         down the negative side. Nothing about it is round and glowing, which
+         is what an LED is. */
+      const len = Math.min(40, Math.hypot(B.x - A.x, B.y - A.y) * 0.72), hgt = 15;
       ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
-      ctx.beginPath(); ctx.ellipse(0, 0, 9, 10, 0, 0, 7);
-      ctx.fillStyle = '#4a7dc9'; ctx.fill();
-      ctx.strokeStyle = sel ? C.sel : '#2c4a78'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,.5)';
-      ctx.beginPath(); ctx.ellipse(-2.5, -3, 2.6, 3.2, 0.5, 0, 7); ctx.fill();
+      roundRect(-len / 2, -hgt / 2, len, hgt, 3);
+      ctx.fillStyle = '#1f3f78'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#0f2244'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
+      ctx.fillStyle = '#c8d3e8';                                     // the stripe, on the − end
+      ctx.fillRect(len / 2 - 11, -hgt / 2 + 1, 9, hgt - 2);
+      ctx.fillStyle = '#1f3f78';
+      for (const dy of [-4, 0, 4]) ctx.fillRect(len / 2 - 8.5, dy - 0.7, 4, 1.4);
+      ctx.fillStyle = '#9fb4dc'; ctx.font = `700 6.5px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('10µF', -len / 2 + 11, 0.5);
       ctx.restore();
       break;
     }
@@ -7083,7 +7093,8 @@ function renderBoardPalette(host, q) {
     for (const it of match) {
       const press = (ev) => {
         ev.preventDefault();
-        const same = S.armed && S.armed.type === it.arm.type && S.armed.ic === it.arm.ic;
+        const same = S.armed && S.armed.type === it.arm.type && S.armed.ic === it.arm.ic
+          && (it.arm.type !== 'led' || S.armed.color === it.arm.color);
         S.bpending = null;
         armPart(same ? null : { ...it.arm });
       };
@@ -7095,7 +7106,8 @@ function renderBoardPalette(host, q) {
         }, h('span', { class: 'top' }, dot, it.name), h('span', { class: 'sub' }, it.sub))
         : h('button', {
           class: 'pal-item', type: 'button', title: it.desc || '',
-          'data-type': it.arm.type, 'data-chip': it.arm.ic || '', onpointerdown: press,
+          'data-type': it.arm.type, 'data-chip': it.arm.ic || '',
+          'data-color': it.arm.type === 'led' ? it.arm.color : '', onpointerdown: press,
         }, dot, it.name));
     }
     host.append(wrap);
@@ -7104,10 +7116,13 @@ function renderBoardPalette(host, q) {
   add('Wiring', [
     { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
     { name: 'Resistor', color: '#d8c9a3', desc: 'Click two holes. 220 Ω by default.', arm: { type: 'res', ohms: 220 } },
-    { name: 'LED', color: '#ff4436', desc: 'First hole is the anode (+).', arm: { type: 'led', color: '#ff4436' } },
     { name: '+5 V clip', color: '#c0392b', desc: 'Feeds 5 V into a hole.', arm: { type: 'vcc' } },
     { name: 'Ground clip', color: '#2c3038', desc: 'Ties a hole to 0 V.', arm: { type: 'gnd' } },
   ]);
+  add('LEDs', [
+    ['Red LED', '#ff5b4a'], ['Yellow LED', '#ffc247'], ['Green LED', '#4bd684'],
+    ['Blue LED', '#5cc8ff'], ['Purple LED', '#c77dff'], ['White LED', '#ffffff'],
+  ].map(([name, color]) => ({ name, color, desc: 'Click two holes. First is the anode (+). Always give it a resistor.', arm: { type: 'led', color } })));
   add('Power — beside the board', [
     { name: 'Battery pack', color: '#c9a227', sub: 'set down off the board',
       desc: 'Sits beside the board. Click its + and − terminals, then holes (or another device) to run leads.', arm: { type: 'battery' } },
@@ -7116,7 +7131,7 @@ function renderBoardPalette(host, q) {
   ]);
   add('More components', [
     { name: 'Diode', color: '#2a2c30', desc: 'Click two holes. First is the anode (+); it only conducts that way round.', arm: { type: 'diode' } },
-    { name: 'Capacitor', color: '#4a7dc9', desc: "Click two holes. Sits on the board like the real thing; nothing here is analogue enough to need one.", arm: { type: 'cap' } },
+    { name: 'Capacitor', color: '#1f3f78', desc: "Click two holes. The pale stripe marks the − leg. Sits on the board like the real thing; nothing here is analogue enough to need one.", arm: { type: 'cap' } },
     { name: 'Fuse', color: '#c9b06a', desc: 'Click two holes. Carries current like a wire until 5 V and ground meet through it — then it blows.', arm: { type: 'fuse' } },
     { name: 'Toggle switch', color: '#2b2f36', desc: 'Click two holes. Click it to close or open the gap between them.', arm: { type: 'tog' } },
     { name: 'Buzzer', color: '#191b1f', desc: 'Click two holes. First is +. Sounds while it has 5 V across it.', arm: { type: 'buzzer' } },
