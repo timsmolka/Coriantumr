@@ -48,7 +48,7 @@ import {
 
 import { distanceFact, speedFact } from "./facts.js";
 
-import { buildStyle, registerMarkers, ATTRIBUTION } from "./mapstyle.js";
+import { buildStyle, registerMarkers, ATTRIBUTION, ATTRIBUTION_OVERTURE } from "./mapstyle.js";
 
 import {
   geocode,
@@ -230,7 +230,15 @@ function addBasemap() {
     return;
   }
 
-  const vector = L.maplibreGL({ style: buildStyle(), attribution: ATTRIBUTION });
+  // Overture Maps adds satellite land cover and real businesses on top of
+  // OpenStreetMap. It needs the PMTiles reader; without it, OpenStreetMap alone.
+  const overture = typeof pmtiles !== "undefined";
+  if (overture) maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+
+  const vector = L.maplibreGL({
+    style: buildStyle({ overture }),
+    attribution: overture ? ATTRIBUTION_OVERTURE : ATTRIBUTION,
+  });
   vector.addTo(map);
 
   // If the style never loads (tile server down, blocked network), swap in the
@@ -239,7 +247,10 @@ function addBasemap() {
   const inner = vector.getMaplibreMap();
   registerMarkers(inner); // draws our own round place markers on demand
   inner.once("load", () => { loaded = true; });
-  inner.on("error", () => {
+  inner.on("error", (event) => {
+    // Only the main map data failing means there is no map. If the extras from
+    // Overture are unreachable, carry on without them.
+    if (event.sourceId && event.sourceId !== "openmaptiles") return;
     if (loaded || !map.hasLayer(vector)) return;
     map.removeLayer(vector);
     addPictureBasemap();

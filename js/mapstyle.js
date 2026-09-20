@@ -25,6 +25,8 @@ export const ATTRIBUTION =
   '&copy; <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
   '&copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' +
   'Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+export const ATTRIBUTION_OVERTURE = ATTRIBUTION +
+  ' &copy; <a href="https://docs.overturemaps.org/attribution" target="_blank" rel="noopener">Overture Maps Foundation</a>';
 
 // ---- palette ---------------------------------------------------------------
 const COLOR = {
@@ -217,6 +219,7 @@ export function registerMarkers(glMap) {
   };
 
   glMap.on("styleimagemissing", (e) => {
+    if (e.id.startsWith("shield-")) { addShield(glMap, e.id); return; }
     if (!e.id.startsWith("poi-")) return;
     const kind = e.id.slice(4), color = colors[kind] || POI_OTHER;
     const size = 40, mid = size / 2, c = document.createElement("canvas");
@@ -234,8 +237,30 @@ export function registerMarkers(glMap) {
   });
 }
 
-function poiLayers() {
-  const point = ["==", ["geometry-type"], "Point"];
+/** A road-number plaque: a rounded box that stretches to fit the number written
+    on it. Interstates get a blue one, every other numbered road a white one. */
+function addShield(glMap, id) {
+  const interstate = id === "shield-interstate";
+  const size = 40, c = document.createElement("canvas");
+  c.width = c.height = size;
+  const g = c.getContext("2d");
+  const box = (inset, radius) => {
+    g.beginPath();
+    g.roundRect(inset, inset, size - inset * 2, size - inset * 2, radius);
+  };
+  box(2, 12); g.fillStyle = interstate ? "#ffffff" : "#7c90a8"; g.fill();       // outline
+  box(4.5, 10); g.fillStyle = interstate ? "#3d5ea8" : "#ffffff"; g.fill();     // face
+  glMap.addImage(id, g.getImageData(0, 0, size, size), {
+    pixelRatio: 2, stretchX: [[14, 26]], stretchY: [[14, 26]], content: [10, 10, 30, 30],
+  });
+}
+
+function poiLayers(ov) {
+  // With Overture drawing the businesses, OpenStreetMap only supplies the places
+  // a business list would not have: parks, sights and transport.
+  const point = ov
+    ? ["all", ["==", ["geometry-type"], "Point"], isOneOf("class", POI_KINDS.filter((k) => ["green", "sight", "travel"].includes(k.kind)).flatMap((k) => k.classes))]
+    : ["==", ["geometry-type"], "Point"];
   const tiers = [
     { id: "r1", minzoom: 14, rank: ["all", [">=", ["get", "rank"], 1], ["<", ["get", "rank"], 7]] },
     { id: "r7", minzoom: 15, rank: ["all", [">=", ["get", "rank"], 7], ["<", ["get", "rank"], 20]] },
@@ -259,6 +284,98 @@ function poiLayers() {
   return layers;
 }
 
+// ---- Overture Maps: satellite land cover and real businesses -----------------
+// OpenStreetMap is the backbone, but two things Google shows are thin in it:
+// natural ground (bare lakebed, scrub, wetland — what the land is actually
+// covered by, seen from space) and everyday businesses. Overture Maps publishes
+// both openly: land cover derived from satellite data, and ~60 million places
+// merged from several sources. Each theme is one file read a slice at a time
+// straight from Overture's own storage (PMTiles), so there is nothing to host.
+//
+// Data licences: base data is ODbL (as OpenStreetMap), places are CDLA-Permissive
+// 2.0 — both need credit, which ATTRIBUTION carries. Overture publishes a new
+// release every month and keeps only recent ones, so if these files ever
+// disappear the map quietly falls back to OpenStreetMap alone.
+export const OVERTURE_RELEASE = "2026-08-19.0";
+const OVERTURE = `https://overturemaps-extras-us-west-2.s3.amazonaws.com/tiles/${OVERTURE_RELEASE}`;
+
+const OV_KINDS = {
+  food: ["restaurant", "casual_eatery", "coffee_shop", "fast_food_restaurant", "bar", "food_truck_stand", "smoothie_juice_bar",
+    "winery", "bakery", "ice_cream_shop", "brewery", "dessert_shop", "pub", "cafe", "pizza_restaurant", "bar_and_grill"],
+  shop: ["convenience_store", "discount_store", "department_store", "fashion_and_apparel_store", "hardware_home_and_garden_store",
+    "electronics_store", "food_and_beverage_store", "specialty_store", "arts_crafts_and_hobby_store", "sporting_goods_store",
+    "books_music_and_video_store", "flowers_and_gifts_store", "animal_and_pet_store", "toys_and_games_store", "second_hand_store",
+    "vehicle_parts_store", "musical_instrument_and_pro_audio_store", "personal_care_and_beauty_store", "shopping",
+    "grocery_store", "supermarket", "shopping_mall", "furniture_store", "jewelry_store", "gift_shop"],
+  stay: ["hotel", "motel", "hostel", "resort", "bed_and_breakfast", "lodging"],
+  health: ["hospital", "pharmacy_and_drug_store", "dental_clinic", "primary_care_or_general_clinic", "urgent_care_clinic",
+    "specialized_medical_facility", "vision_or_eye_care_clinic", "pediatric_clinic", "pharmacy"],
+  green: ["park", "sport_field", "swimming_pool", "amusement_park", "campground", "zoo", "golf_course", "sport_court", "playground"],
+  sight: ["museum", "monument", "historic_site", "performing_arts_venue", "music_venue", "library", "event_venue",
+    "christian_place_of_worship", "place_of_worship", "art_gallery", "cinema", "movie_theater", "attraction"],
+  travel: ["gas_station", "train_station", "airport", "bus_station", "ev_charging_station", "parking"],
+  other: ["elementary_school", "high_school", "preschool", "college_university", "place_of_learning", "bank_or_credit_union",
+    "atm", "courthouse", "police_station", "government_office", "fire_station", "post_office", "gym", "fitness_studio",
+    "sport_or_fitness_facility", "auto_dealer", "campus_building"],
+};
+// What deserves to be seen first as you zoom in, and what waits until you are close.
+const OV_FIRST = ["hospital", "hotel", "museum", "college_university", "amusement_park", "department_store", "train_station",
+  "airport", "park", "zoo", "library", "courthouse", "police_station", "fire_station", "shopping_mall", "resort"];
+const OV_LAST = ["dental_clinic", "primary_care_or_general_clinic", "specialized_medical_facility", "vision_or_eye_care_clinic",
+  "pediatric_clinic", "gym", "fitness_studio", "sport_or_fitness_facility", "arts_crafts_and_hobby_store",
+  "musical_instrument_and_pro_audio_store", "toys_and_games_store", "second_hand_store", "vehicle_parts_store",
+  "personal_care_and_beauty_store", "books_music_and_video_store", "animal_and_pet_store", "flowers_and_gifts_store",
+  "specialty_store", "sport_field", "sport_court", "swimming_pool", "christian_place_of_worship", "place_of_worship",
+  "event_venue", "auto_dealer", "campus_building", "preschool", "place_of_learning", "government_office", "post_office",
+  "gift_shop", "jewelry_store", "furniture_store", "playground", "music_venue", "performing_arts_venue"];
+const OV_ALL = Object.values(OV_KINDS).flat();
+const OV_CATEGORY = ["get", "basic_category"];
+const ovKindMatch = (pick, fallback) => ["match", OV_CATEGORY,
+  ...Object.entries(OV_KINDS).flatMap(([kind, list]) => [list, pick(kind)]), fallback];
+const KIND_COLOR = Object.fromEntries(POI_KINDS.map((k) => [k.kind, k.color]));
+KIND_COLOR.other = POI_OTHER;
+
+function overturePlaceLayers() {
+  const tiers = [
+    { id: "first", minzoom: 14, filter: isOneOf("basic_category", OV_FIRST) },
+    { id: "middle", minzoom: 14.6, filter: ["all", isOneOf("basic_category", OV_ALL),
+      ["!", isOneOf("basic_category", OV_FIRST)], ["!", isOneOf("basic_category", OV_LAST)]] },
+    { id: "last", minzoom: 15.4, filter: isOneOf("basic_category", OV_LAST) },
+  ];
+  return tiers.map((t) => ({
+    id: `ov-place-${t.id}`, type: "symbol", source: "ovplaces", "source-layer": "place", minzoom: t.minzoom,
+    filter: ["all", t.filter, ["has", "@name"], [">=", ["get", "confidence"], 0.55]],
+    layout: {
+      "icon-image": ovKindMatch((kind) => `poi-${kind}`, "poi-other"), "icon-allow-overlap": false,
+      "text-field": ["get", "@name"], "text-font": REGULAR, "text-size": 11,
+      "text-anchor": "top", "text-offset": [0, 1.35], "text-max-width": 7,
+      "text-optional": true, "text-padding": 3,
+      "symbol-sort-key": ["-", 1, ["get", "confidence"]],       // the surest first
+    },
+    paint: {
+      "text-color": ovKindMatch((kind) => KIND_COLOR[kind], POI_OTHER),
+      "text-halo-color": COLOR.halo, "text-halo-width": 1.6,
+    },
+  }));
+}
+
+/** Satellite-derived ground cover, drawn over the low-detail version once you are zoomed in. */
+function overtureLandCover() {
+  return {
+    id: "ov-landcover", type: "fill", source: "ovbase", "source-layer": "land_cover", minzoom: 8,
+    paint: {
+      "fill-color": ["match", ["get", "subtype"],
+        "barren", COLOR.sand,
+        ["grass", "shrub", "moss"], "#dcf6e6",
+        "wetland", "#d0eee6",
+        ["forest", "mangrove"], "#c9f0d8",
+        "snow", "#ffffff",
+        NOTHING],
+      "fill-opacity": zoomed(8, 0.4, 11, 1),
+    },
+  };
+}
+
 // ---- places (countries, cities, neighbourhoods) ----------------------------
 function placeLabel(id, cls, extra) {
   return {
@@ -274,13 +391,15 @@ function placeLabel(id, cls, extra) {
 }
 
 // ---- the style -------------------------------------------------------------
-export function buildStyle() {
+export function buildStyle(options = {}) {
+  const ov = !!options.overture;   // also draw Overture land cover and businesses
   const layers = [
     { id: "background", type: "background", paint: { "background-color": COLOR.land } },
 
     // Land cover and use: kept faint, so the map reads as streets and water first.
     {
       id: "landcover", type: "fill", source: SRC, "source-layer": "landcover",
+      ...(ov ? { maxzoom: 9 } : {}),
       paint: {
         "fill-color": ["match", ["get", "class"],
           "wood", COLOR.wood, "grass", COLOR.grass, "sand", COLOR.sand,
@@ -288,6 +407,7 @@ export function buildStyle() {
         "fill-opacity": zoomed(3, 0.5, 9, 1),
       },
     },
+    ...(ov ? [overtureLandCover()] : []),
     {
       id: "landuse", type: "fill", source: SRC, "source-layer": "landuse", minzoom: 8,
       paint: {
@@ -432,6 +552,18 @@ export function buildStyle() {
       paint: { "text-color": COLOR.textSoft, "text-halo-color": COLOR.halo, "text-halo-width": 2 },
     },
     {
+      id: "road-shield", type: "symbol", source: SRC, "source-layer": "transportation_name", minzoom: 9,
+      filter: ["all", isOneOf("class", ["motorway", "trunk", "primary"]), ["has", "ref"], ["<=", ["get", "ref_length"], 5]],
+      layout: {
+        "symbol-placement": "line", "symbol-spacing": 480,
+        "icon-image": ["match", ["get", "network"], "us-interstate", "shield-interstate", "shield-road"],
+        "icon-text-fit": "both", "icon-text-fit-padding": [1, 4, 1, 4],
+        "icon-rotation-alignment": "viewport", "text-rotation-alignment": "viewport",
+        "text-field": ["get", "ref"], "text-font": BOLD, "text-size": 10, "text-padding": 4,
+      },
+      paint: { "text-color": ["match", ["get", "network"], "us-interstate", "#ffffff", COLOR.text] },
+    },
+    {
       id: "housenumber", type: "symbol", source: SRC, "source-layer": "housenumber", minzoom: 18,
       layout: { "text-field": ["get", "housenumber"], "text-font": REGULAR, "text-size": 10 },
       paint: { "text-color": COLOR.textFaint, "text-halo-color": COLOR.halo, "text-halo-width": 1.2 },
@@ -443,7 +575,8 @@ export function buildStyle() {
       paint: { "text-color": "#8a6d4e", "text-halo-color": COLOR.halo, "text-halo-width": 1.6 },
     },
 
-    ...poiLayers(),
+    ...poiLayers(ov),
+    ...(ov ? overturePlaceLayers() : []),
     {
       id: "poi-transit", type: "symbol", source: SRC, "source-layer": "poi", minzoom: 15,
       filter: ["all", ["==", ["geometry-type"], "Point"], ["match", ["get", "class"], ["railway", "airport"], true, false], ["has", "name"]],
@@ -513,7 +646,13 @@ export function buildStyle() {
   return {
     version: 8,
     name: "Science Maps",
-    sources: { [SRC]: { type: "vector", url: TILE_SOURCE } },
+    sources: {
+      [SRC]: { type: "vector", url: TILE_SOURCE },
+      ...(ov ? {
+        ovbase: { type: "vector", url: `pmtiles://${OVERTURE}/base.pmtiles` },
+        ovplaces: { type: "vector", url: `pmtiles://${OVERTURE}/places.pmtiles` },
+      } : {}),
+    },
     glyphs: GLYPHS,
     layers,
   };
