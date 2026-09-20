@@ -318,6 +318,7 @@ function initMap() {
     minZoom: 2,
     maxZoom: 19, // a vector layer has no limit of its own, so say it here
     zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
+    keyboard: false, // Leaflet's own arrow keys only work while the map has focus; see setupKeyboardMoves()
   });
 
   addBasemap();
@@ -1436,11 +1437,86 @@ function wireUpControls() {
 }
 
 /**
+ * Move the map with the keyboard, like a game: hold the arrow keys or W A S D
+ * and it glides, hold two at once to go diagonally, hold Shift to go faster.
+ * + and − (or E and Q) zoom in and out. Works wherever the focus is on the
+ * page — except while typing in a box, where the letters are for typing.
+ *
+ * Movement runs on the display's own frame clock, one small step per frame
+ * scaled by real elapsed time, so it is smooth and the same speed on a slow
+ * or a fast screen. It stops the instant the keys come up, and if the window
+ * loses focus (so a key-up is never seen) it stops rather than run away.
+ */
+function setupKeyboardMoves() {
+  const HELD = new Map();                      // key -> true, while it is down
+  const DIRECTIONS = {
+    arrowleft: [-1, 0], a: [-1, 0],
+    arrowright: [1, 0], d: [1, 0],
+    arrowup: [0, -1], w: [0, -1],
+    arrowdown: [0, 1], s: [0, 1],
+  };
+  const SPEED = 520;                            // screen pixels per second
+  const FAST = 2.4;                             // Shift multiplier
+  let running = false;
+  let last = 0;
+  let fast = false;
+
+  const typingInABox = (target) =>
+    target instanceof HTMLElement &&
+    (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+  const step = (now) => {
+    if (HELD.size === 0) { running = false; return; }
+    const dt = Math.min(0.05, (now - last) / 1000);   // never leap after a hiccup
+    last = now;
+    let dx = 0, dy = 0;
+    for (const key of HELD.keys()) {
+      const dir = DIRECTIONS[key];
+      if (dir) { dx += dir[0]; dy += dir[1]; }
+    }
+    if (dx || dy) {
+      const length = Math.hypot(dx, dy);          // diagonals are not faster
+      const pixels = SPEED * (fast ? FAST : 1) * dt;
+      map.panBy([(dx / length) * pixels, (dy / length) * pixels], { animate: false });
+    }
+    requestAnimationFrame(step);
+  };
+
+  window.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || typingInABox(event.target)) return;
+    const key = event.key.toLowerCase();
+
+    if (key in DIRECTIONS) {
+      event.preventDefault();                       // arrow keys must not also scroll the page
+      HELD.set(key, true);
+      fast = event.shiftKey;
+      if (!running) {
+        running = true;
+        last = performance.now();
+        requestAnimationFrame(step);
+      }
+    } else if (["+", "=", "e"].includes(key) && !event.repeat) {
+      map.zoomIn();
+    } else if (["-", "_", "q"].includes(key) && !event.repeat) {
+      map.zoomOut();
+    }
+  });
+
+  window.addEventListener("keyup", (event) => {
+    HELD.delete(event.key.toLowerCase());
+    fast = event.shiftKey;
+  });
+  // A held key that never reports its release (focus moved away) would keep going.
+  window.addEventListener("blur", () => HELD.clear());
+}
+
+/**
  * The entry point: set up the map, controls, and the first render. Runs once
  * the HTML has finished parsing.
  */
 function init() {
   initMap();
+  setupKeyboardMoves();
   populateDistanceUnitSelect();
   populateSpeedUnitSelect();
   wireUpControls();
