@@ -256,7 +256,8 @@ export async function route(from, to, profile = "driving") {
     coordinates +
     "?overview=full" + // give us the whole route geometry, not a simplified one
     "&geometries=geojson" + // return geometry as GeoJSON coordinates
-    "&steps=true"; // include turn-by-turn maneuvers
+    "&steps=true" + // include turn-by-turn maneuvers
+    "&alternatives=true"; // and the other sensible ways there, when there are any
 
   const data = await fetchJson(url);
 
@@ -266,11 +267,18 @@ export async function route(from, to, profile = "driving") {
     throw new Error("No route found between the two points.");
   }
 
-  // Use the first (best) route OSRM returned.
-  const best = data.routes[0];
+  // The first route is the best; any others are alternatives to offer.
+  const [best, ...others] = data.routes.map(shapeRoute);
+  return { ...best, alternatives: others };
+}
 
+/**
+ * Turn one OSRM route into the clean shape the rest of the app uses.
+ * @param {object} raw - one entry of OSRM's `routes` array
+ */
+function shapeRoute(raw) {
   // The raw GeoJSON LineString: coordinates are [lon, lat] pairs.
-  const rawGeoJSON = best.geometry;
+  const rawGeoJSON = raw.geometry;
 
   // Leaflet (and humans) prefer {lat, lon}. Convert each [lon, lat] pair.
   const geometry = (rawGeoJSON.coordinates || []).map(([lon, lat]) => ({
@@ -282,7 +290,7 @@ export async function route(from, to, profile = "driving") {
   // (individual maneuvers). We have only one leg here (A -> B), but we flatten
   // across all legs to be safe, building a readable instruction for each step.
   const steps = [];
-  for (const leg of best.legs || []) {
+  for (const leg of raw.legs || []) {
     for (const step of leg.steps || []) {
       steps.push({
         instruction: buildInstruction(step),
@@ -299,12 +307,21 @@ export async function route(from, to, profile = "driving") {
     }
   }
 
+  // "via King Street": the road that carries most of the trip, which is how
+  // people tell two routes apart.
+  const byRoad = new Map();
+  for (const st of steps) {
+    if (st.name) byRoad.set(st.name, (byRoad.get(st.name) || 0) + st.distanceMeters);
+  }
+  const via = [...byRoad.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)[0] || "";
+
   return {
-    distanceMeters: best.distance, // total route distance in meters
-    durationSeconds: best.duration, // total estimated time in seconds
+    distanceMeters: raw.distance, // total route distance in meters
+    durationSeconds: raw.duration, // total estimated time in seconds
     geometry, // [{lat, lon}, ...] — easy to drop into Leaflet
     rawGeoJSON, // original [lon, lat] GeoJSON, in case it's needed
     steps, // flattened, human-readable turn-by-turn list
+    via, // the main road it follows
   };
 }
 

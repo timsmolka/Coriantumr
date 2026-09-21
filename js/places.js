@@ -128,7 +128,7 @@ export function placeFromFeature(feature) {
     const category = prettyCategory(p.basic_category);
     const address = businessAddress(p.addresses);
     return {
-      kind: "place", name, category, address, lat, lon,
+      kind: "place", name, category, address, lat, lon, rawCategory: p.basic_category || "",
       detail: [category, address].filter(Boolean).join(" · "),
       website: firstWebsite(p.websites), phone: firstPhone(p.phones),
     };
@@ -137,7 +137,7 @@ export function placeFromFeature(feature) {
     const name = p["name:en"] || p.name;
     if (!name) return null;
     const category = prettyCategory(p.class);
-    return { kind: "place", name, category, detail: category, lat, lon };
+    return { kind: "place", name, category, detail: category, lat, lon, rawCategory: p.class || "" };
   }
   return null;
 }
@@ -243,4 +243,125 @@ export function filterRecents(recents, query) {
   const q = clean(query);
   if (!q) return recents;
   return recents.filter((r) => clean(`${r.name} ${r.detail}`).includes(q));
+}
+
+// ---- explore: category buttons ("Restaurants", "Pharmacies", ...) ----------------
+// Each names the category codes (from Overture's business list) and the codes
+// OpenStreetMap uses for the same thing, so one button can search both.
+
+export const CATEGORIES = [
+  { id: "restaurants", label: "Restaurants", icon: "🍴",
+    codes: ["restaurant", "casual_eatery", "fast_food_restaurant", "pizza_restaurant", "bar_and_grill", "food_truck_stand"],
+    osm: ["restaurant", "fast_food", "food_court"] },
+  { id: "coffee", label: "Coffee", icon: "☕",
+    codes: ["coffee_shop", "cafe", "smoothie_juice_bar", "bakery", "ice_cream_shop", "dessert_shop"],
+    osm: ["cafe", "bakery", "ice_cream"] },
+  { id: "hotels", label: "Hotels", icon: "🛏️",
+    codes: ["hotel", "motel", "resort", "hostel", "bed_and_breakfast", "lodging"],
+    osm: ["lodging", "hotel", "hostel", "campsite"] },
+  { id: "things", label: "Things to do", icon: "📷",
+    codes: ["museum", "monument", "historic_site", "attraction", "amusement_park", "zoo", "park", "performing_arts_venue", "music_venue", "art_gallery", "cinema", "movie_theater"],
+    osm: ["attraction", "museum", "monument", "zoo", "park", "theatre", "cinema", "art_gallery", "castle", "garden"] },
+  { id: "museums", label: "Museums", icon: "🏛️",
+    codes: ["museum", "art_gallery"], osm: ["museum", "art_gallery"] },
+  { id: "transit", label: "Transit", icon: "🚌",
+    codes: ["train_station", "bus_station", "airport"], osm: ["bus", "railway", "airport", "ferry_terminal"] },
+  { id: "pharmacies", label: "Pharmacies", icon: "💊",
+    codes: ["pharmacy_and_drug_store", "pharmacy"], osm: ["pharmacy"] },
+  { id: "atms", label: "ATMs", icon: "🏧",
+    codes: ["atm", "bank_or_credit_union"], osm: ["atm", "bank"] },
+  { id: "gas", label: "Gas", icon: "⛽",
+    codes: ["gas_station", "ev_charging_station"], osm: ["fuel", "charging_station"] },
+  { id: "groceries", label: "Groceries", icon: "🛒",
+    codes: ["grocery_store", "supermarket", "food_and_beverage_store", "convenience_store", "discount_store", "department_store"],
+    osm: ["grocery", "supermarket", "convenience", "department_store"] },
+  { id: "health", label: "Health", icon: "🏥",
+    codes: ["hospital", "urgent_care_clinic", "primary_care_or_general_clinic", "dental_clinic", "specialized_medical_facility"],
+    osm: ["hospital", "doctor", "dentist", "clinic"] },
+  { id: "parks", label: "Parks", icon: "🌳",
+    codes: ["park", "sport_field", "playground", "campground", "golf_course", "swimming_pool"],
+    osm: ["park", "garden", "playground", "dog_park", "golf", "pitch", "swimming", "picnic_site"] },
+];
+
+/** Does this place (as read from the map) belong to this category? */
+export function matchesCategory(place, category) {
+  const code = place.rawCategory || "";
+  return category.codes.includes(code) || category.osm.includes(code);
+}
+
+/** The emoji that stands for a place in a list: its category's, or a plain pin. */
+export function placeIcon(place) {
+  if (place.kind === "address") return "🏠";
+  if (place.kind === "dropped") return "📍";
+  const cat = CATEGORIES.find((c) => matchesCategory(place, c));
+  return cat ? cat.icon : "📍";
+}
+
+/** Sort places by how far they are from a point, nearest first, and attach the
+    distance. `distance` is a function (a, b) -> metres. */
+export function nearestFirst(places, from, distance) {
+  return places
+    .map((p) => ({ ...p, away: distance(from, p) }))
+    .sort((a, b) => a.away - b.away);
+}
+
+// ---- saved places -------------------------------------------------------------
+
+export const SAVED_KEY = "sciencemaps.saved";
+
+const savedKeyOf = (p) => `${clean(p.name)}|${Number(p.lat).toFixed(4)}|${Number(p.lon).toFixed(4)}`;
+
+function readList(key, storage) {
+  const s = store(storage);
+  if (!s) return [];
+  try {
+    const list = JSON.parse(s.getItem(key) || "[]");
+    return Array.isArray(list) ? list.filter((r) => r && r.name && Number.isFinite(r.lat) && Number.isFinite(r.lon)) : [];
+  } catch (err) {
+    return [];
+  }
+}
+
+export function loadSaved(storage) { return readList(SAVED_KEY, storage); }
+
+export function isSaved(place, storage) {
+  const key = savedKeyOf(place);
+  return loadSaved(storage).some((r) => savedKeyOf(r) === key);
+}
+
+/** Save the place, or un-save it if it already is. Returns whether it is saved now. */
+export function toggleSaved(place, storage) {
+  const list = loadSaved(storage);
+  const key = savedKeyOf(place);
+  const have = list.some((r) => savedKeyOf(r) === key);
+  const next = have
+    ? list.filter((r) => savedKeyOf(r) !== key)
+    : [{
+      kind: place.kind || "search", name: place.name, detail: place.detail || "", category: place.category || "",
+      lat: place.lat, lon: place.lon, address: place.address || "", website: place.website || "", phone: place.phone || "",
+      rawCategory: place.rawCategory || "", savedAt: Date.now(),
+    }, ...list];
+  const s = store(storage);
+  if (s) {
+    try { s.setItem(SAVED_KEY, JSON.stringify(next)); } catch (err) { /* not kept */ }
+  }
+  return !have;
+}
+
+// ---- share links -----------------------------------------------------------------
+
+/** A page link's "#place=lat,lon,Name" part for a place; opening it shows the place. */
+export function placeToHash(place) {
+  return `#place=${Number(place.lat).toFixed(6)},${Number(place.lon).toFixed(6)},${encodeURIComponent(place.name || "")}`;
+}
+
+/** The place a "#place=..." part names, or null if it is anything else. */
+export function placeFromHash(hash) {
+  const m = /^#place=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),?(.*)$/.exec(String(hash || ""));
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lon = parseFloat(m[2]);
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) return null;
+  let name = "";
+  try { name = decodeURIComponent(m[3] || ""); } catch (err) { name = ""; }
+  return { kind: name ? "search" : "dropped", name: name || "Dropped pin", lat, lon };
 }
