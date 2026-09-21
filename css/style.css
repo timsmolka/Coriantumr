@@ -1148,3 +1148,21 @@ body.panel-collapsed .side { display: none; }
 .place-row[hidden] { display: none; }
 .trip-steps .step-instruction { font-size: 14px; }
 .trip-steps .step-distance { font-size: 12px; color: var(--text-muted); }
+
+/* a saved place, starred on the map */
+.gm-saved-icon { background: transparent; border: none; }
+.gm-saved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f9ab00;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.45);
+  cursor: pointer;
+}

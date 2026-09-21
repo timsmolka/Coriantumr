@@ -111,11 +111,26 @@ export function addressLines(props) {
  * Turn one feature from the map (as returned by MapLibre's queryRenderedFeatures
  * or querySourceFeatures) into a place, or null if it is not one.
  */
-export function placeFromFeature(feature) {
-  if (!feature || !feature.geometry || feature.geometry.type !== "Point") return null;
-  const [lon, lat] = feature.geometry.coordinates;
+export function placeFromFeature(feature, at) {
+  if (!feature || !feature.geometry) return null;
   const p = feature.properties || {};
   const layer = (feature.layer && feature.layer.id) || feature.sourceLayer || "";
+
+  // Labels drawn along a line (a road's name, a river's) have no single point;
+  // they are located where they were clicked, if that is given.
+  let lon, lat;
+  if (feature.geometry.type === "Point") {
+    [lon, lat] = feature.geometry.coordinates;
+  } else if (at && Number.isFinite(at.lat) && Number.isFinite(at.lon)) {
+    ({ lat, lon } = at);
+  } else {
+    return null;
+  }
+
+  // The names on the map itself — cities, neighbourhoods, parks, lakes, roads —
+  // are places too, and clickable like any business.
+  const named = mapLabelPlace(layer, p, lat, lon);
+  if (named) return named;
 
   if (layer === "ov-address" || layer === "address") {
     const { name, detail } = addressLines(p);
@@ -133,12 +148,44 @@ export function placeFromFeature(feature) {
       website: firstWebsite(p.websites), phone: firstPhone(p.phones),
     };
   }
-  if (layer.startsWith("poi-label") || layer === "poi") {           // OpenStreetMap places
+  if (layer.startsWith("poi") || layer === "poi") {                  // OpenStreetMap places (incl. stations)
     const name = p["name:en"] || p.name;
     if (!name) return null;
     const category = prettyCategory(p.class);
     return { kind: "place", name, category, detail: category, lat, lon, rawCategory: p.class || "" };
   }
+  return null;
+}
+
+/** What the map calls the kinds of place it labels, in plain words. */
+const PLACE_CLASS_WORDS = {
+  country: "Country", state: "State", city: "City", town: "Town", village: "Village", hamlet: "Hamlet",
+  suburb: "Neighbourhood", neighbourhood: "Neighbourhood", quarter: "Neighbourhood", island: "Island",
+  isolated_dwelling: "Neighbourhood", continent: "Continent",
+};
+const ROAD_WORDS = {
+  motorway: "Highway", trunk: "Highway", primary: "Main road", secondary: "Road",
+  tertiary: "Street", minor: "Street", service: "Street", track: "Track", path: "Path",
+};
+
+/** A place for one of the map's own name labels, or null if this is not one. */
+function mapLabelPlace(layer, p, lat, lon) {
+  const name = p["name:en"] || p["name:latin"] || p.name;
+  if (!name) return null;
+  const make = (category, extra = {}) => ({
+    kind: "place", name, category, detail: category, lat, lon, rawCategory: category.toLowerCase(), ...extra,
+  });
+  if (layer.startsWith("place-")) {
+    return make(PLACE_CLASS_WORDS[p.class] || "Place", { placeType: p.class });
+  }
+  if (layer === "park-label") return make("Park", { rawCategory: "park" });
+  if (layer === "water-label" || layer === "water-label-line") {
+    const kind = p.class === "river" ? "River" : p.class === "ocean" ? "Ocean" : p.class === "lake" ? "Lake" : "Water";
+    return make(kind, { placeType: p.class === "lake" ? "lake" : undefined });
+  }
+  if (layer === "peak") return make("Mountain peak", { placeType: "peak" });
+  if (layer === "airport-label") return make("Airport", { rawCategory: "airport" });
+  if (layer.startsWith("road-label")) return make(ROAD_WORDS[p.class] || "Road", { kind: "search" });
   return null;
 }
 

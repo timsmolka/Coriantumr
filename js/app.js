@@ -441,16 +441,20 @@ function placeAtPoint(latlng) {
     [[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]],
     { layers }
   );
+  // A business or house number beats the name of a neighbourhood, which beats a
+  // road's name — so clicking a shop inside a named area picks the shop.
+  const rank = (id) => (/^(ov-|poi-|housenumber)/.test(id) ? 0 : /^road-label/.test(id) ? 2 : 1);
+  const spot = { lat: latlng.lat, lon: latlng.lng };
   let best = null;
-  let bestDistance = Infinity;
+  let bestKey = [Infinity, Infinity];
   for (const feature of found) {
-    const place = placeFromFeature(feature);
+    const place = placeFromFeature(feature, spot);
     if (!place) continue;
     const at = glMap.project([place.lon, place.lat]);
-    const distance = Math.hypot(at.x - point.x, at.y - point.y);
-    if (distance < bestDistance) {
+    const key = [rank(feature.layer.id), Math.hypot(at.x - point.x, at.y - point.y)];
+    if (key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) {
       best = place;
-      bestDistance = distance;
+      bestKey = key;
     }
   }
   return best;
@@ -1143,6 +1147,7 @@ function renderMode() {
   if (state.navigating && state.routeData && state.origin) renderNav();
   renderChips();
   renderWeatherChip();
+  renderSavedPins();
 }
 
 // ---- the panel's lists ---------------------------------------------------------
@@ -1455,6 +1460,30 @@ async function copyText(text, message) {
   } catch (err) {
     window.prompt("Copy this:", text);
   }
+}
+
+// ---- saved places, as pins on the map --------------------------------------
+
+let savedPins = null;
+let savedPinsKey = "";
+
+/** A gold star on the map for every saved place, like Google's starred places. Redrawn only when the list changes. */
+function renderSavedPins() {
+  if (!map) return;
+  const list = loadSaved();
+  const key = JSON.stringify(list.map((p) => [p.lat, p.lon, p.name]));
+  if (key === savedPinsKey) return;
+  savedPinsKey = key;
+  if (savedPins) savedPins.remove();
+  savedPins = L.layerGroup(
+    list.map((p) =>
+      L.marker([p.lat, p.lon], {
+        icon: L.divIcon({ className: "gm-saved-icon", html: '<span class="gm-saved">★</span>', iconSize: [26, 26], iconAnchor: [13, 13] }),
+        title: p.name,
+        zIndexOffset: 200,
+      }).on("click", (e) => { L.DomEvent.stopPropagation(e); selectPlace(p, { show: false }); })
+    )
+  ).addTo(map);
 }
 
 // ---- weather chip ---------------------------------------------------------------

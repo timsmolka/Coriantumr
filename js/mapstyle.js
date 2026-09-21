@@ -415,6 +415,10 @@ function overtureAddressLayer() {
 export const CLICKABLE_LAYERS = [
   "ov-place-first", "ov-place-middle", "ov-place-last", "ov-address",
   "poi-label-early", "poi-label-r1", "poi-label-r7", "poi-label-r20", "poi-transit", "housenumber",
+  // the map's own names: places, parks, water, peaks, airports and roads
+  "place-neighbourhood", "place-suburb", "place-village", "place-town", "place-island", "place-city",
+  "place-state", "place-country", "park-label", "water-label", "water-label-line", "peak", "airport-label",
+  "road-label-major", "road-label-minor",
 ];
 
 // ---- places (countries, cities, neighbourhoods) ----------------------------
