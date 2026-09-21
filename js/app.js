@@ -65,7 +65,20 @@ import {
   removeRecent,
   clearRecents,
   filterRecents,
+  prettyCategory,
 } from "./places.js";
+
+import {
+  distanceMeters,
+  distanceToRoute,
+  advanceStep,
+  hasArrived,
+  remaining,
+  arrivalClock,
+  shortDuration,
+  arrowFor,
+  nextTurnDistance,
+} from "./navigation.js";
 
 import {
   geocode,
@@ -124,6 +137,18 @@ const state = {
   distanceUnit: "lms", // default scientific distance unit: light-milliseconds
   speedUnit: "mach", // default scientific speed unit: Mach
   smartMode: false, // when true, ignore the two selects above and auto-pick
+
+  // THE PICK-A-PLACE FLOW (like Google Maps): click a place -> its card ->
+  // Directions -> Start. Each step is a separate thing you have to ask for.
+  selected: null, // a place that has been clicked but not asked directions to yet
+  pendingStart: false, // "Start" was pressed before the route had arrived
+  navigating: false, // following the route, turn by turn?
+  navNext: 1, // index of the next manoeuvre (steps[0] is "head out")
+  voice: false, // speak the directions aloud
+
+  // WHERE YOU ARE. The browser reports a position and how much it doubts it.
+  locationAccuracy: null, // metres of doubt in the blue dot, or null
+  locationManual: false, // the user dragged the dot to where they really are
 };
 
 
@@ -224,6 +249,7 @@ let map = null; // the Leaflet map instance
 let originMarker = null; // marker for the start point
 let destinationMarker = null; // marker for the destination
 let routeLine = null; // the polyline drawn along the route
+let accuracyCircle = null; // the pale ring showing how sure the blue dot is
 let glMap = null; // the vector map drawing underneath Leaflet (null on the picture fallback)
 
 /**
@@ -332,13 +358,15 @@ function initMap() {
   // clicking bare map drops a pin there. Either way it is a quick alternative
   // to typing a search query.
   map.on("click", (event) => {
+    if (state.navigating) return;                 // a stray tap must not end a trip
     const place = placeAtPoint(event.latlng);
     if (place) {
       selectPlace(place);
       return;
     }
+    // Bare map: drop a pin there and say what is under it.
     const { lat, lng } = event.latlng;
-    setDestination(lat, lng, "Dropped pin");
+    showPlaceCard({ kind: "dropped", name: "Dropped pin", category: "Dropped pin", address: "", lat, lon: lng });
   });
 
   // A pointing hand over anything clickable, so it is obvious what is.
@@ -396,7 +424,7 @@ function selectPlace(place, { show = false } = {}) {
     const zoom = place.kind === "address" ? 18 : broad.includes(place.placeType) ? 12 : 17;
     map.setView([place.lat, place.lon], Math.max(map.getZoom(), zoom));
   }
-  return setDestination(place.lat, place.lon, place.name, place);
+  showPlaceCard(place);
 }
 
 /**
@@ -434,7 +462,7 @@ function popupNode(title, detail, action) {
  * @param {number} lon
  * @param {string} label - a popup label
  */
-function placeOriginMarker(lat, lon, label) {
+function placeOriginMarker(lat, lon, label, accuracy) {
   // A Google-style blue "you are here" dot, drawn purely with CSS (see .gm-here).
   const icon = L.divIcon({
     className: "gm-here-icon",
@@ -445,9 +473,31 @@ function placeOriginMarker(lat, lon, label) {
   if (originMarker) {
     originMarker.setLatLng([lat, lon]);
   } else {
-    originMarker = L.marker([lat, lon], { icon, title: "Start" }).addTo(map);
+    // Draggable, so if the browser's idea of where you are is a few houses off
+    // (a computer has no GPS, only Wi-Fi and network guesses) you can put the
+    // dot on your actual spot.
+    originMarker = L.marker([lat, lon], { icon, title: "You are here", draggable: true, zIndexOffset: 500 }).addTo(map);
+    originMarker.on("drag", () => {
+      if (accuracyCircle) accuracyCircle.setLatLng(originMarker.getLatLng());
+    });
+    originMarker.on("dragend", onOriginDragged);
   }
-  originMarker.bindPopup(popupNode("Start", label));
+  const doubt = Number.isFinite(accuracy) ? `Accurate to about ${Math.round(accuracy)} m. ` : "";
+  originMarker.bindPopup(popupNode(label, `${doubt}Not right? Drag the dot to where you really are.`));
+
+  // The ring is the browser's own admission of how far off it might be.
+  if (Number.isFinite(accuracy) && accuracy > 8 && !state.locationManual) {
+    if (accuracyCircle) {
+      accuracyCircle.setLatLng([lat, lon]).setRadius(accuracy);
+    } else {
+      accuracyCircle = L.circle([lat, lon], {
+        radius: accuracy, color: "#1a73e8", weight: 1, fillColor: "#1a73e8", fillOpacity: 0.12, interactive: false,
+      }).addTo(map);
+    }
+  } else if (accuracyCircle) {
+    accuracyCircle.remove();
+    accuracyCircle = null;
+  }
 }
 
 /**
@@ -456,7 +506,7 @@ function placeOriginMarker(lat, lon, label) {
  * @param {number} lon
  * @param {string} label - a popup label
  */
-function placeDestinationMarker(lat, lon, label, place) {
+function placeDestinationMarker(lat, lon) {
   // A Google-style red map pin, drawn as an inline SVG so it needs no image file.
   const icon = L.divIcon({
     className: "gm-pin-icon",
@@ -466,20 +516,12 @@ function placeDestinationMarker(lat, lon, label, place) {
       '<circle cx="13" cy="13" r="5" fill="#fff"/></svg>',
     iconSize: [26, 38],
     iconAnchor: [13, 38],
-    popupAnchor: [0, -34],
   });
   if (destinationMarker) {
     destinationMarker.setLatLng([lat, lon]);
   } else {
     destinationMarker = L.marker([lat, lon], { icon, title: "Destination" }).addTo(map);
   }
-  destinationMarker.bindPopup(
-    popupNode(place && place.name ? place.name : "Destination", place ? place.detail : label, place ? {
-      label: "Start from here",
-      onClick: () => { destinationMarker.closePopup(); setOrigin(lat, lon, place.name || label); },
-    } : null)
-  );
-  if (place) destinationMarker.openPopup();
 }
 
 /**
@@ -487,7 +529,7 @@ function placeDestinationMarker(lat, lon, label, place) {
  * existing line, and zoom the map to fit the whole route.
  * @param {Array<{lat:number, lon:number}>} geometry
  */
-function drawRoute(geometry) {
+function drawRoute(geometry, { fit = true } = {}) {
   // Remove the previous line if there was one.
   if (routeLine) {
     routeLine.remove();
@@ -516,7 +558,12 @@ function drawRoute(geometry) {
   routeLine = L.layerGroup([casing, line]).addTo(map);
 
   // Fit the map view to the whole route, with a little padding.
-  map.fitBounds(line.getBounds(), { padding: [60, 60] });
+  // (Not while navigating: the map is following you then, not the whole route.)
+  // The left edge is kept clear of the trip sheet on wide screens.
+  if (fit) {
+    const wide = window.innerWidth > 720;
+    map.fitBounds(line.getBounds(), { paddingTopLeft: [wide ? 460 : 40, 90], paddingBottomRight: [40, wide ? 40 : 260] });
+  }
 }
 
 
@@ -535,29 +582,144 @@ function useMyLocation() {
     return;
   }
 
+  // Pressing this is asking to be found again: forget any hand-placed dot.
+  state.locationManual = false;
+  locatingMessage = true;
   setMapStatus("Locating you…");
+  startLocationWatch();
 
-  navigator.geolocation.getCurrentPosition(
-    // SUCCESS callback.
-    async (position) => {
-      const { latitude, longitude } = position.coords;
-      setMapStatus("");
+  // Go to the last spot straight away; the live fix will refine it.
+  if (state.origin) {
+    map.setView([state.origin.lat, state.origin.lon], Math.max(map.getZoom(), 16));
+  }
+  // One direct reading as well, in case the watch is slow to report.
+  navigator.geolocation.getCurrentPosition(onLocationFix, onLocationError, {
+    enableHighAccuracy: true,
+    timeout: 12000,
+  });
+}
 
-      // Set this as the origin and center the map there.
-      await setOrigin(latitude, longitude, "Your location");
-      map.setView([latitude, longitude], 13);
-    },
-    // ERROR callback — show a friendly message instead of crashing.
-    (error) => {
-      let message = "Could not get your location.";
-      if (error.code === error.PERMISSION_DENIED) {
-        message =
-          "Location permission denied. You can still search for places or click the map.";
-      }
-      setMapStatus(message, true);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+// --- KNOWING WHERE YOU ARE -----------------------------------------------------
+// The page finds you as soon as it opens (the browser asks permission the first
+// time), keeps the blue dot up to date, and remembers the last spot so the map
+// opens where you were rather than on the whole world.
+
+const LASTFIX_KEY = "sciencemaps.lastfix";
+let locationWatchId = null;
+let liveFixSeen = false; // has a real reading arrived yet, as opposed to the remembered one?
+let locatingMessage = false; // is "Locating you…" up, to be cleared by the next fix?
+
+function loadLastFix() {
+  try {
+    const fix = JSON.parse(localStorage.getItem(LASTFIX_KEY) || "null");
+    return fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon) ? fix : null;
+  } catch (err) {
+    return null;
+  }
+}
+function saveLastFix(fix) {
+  try {
+    localStorage.setItem(LASTFIX_KEY, JSON.stringify(fix));
+  } catch (err) {
+    /* storage full or blocked: the map just opens on the world next time */
+  }
+}
+
+/** Called once at start-up: open where you last were, then find where you are now. */
+function locateOnStart() {
+  const last = loadLastFix();
+  if (last) {
+    state.origin = { lat: last.lat, lon: last.lon, label: "Your location", stale: true };
+    placeOriginMarker(last.lat, last.lon, "Your last known location", last.accuracy);
+    map.setView([last.lat, last.lon], 15, { animate: false });
+  }
+  if (!("geolocation" in navigator)) return;
+  // Ask only if the person has not already said no.
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: "geolocation" }).then(
+      (status) => { if (status.state !== "denied") startLocationWatch(); },
+      () => startLocationWatch()
+    );
+  } else {
+    startLocationWatch();
+  }
+}
+
+function startLocationWatch() {
+  if (!("geolocation" in navigator) || locationWatchId !== null) return;
+  locationWatchId = navigator.geolocation.watchPosition(onLocationFix, onLocationError, {
+    enableHighAccuracy: true, // a phone uses GPS; a computer just asks for its best guess
+    maximumAge: 5000,
+    timeout: 30000,
+  });
+}
+
+function onLocationError(error) {
+  if (error.code === error.PERMISSION_DENIED) {
+    setMapStatus("Location is turned off for this page — allow it in your browser to see where you are.", true);
+    if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
+    locationWatchId = null;
+  } else if (locatingMessage) {
+    setMapStatus("Could not find you just yet — still trying.", true);
+  }
+}
+
+/** A new position reading arrived. */
+async function onLocationFix(position) {
+  const { latitude: lat, longitude: lon, accuracy } = position.coords;
+  if (locatingMessage) { locatingMessage = false; setMapStatus(""); }
+
+  // Someone who dragged the dot to their real spot has already said where they
+  // are; the browser's guess must not yank it back — unless they are driving.
+  if (state.locationManual && !state.navigating) return;
+
+  saveLastFix({ lat, lon, accuracy });
+  const first = !liveFixSeen;
+  liveFixSeen = true;
+
+  // A vaguer reading than the one we have, from nearly the same spot, is noise.
+  if (!first && state.origin && state.locationAccuracy && accuracy > state.locationAccuracy * 1.5) {
+    const drift = distanceMeters(state.origin, { lat, lon });
+    if (drift < state.locationAccuracy) return;
+  }
+
+  const moved = state.origin ? distanceMeters(state.origin, { lat, lon }) : Infinity;
+  const wasStale = Boolean(state.origin && state.origin.stale);
+  state.locationAccuracy = accuracy;
+  state.origin = { lat, lon, label: "Your location" };
+  placeOriginMarker(lat, lon, "Your location", accuracy);
+
+  // Weather and route only need refreshing when you have really gone somewhere.
+  if (first || moved > 250) {
+    loadWeather(lat, lon).then(render);
+    if (state.destination && !state.navigating) requestRoute();
+  }
+  // The first reading brings the map to you — unless you are already looking at something.
+  if (first && !state.selected && !state.destination) {
+    map.setView([lat, lon], Math.max(map.getZoom(), 16), { animate: !wasStale });
+  }
+  if (state.navigating) navProgress({ lat, lon });
+  render();
+}
+
+/** The blue dot was dragged: that is now where you are. */
+async function onOriginDragged() {
+  const { lat, lng } = originMarker.getLatLng();
+  state.locationManual = true;
+  state.locationAccuracy = null;
+  if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+  state.origin = { lat, lon: lng, label: "Your location (set by hand)" };
+  saveLastFix({ lat, lon: lng, accuracy: 0 });
+  if (state.destination) requestRoute();
+  render();
+  loadWeather(lat, lng).then(render);
+  try {
+    const where = await reverseGeocode(lat, lng);
+    if (state.locationManual && state.origin && state.origin.lat === lat) {
+      state.origin.label = `Near ${where.shortAddress}`;
+      render();
+    }
+  } catch (err) { /* the coordinates alone are fine */ }
 }
 
 /**
@@ -587,15 +749,16 @@ async function setOrigin(lat, lon, label) {
  * @param {number} lon
  * @param {string} label
  */
-async function setDestination(lat, lon, label, place) {
+async function setDestination(lat, lon, label) {
   state.destination = { lat, lon, label };
-  placeDestinationMarker(lat, lon, label, place);
+  placeDestinationMarker(lat, lon);
 
   if (state.origin) {
     await requestRoute();
   } else {
-    // No origin yet — nudge the user toward setting one.
-    setMapStatus("Destination set. Tap the location button to set your start and get a route.");
+    // We do not know where you are yet — find you, and the route follows.
+    setMapStatus("Finding you so the route can start from where you are…");
+    useMyLocation();
   }
 
   render();
@@ -613,11 +776,17 @@ async function requestRoute() {
   try {
     const result = await route(state.origin, state.destination, state.travelMode);
     state.routeData = result;
-    drawRoute(result.geometry);
+    drawRoute(result.geometry, { fit: !state.navigating });
     setMapStatus("");
+    if (state.navigating) state.navNext = 1;             // a fresh route starts from its first turn
+    if (state.pendingStart) {
+      state.pendingStart = false;
+      startNavigation();
+    }
   } catch (err) {
     // Don't crash — explain what happened and clear any stale route.
     state.routeData = null;
+    state.pendingStart = false;
     setMapStatus(`Routing failed: ${err.message}`, true);
   }
 
@@ -652,6 +821,219 @@ async function loadWeather(lat, lon) {
     state.speedOfSoundBasis =
       "Live weather unavailable — using ISA standard sea-level (15 C).";
   }
+}
+
+
+// --- THE PLACE CARD, DIRECTIONS AND NAVIGATION -------------------------------
+// Google Maps keeps these apart on purpose, and so does this: clicking a place
+// only tells you about it (a card). "Directions" then shows the route and how
+// long it takes. "Start" — on either — begins following it, turn by turn.
+
+/**
+ * Show a place: drop the pin on it and open its card. Nothing else happens until
+ * a button on the card is pressed.
+ * @param {{kind:string, name:string, category?:string, address?:string, detail?:string, lat:number, lon:number, website?:string, phone?:string}} place
+ */
+function showPlaceCard(place) {
+  state.selected = place;
+  placeDestinationMarker(place.lat, place.lon);
+  el("search-results").hidden = true;
+
+  el("place-name").textContent = place.name;
+  el("place-kind").textContent =
+    place.kind === "dropped"
+      ? `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`
+      : place.category || (place.kind === "address" ? "Address" : "");
+  el("place-address").textContent = place.address || "";
+  el("place-away").textContent = awayText(place);
+
+  // Contact links: only ones that are real web addresses or phone numbers.
+  const links = el("place-links");
+  links.innerHTML = "";
+  if (place.website) {
+    const a = document.createElement("a");
+    a.href = place.website;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = "Website";
+    links.appendChild(a);
+  }
+  if (place.phone) {
+    const a = document.createElement("a");
+    a.href = `tel:${place.phone.replace(/[^\d+]/g, "")}`;
+    a.textContent = `Call ${place.phone}`;
+    links.appendChild(a);
+  }
+
+  // Many places (parks, dropped pins) come without a street address — ask.
+  if (!place.address) {
+    reverseGeocode(place.lat, place.lon)
+      .then((where) => {
+        if (state.selected !== place) return;          // they have moved on
+        place.address = where.shortAddress;
+        el("place-address").textContent = place.address;
+      })
+      .catch(() => { /* no address is fine */ });
+  }
+  render();
+}
+
+/** "1.9 km from you · 6.3 light-ms" — how far, in the units this app likes. */
+function awayText(place) {
+  if (!state.origin) return "";
+  const meters = distanceMeters(state.origin, place);
+  if (!Number.isFinite(meters)) return "";
+  const near = formatDistance(meters, familiarDistanceUnit(meters));
+  const science = formatDistance(meters, primaryDistanceUnit(meters));
+  return near === science ? `${near} from you` : `${near} from you · ${science}`;
+}
+
+/** Close the card, and take the pin away unless directions are still using it. */
+function closePlaceCard() {
+  state.selected = null;
+  if (!state.destination && destinationMarker) {
+    destinationMarker.remove();
+    destinationMarker = null;
+  }
+  render();
+}
+
+/**
+ * "Directions" (or "Start") was pressed on the card: make this place the
+ * destination and work out the route.
+ */
+async function getDirections({ start = false } = {}) {
+  const place = state.selected;
+  if (!place) return;
+  state.selected = null;
+  state.destination = { lat: place.lat, lon: place.lon, label: place.name };
+  state.pendingStart = start;
+  state.routeData = null;
+  el("search-input").value = place.name;
+  addRecent(place);
+  placeDestinationMarker(place.lat, place.lon);
+  // Show the trip sheet at a useful height, whether it was collapsed or not.
+  el("sheet").classList.remove("expanded");
+  render();
+
+  if (state.origin) {
+    await requestRoute();
+  } else {
+    setMapStatus("Finding you so the route can start from where you are…");
+    useMyLocation();                                    // the first fix triggers the route
+  }
+}
+
+/** Take the whole trip away: the route, the destination and the pin. */
+function clearDirections() {
+  if (state.navigating) stopNavigation();
+  state.destination = null;
+  state.routeData = null;
+  state.pendingStart = false;
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  if (destinationMarker) { destinationMarker.remove(); destinationMarker = null; }
+  el("search-input").value = "";
+  setMapStatus("");
+  render();
+}
+
+/** Begin following the route: the map sticks to you and a banner names each turn. */
+function startNavigation() {
+  const steps = state.routeData && state.routeData.steps;
+  if (!steps || steps.length === 0) return;
+  state.navigating = true;
+  state.navNext = 1;
+  state.locationManual = false;                         // navigating means trusting the real position
+  navOffRouteCount = 0;
+  startLocationWatch();
+  if (state.origin) {
+    map.setView([state.origin.lat, state.origin.lon], 17);
+    navProgress(state.origin);
+  }
+  speak(steps[0].instruction);
+  render();
+}
+
+function stopNavigation() {
+  state.navigating = false;
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  render();
+}
+
+let navOffRouteCount = 0;
+let lastReroute = 0;
+
+/** A new position while navigating: pass the turns you have passed, follow, re-route if lost. */
+function navProgress(position) {
+  const data = state.routeData;
+  if (!state.navigating || !data) return;
+  const before = state.navNext;
+
+  if (hasArrived(data.steps, position)) {
+    setMapStatus("You have arrived.");
+    speak("You have arrived.");
+    stopNavigation();
+    return;
+  }
+  state.navNext = advanceStep(data.steps, state.navNext, position);
+  if (state.navNext !== before) speak(data.steps[state.navNext].instruction);
+
+  // Well away from the line for two readings running: it is a wrong turn, not a wobble.
+  if (distanceToRoute(data.geometry, position) > 70) navOffRouteCount++;
+  else navOffRouteCount = 0;
+  if (navOffRouteCount >= 2 && Date.now() - lastReroute > 15000) {
+    lastReroute = Date.now();
+    navOffRouteCount = 0;
+    setMapStatus("Re-routing…");
+    requestRoute();
+  }
+
+  map.panTo([position.lat, position.lon], { animate: true });
+  render();
+}
+
+/** Say an instruction aloud, if the speaker button is on. */
+function speak(text) {
+  if (!state.voice || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+
+/** Show whichever panels the current stage of the flow calls for. */
+function renderMode() {
+  const hasRoute = Boolean(state.routeData && state.destination);
+  const showCard = Boolean(state.selected) && !state.navigating;
+  const showHead = hasRoute && !state.navigating && !state.selected;
+
+  document.body.classList.toggle("mode-place", showCard);
+  document.body.classList.toggle("mode-route", showHead);
+  document.body.classList.toggle("mode-nav", state.navigating);
+  el("place-card").hidden = !showCard;
+  el("route-head").hidden = !showHead;
+  el("nav-banner").hidden = !state.navigating;
+  el("nav-bar").hidden = !state.navigating;
+
+  if (showHead) {
+    const r = state.routeData;
+    el("route-head-time").textContent = shortDuration(r.durationSeconds);
+    const near = formatDistance(r.distanceMeters, familiarDistanceUnit(r.distanceMeters));
+    const science = formatDistance(r.distanceMeters, primaryDistanceUnit(r.distanceMeters));
+    el("route-head-detail").textContent = near === science ? near : `${near} · ${science}`;
+  }
+  if (state.navigating && state.routeData && state.origin) renderNav();
+}
+
+function renderNav() {
+  const data = state.routeData;
+  const next = data.steps[Math.min(state.navNext, data.steps.length - 1)];
+  const left = remaining(data.steps, state.navNext, state.origin);
+  el("nav-arrow").textContent = arrowFor(next.instruction);
+  el("nav-distance").textContent = nextTurnDistance(left.toNextMeters);
+  el("nav-instruction").textContent = next.instruction;
+  el("nav-eta-time").textContent = shortDuration(left.seconds);
+  const dist = formatDistance(left.meters, familiarDistanceUnit(left.meters));
+  el("nav-eta-detail").textContent = `${dist} · arrive ${arrivalClock(left.seconds)}`;
+  el("nav-voice").textContent = state.voice ? "🔊" : "🔇";
 }
 
 
@@ -696,6 +1078,7 @@ async function runSearch(query) {
       lat: r.lat,
       lon: r.lon,
       placeType: r.type,
+      category: r.type && r.type !== "yes" ? prettyCategory(r.type) : "",
     }));
     renderSearchList([...early, { title: "Places and addresses", items: online, icon: "🔎" }], true);
   } catch (err) {
@@ -1005,6 +1388,7 @@ function primarySpeedUnit(mps) {
  * piece stays small and readable.
  */
 function render() {
+  renderMode();
   renderTrip();
   renderUnitControls();
   renderRoute();
@@ -1366,6 +1750,26 @@ function wireUpControls() {
   // "Use my location" button.
   el("locate-btn").addEventListener("click", useMyLocation);
 
+  // The place card, the route strip and the navigation bar.
+  el("place-close").addEventListener("click", closePlaceCard);
+  el("place-directions").addEventListener("click", () => getDirections());
+  el("place-start").addEventListener("click", () => getDirections({ start: true }));
+  el("route-start").addEventListener("click", startNavigation);
+  el("route-clear").addEventListener("click", clearDirections);
+  el("nav-exit").addEventListener("click", () => { stopNavigation(); clearDirections(); });
+  el("nav-voice").addEventListener("click", () => {
+    state.voice = !state.voice;
+    if (!state.voice && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    render();
+  });
+  // Escape steps back one stage: navigation, then the card, then the directions.
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) return;
+    if (state.navigating) { stopNavigation(); clearDirections(); }
+    else if (state.selected) closePlaceCard();
+    else if (state.destination) clearDirections();
+  });
+
   // "Start/Stop tracking" button.
   el("track-btn").addEventListener("click", toggleTracking);
 
@@ -1517,6 +1921,7 @@ function setupKeyboardMoves() {
 function init() {
   initMap();
   setupKeyboardMoves();
+  locateOnStart();
   populateDistanceUnitSelect();
   populateSpeedUnitSelect();
   wireUpControls();

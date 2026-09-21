@@ -70,6 +70,21 @@ function parseJson(value) {
   }
 }
 
+/** The first web address in a stored list, if it is a real http(s) one. Never
+    returns anything else — a link from outside data must not be able to run code. */
+export function firstWebsite(raw) {
+  const list = parseJson(raw);
+  const url = Array.isArray(list) ? list.find((u) => typeof u === "string" && /^https?:\/\//i.test(u)) : null;
+  return url || "";
+}
+
+/** The first phone number in a stored list, tidied for display. */
+export function firstPhone(raw) {
+  const list = parseJson(raw);
+  const phone = Array.isArray(list) ? list.find((p) => typeof p === "string" && /\d{7,}/.test(p)) : null;
+  return phone ? String(phone).trim() : "";
+}
+
 /** "320 W 1550 N, Layton, UT 84041" from a business's stored address list. */
 export function businessAddress(rawAddresses) {
   const list = parseJson(rawAddresses);
@@ -105,14 +120,18 @@ export function placeFromFeature(feature) {
   if (layer === "ov-address" || layer === "address") {
     const { name, detail } = addressLines(p);
     if (!name) return null;
-    return { kind: "address", name, detail, lat, lon };
+    return { kind: "address", name, address: [name, detail].filter(Boolean).join(", "), detail, lat, lon };
   }
   if (layer.startsWith("ov-place") || layer === "place") {
     const name = p["@name"];
     if (!name) return null;
     const category = prettyCategory(p.basic_category);
     const address = businessAddress(p.addresses);
-    return { kind: "place", name, category, detail: [category, address].filter(Boolean).join(" · "), lat, lon };
+    return {
+      kind: "place", name, category, address, lat, lon,
+      detail: [category, address].filter(Boolean).join(" · "),
+      website: firstWebsite(p.websites), phone: firstPhone(p.phones),
+    };
   }
   if (layer.startsWith("poi-label") || layer === "poi") {           // OpenStreetMap places
     const name = p["name:en"] || p.name;
@@ -199,6 +218,7 @@ export function addRecent(place, storage, now = Date.now()) {
   const entry = {
     kind: place.kind || "search", name: place.name, detail: place.detail || "",
     category: place.category || "", lat: place.lat, lon: place.lon, savedAt: now,
+    address: place.address || "", website: place.website || "", phone: place.phone || "",
   };
   const key = recentKey(entry);
   const list = [entry, ...loadRecents(storage).filter((r) => recentKey(r) !== key)].slice(0, MAX_RECENTS);

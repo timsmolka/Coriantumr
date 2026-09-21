@@ -81,6 +81,46 @@
       <p id="map-status" class="status-toast" role="status" hidden></p>
 
       <!-- ================================================================
+           PLACE CARD: what you get when you click a place, like Google Maps —
+           its name, what it is, where it is, and what to do about it. It is
+           filled in by app.js and shown in place of the trip sheet.
+           ================================================================ -->
+      <section class="place-card" id="place-card" aria-label="Selected place" hidden>
+        <button class="card-close" id="place-close" type="button" title="Close" aria-label="Close">✕</button>
+        <h2 class="place-name" id="place-name"></h2>
+        <p class="place-kind" id="place-kind"></p>
+        <p class="place-address" id="place-address"></p>
+        <p class="place-away" id="place-away"></p>
+        <div class="place-actions">
+          <button class="action-btn primary" id="place-directions" type="button">
+            <span aria-hidden="true">➤</span> Directions
+          </button>
+          <button class="action-btn" id="place-start" type="button">
+            <span aria-hidden="true">▲</span> Start
+          </button>
+        </div>
+        <div class="place-links" id="place-links"></div>
+      </section>
+
+      <!-- NAVIGATION: while you are following a route. A banner with the next
+           turn across the top, and a bar with the time left along the bottom. -->
+      <section class="nav-banner" id="nav-banner" aria-live="polite" hidden>
+        <div class="nav-arrow" id="nav-arrow" aria-hidden="true">↑</div>
+        <div class="nav-text">
+          <div class="nav-distance" id="nav-distance"></div>
+          <div class="nav-instruction" id="nav-instruction"></div>
+        </div>
+        <button class="nav-voice" id="nav-voice" type="button" title="Spoken directions" aria-label="Spoken directions">🔇</button>
+      </section>
+      <section class="nav-bar" id="nav-bar" hidden>
+        <div class="nav-eta">
+          <div class="nav-eta-time" id="nav-eta-time">—</div>
+          <div class="nav-eta-detail" id="nav-eta-detail">—</div>
+        </div>
+        <button class="action-btn danger" id="nav-exit" type="button">Exit</button>
+      </section>
+
+      <!-- ================================================================
            BOTTOM SHEET: directions + all the science panels.
            ================================================================ -->
       <section class="sheet" id="sheet" aria-label="Trip details and science panels">
@@ -92,6 +132,19 @@
         </button>
 
         <div class="sheet-scroll">
+
+          <!-- Once directions are asked for: the time and distance at a glance,
+               and the button that begins navigating. -->
+          <div class="route-head" id="route-head" hidden>
+            <div class="route-head-main">
+              <div class="route-head-time" id="route-head-time">—</div>
+              <div class="route-head-detail" id="route-head-detail">—</div>
+            </div>
+            <button class="action-btn primary" id="route-start" type="button">
+              <span aria-hidden="true">▲</span> Start
+            </button>
+            <button class="card-close inline" id="route-clear" type="button" title="Clear directions" aria-label="Clear directions">✕</button>
+          </div>
 
           <!-- DIRECTIONS: the A -> B trip. -->
           <div class="trip">

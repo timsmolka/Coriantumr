@@ -183,6 +183,7 @@ export async function reverseGeocode(lat, lon) {
   const url =
     "https://nominatim.openstreetmap.org/reverse" +
     "?format=jsonv2" +
+    "&addressdetails=1" +
     "&lat=" +
     encodeURIComponent(lat) +
     "&lon=" +
@@ -196,9 +197,17 @@ export async function reverseGeocode(lat, lon) {
 
   const data = await fetchJson(url, options);
 
-  // The reverse endpoint returns a single object with `display_name`.
+  // The reverse endpoint returns a single object with `display_name` — the full
+  // address, very long. `address` has the parts, from which a short, familiar
+  // one is built: "620 East Page Circle, Layton, UT".
+  const a = data.address || {};
+  const street = [a.house_number, a.road].filter(Boolean).join(" ");
+  const town = a.city || a.town || a.village || a.hamlet || a.suburb || "";
+  const region = a.state_code || (a.state && a.state.length <= 3 ? a.state : "") || a.state || "";
+  const shortAddress = [street, town, region].filter(Boolean).join(", ");
   return {
     displayName: data.display_name || "",
+    shortAddress: shortAddress || (data.display_name || "").split(",").slice(0, 3).join(","),
   };
 }
 
@@ -281,6 +290,11 @@ export async function route(from, to, profile = "driving") {
         durationSeconds: step.duration,
         // The road/street name for this step (may be empty for unnamed roads).
         name: step.name || "",
+        // Where this step's manoeuvre happens (the place you turn), for following
+        // a route as you drive it. OSRM gives it as [lon, lat].
+        location: step.maneuver && step.maneuver.location
+          ? { lat: step.maneuver.location[1], lon: step.maneuver.location[0] }
+          : null,
       });
     }
   }

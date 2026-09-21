@@ -552,3 +552,166 @@ body {
   cursor: pointer;
 }
 .popup-action:hover { background: var(--surface-2); }
+
+
+/* ---------------------------------------------------------------------------
+   THE GOOGLE-MAPS-STYLE FLOW: pick a place -> its card -> Directions -> Start
+   Which of the panels shows is decided by a class on <body> that app.js sets:
+     mode-place  a place is selected: its card replaces the trip sheet
+     mode-route  directions are up: the sheet shows time, distance and Start
+     mode-nav    navigating: only the turn banner and the time-left bar
+   --------------------------------------------------------------------------- */
+body.mode-place .sheet,
+body.mode-nav .sheet,
+body.mode-nav .searchbar { display: none; }
+
+/* pill-shaped action buttons, used on the place card, the route head and the nav bar */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--blue);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.action-btn:hover { background: var(--surface-2); }
+.action-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.action-btn.primary:hover { background: var(--blue-dark); }
+.action-btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+.action-btn:disabled { opacity: 0.55; cursor: default; }
+
+.card-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+.card-close:hover { background: var(--surface-2); }
+.card-close.inline { position: static; flex: 0 0 auto; }
+
+/* the place card */
+.place-card {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: var(--sheet-width);
+  max-width: calc(100% - 24px);
+  z-index: 1000;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  padding: 16px 16px 14px;
+}
+.place-name { margin: 0 34px 2px 0; font-size: 20px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.place-kind { margin: 0 0 8px; font-size: 13px; color: var(--text-muted); }
+.place-address { margin: 0 0 4px; font-size: 14px; }
+.place-away { margin: 0 0 12px; font-size: 13px; color: var(--text-muted); }
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.place-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; }
+.place-links a { color: var(--blue); text-decoration: none; }
+.place-links a:hover { text-decoration: underline; }
+.place-links:empty { display: none; }
+
+/* the strip at the top of the sheet once directions exist */
+.route-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 16px 12px;
+  border-bottom: 1px solid var(--divider);
+}
+.route-head[hidden] { display: none; }
+.route-head-main { flex: 1 1 auto; min-width: 0; }
+.route-head-time { font-size: 22px; font-weight: 500; color: var(--green); line-height: 1.2; }
+.route-head-detail { font-size: 13px; color: var(--text-muted); }
+
+/* navigation */
+.nav-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  max-width: 560px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: #0b6b4a;
+  color: #fff;
+  box-shadow: var(--shadow-2);
+}
+.nav-banner[hidden] { display: none; }
+.nav-arrow { flex: 0 0 auto; width: 48px; text-align: center; font-size: 40px; line-height: 1; }
+.nav-text { flex: 1 1 auto; min-width: 0; }
+.nav-distance { font-size: 26px; font-weight: 500; line-height: 1.15; }
+.nav-instruction { font-size: 15px; opacity: 0.95; overflow-wrap: anywhere; }
+.nav-voice {
+  flex: 0 0 auto;
+  border: none;
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  cursor: pointer;
+}
+.nav-voice:hover { background: rgba(255,255,255,.28); }
+
+.nav-bar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: var(--sheet-width);
+  max-width: calc(100% - 24px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+.nav-bar[hidden] { display: none; }
+.nav-eta { flex: 1 1 auto; min-width: 0; }
+.nav-eta-time { font-size: 24px; font-weight: 500; color: var(--green); line-height: 1.2; }
+.nav-eta-detail { font-size: 13px; color: var(--text-muted); }
+
+/* the "you are here" dot: a soft pulse, like the real thing, and a hand to drag it */
+.gm-here { position: relative; cursor: grab; }
+.gm-here::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(26,115,232,.5);
+  animation: gm-pulse 2.2s ease-out infinite;
+}
+@keyframes gm-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .gm-here::after { animation: none; } }
+
+@media (max-width: 720px) {
+  .nav-banner { left: 8px; right: 8px; }
+}
+
+/* while navigating, keep the map's messages clear of the turn banner */
+body.mode-nav .status-toast { top: 100px; }
