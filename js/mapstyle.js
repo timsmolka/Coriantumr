@@ -24,7 +24,8 @@ export const GLYPHS = "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.p
 export const ATTRIBUTION =
   '&copy; <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> ' +
   '&copy; <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener">OpenMapTiles</a> ' +
-  'Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>';
+  'Data from <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ' +
+  'Relief: <a href="https://registry.opendata.aws/terrain-tiles/" target="_blank" rel="noopener">Mapzen / AWS Terrain Tiles</a>';
 export const ATTRIBUTION_OVERTURE = ATTRIBUTION +
   ' &copy; <a href="https://docs.overturemaps.org/attribution" target="_blank" rel="noopener">Overture Maps Foundation</a>';
 
@@ -220,6 +221,15 @@ export function registerMarkers(glMap) {
 
   glMap.on("styleimagemissing", (e) => {
     if (e.id.startsWith("shield-")) { addShield(glMap, e.id); return; }
+    if (e.id === "dot-city") {                                     // a city, seen from far away
+      const s = 20, c = document.createElement("canvas");
+      c.width = c.height = s;
+      const g = c.getContext("2d");
+      g.beginPath(); g.arc(s / 2, s / 2, 8, 0, Math.PI * 2); g.fillStyle = "#ffffff"; g.fill();
+      g.beginPath(); g.arc(s / 2, s / 2, 5.4, 0, Math.PI * 2); g.fillStyle = "#5f6368"; g.fill();
+      glMap.addImage(e.id, g.getImageData(0, 0, s, s), { pixelRatio: 2 });
+      return;
+    }
     if (!e.id.startsWith("poi-")) return;
     const kind = e.id.slice(4), color = colors[kind] || POI_OTHER;
     const size = 40, mid = size / 2, c = document.createElement("canvas");
@@ -382,16 +392,17 @@ function overturePlaceLayers() {
 /** Satellite-derived ground cover, drawn over the low-detail version once you are zoomed in. */
 function overtureLandCover() {
   return {
-    id: "ov-landcover", type: "fill", source: "ovbase", "source-layer": "land_cover", minzoom: 8,
+    id: "ov-landcover", type: "fill", source: "ovbase", "source-layer": "land_cover", minzoom: 2,
     paint: {
       "fill-color": ["match", ["get", "subtype"],
-        "barren", COLOR.sand,
-        ["grass", "shrub", "moss"], "#dcf6e6",
+        "barren", "#f0e8da",
+        ["grass", "shrub", "moss"], "#e3f2e2",
+        "crop", "#eef3e1",
         "wetland", "#d0eee6",
-        ["forest", "mangrove"], "#c9f0d8",
+        ["forest", "mangrove"], "#c6ebd3",
         "snow", "#ffffff",
         NOTHING],
-      "fill-opacity": zoomed(8, 0.4, 11, 1),
+      "fill-opacity": zoomed(2, 0.85, 8, 0.9, 11, 1),
     },
   };
 }
@@ -416,7 +427,7 @@ export const CLICKABLE_LAYERS = [
   "ov-place-first", "ov-place-middle", "ov-place-last", "ov-address",
   "poi-label-early", "poi-label-r1", "poi-label-r7", "poi-label-r20", "poi-transit", "housenumber",
   // the map's own names: places, parks, water, peaks, airports and roads
-  "place-neighbourhood", "place-suburb", "place-village", "place-town", "place-island", "place-city",
+  "place-neighbourhood", "place-suburb", "place-village", "place-town", "place-island", "place-city", "place-city-dot",
   "place-state", "place-country", "park-label", "water-label", "water-label-line", "peak", "airport-label",
   "road-label-major", "road-label-minor",
 ];
@@ -475,7 +486,7 @@ function satelliteOverlay(layers) {
 export function buildStyle(options = {}) {
   const ov = !!options.overture;   // also draw Overture land cover and businesses
   const layers = [
-    { id: "background", type: "background", paint: { "background-color": COLOR.land } },
+    { id: "background", type: "background", paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 0, "#ece9e2", 4, COLOR.land] } },
 
     // Land cover and use: kept faint, so the map reads as streets and water first.
     {
@@ -508,6 +519,17 @@ export function buildStyle(options = {}) {
       id: "park", type: "fill", source: SRC, "source-layer": "park",
       filter: ["==", ["geometry-type"], "Polygon"],
       paint: { "fill-color": COLOR.park, "fill-opacity": zoomed(5, 0.35, 11, 1) },
+    },
+
+    // Soft relief: mountains and valleys shaded from the north-west, fading out as
+    // you come down to streets. The water goes over it, so seas stay flat.
+    {
+      id: "relief", type: "hillshade", source: "dem", maxzoom: 14,
+      paint: {
+        "hillshade-exaggeration": zoomed(0, 1, 3, 0.75, 5, 0.45, 8, 0.35, 12, 0.1, 14, 0),
+        "hillshade-shadow-color": "#8c8779", "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#b9b4a6", "hillshade-illumination-direction": 335,
+      },
     },
 
     // Water.
@@ -699,18 +721,35 @@ export function buildStyle(options = {}) {
       layout: { "text-size": zoomed(7, 10, 14, 14), "text-font": ITALIC },
       paint: { "text-color": COLOR.textSoft },
     }),
-    placeLabel("place-city", "city", {
-      top: { minzoom: 3 },
+    // Far out, a city is a small dot with its name beneath, as on Google's world map.
+    {
+      id: "place-city-dot", type: "symbol", source: SRC, "source-layer": "place", minzoom: 2.5, maxzoom: 8.5,
+      filter: ["==", ["get", "class"], "city"],
       layout: {
-        "text-size": ["interpolate", ["linear"], ["zoom"], 3, 11, 8, 15, 12, 20],
+        "icon-image": "dot-city", "icon-size": 0.75, "icon-padding": 2,
+        "text-field": NAME, "text-font": REGULAR, "text-size": zoomed(2.5, 10.5, 8, 13.5),
+        "text-anchor": "top", "text-offset": [0, 0.45], "text-max-width": 7, "text-optional": true,
+        "symbol-sort-key": ["get", "rank"],
+      },
+      paint: { "text-color": COLOR.text, "text-halo-color": COLOR.halo, "text-halo-width": 1.6 },
+    },
+    placeLabel("place-city", "city", {
+      top: { minzoom: 8.5 },
+      layout: {
+        "text-size": ["interpolate", ["linear"], ["zoom"], 8.5, 15, 12, 20],
         "text-font": BOLD,
       },
     }),
-    placeLabel("place-state", "state", {
-      top: { minzoom: 4, maxzoom: 9 },
+    placeLabel("place-continent", "continent", {
+      top: { minzoom: 0, maxzoom: 2.8 },
+      layout: { "text-size": 12, "text-transform": "uppercase", "text-letter-spacing": 0.2, "text-font": REGULAR, "text-max-width": 8 },
+      paint: { "text-color": COLOR.textFaint },
+    }),
+    placeLabel("place-state", ["state", "province"], {
+      top: { minzoom: 2.9, maxzoom: 9 },
       layout: {
-        "text-size": zoomed(4, 10, 8, 13), "text-transform": "uppercase",
-        "text-letter-spacing": 0.12, "text-font": REGULAR,
+        "text-size": zoomed(2.9, 9, 8, 13), "text-transform": "uppercase",
+        "text-letter-spacing": 0.12, "text-font": REGULAR, "text-max-width": 7,
       },
       paint: { "text-color": COLOR.textFaint },
     }),
@@ -729,6 +768,10 @@ export function buildStyle(options = {}) {
     name: "Science Maps",
     sources: {
       [SRC]: { type: "vector", url: TILE_SOURCE },
+      dem: {
+        type: "raster-dem", encoding: "terrarium", tileSize: 256, maxzoom: 14,
+        tiles: ["https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"],
+      },
       ...(ov ? {
         ovbase: { type: "vector", url: `pmtiles://${OVERTURE}/base.pmtiles` },
         ovplaces: { type: "vector", url: `pmtiles://${OVERTURE}/places.pmtiles` },

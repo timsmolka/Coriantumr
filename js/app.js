@@ -332,6 +332,7 @@ function addBasemap() {
   const inner = vector.getMaplibreMap();
   glMap = inner;
   registerMarkers(inner); // draws our own round place markers on demand
+  window.__sciencemaps = { get glMap() { return glMap; }, get map() { return map; } }; // for looking at the map from the console
 
   let mainDataArrived = false;
   inner.on("sourcedata", (event) => {
@@ -385,6 +386,8 @@ function initMap() {
     minZoom: 2,
     maxZoom: 19, // a vector layer has no limit of its own, so say it here
     zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
+    maxBounds: [[-85.05, -3600], [85.05, 3600]], // no scrolling past the poles into blank grey
+    maxBoundsViscosity: 1,
     keyboard: false, // Leaflet's own arrow keys only work while the map has focus; see setupKeyboardMoves()
   });
 

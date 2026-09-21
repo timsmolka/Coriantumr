@@ -161,7 +161,7 @@ export function placeFromFeature(feature, at) {
 const PLACE_CLASS_WORDS = {
   country: "Country", state: "State", city: "City", town: "Town", village: "Village", hamlet: "Hamlet",
   suburb: "Neighbourhood", neighbourhood: "Neighbourhood", quarter: "Neighbourhood", island: "Island",
-  isolated_dwelling: "Neighbourhood", continent: "Continent",
+  isolated_dwelling: "Neighbourhood", continent: "Continent", province: "Province",
 };
 const ROAD_WORDS = {
   motorway: "Highway", trunk: "Highway", primary: "Main road", secondary: "Road",
