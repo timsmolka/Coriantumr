@@ -227,10 +227,13 @@ export async function reverseGeocode(lat, lon) {
  * which is the opposite of the usual "lat, lon" we say out loud. We handle
  * that ordering here so the rest of the app can keep thinking in {lat, lon}.
  *
- * NOTE: The free public OSRM demo server only hosts the CAR ("driving")
- * profile. So even if you pass profile='walking' or 'cycling', the server
- * effectively falls back to CAR routing. The parameter is kept for forward
- * compatibility in case the app later points at a self-hosted OSRM.
+ * The three ways of getting there each have their own server, all running the
+ * same OSRM software and answering in the same shape: the OSRM demo for cars,
+ * and OpenStreetMap's own (routing.openstreetmap.de) for walking and for
+ * cycling — so a walk uses footpaths and crossings, and a bike ride avoids
+ * roads nobody would cycle. They are free and keyless; the walking and cycling
+ * ones are shared community servers, fine for this but not for heavy use.
+ * (Their URLs say "driving" whichever kind they are; the server is the mode.)
  *
  * @param {{lat: number, lon: number}} from - Start point.
  * @param {{lat: number, lon: number}} to - Destination point.
@@ -244,15 +247,20 @@ export async function reverseGeocode(lat, lon) {
  * }>}
  * @throws {Error} If the request fails or no route is found.
  */
+/** Where each way of travelling is routed. */
+const ROUTING_SERVERS = {
+  driving: "https://router.project-osrm.org/route/v1/driving/",
+  walking: "https://routing.openstreetmap.de/routed-foot/route/v1/driving/",
+  cycling: "https://routing.openstreetmap.de/routed-bike/route/v1/driving/",
+};
+
 export async function route(from, to, profile = "driving") {
   // OSRM wants "lon,lat;lon,lat". Note the longitude-first ordering.
   const coordinates =
     `${from.lon},${from.lat};${to.lon},${to.lat}`;
 
   const url =
-    "https://router.project-osrm.org/route/v1/" +
-    encodeURIComponent(profile) +
-    "/" +
+    (ROUTING_SERVERS[profile] || ROUTING_SERVERS.driving) +
     coordinates +
     "?overview=full" + // give us the whole route geometry, not a simplified one
     "&geometries=geojson" + // return geometry as GeoJSON coordinates
@@ -270,6 +278,26 @@ export async function route(from, to, profile = "driving") {
   // The first route is the best; any others are alternatives to offer.
   const [best, ...others] = data.routes.map(shapeRoute);
   return { ...best, alternatives: others };
+}
+
+/**
+ * How long the trip takes by each way of travelling, for the row of buttons —
+ * just the time of the best route, without the map line or the steps, so it is
+ * small and quick. A mode whose server does not answer is left out.
+ * @returns {Promise<{driving?: number, walking?: number, cycling?: number}>} seconds
+ */
+export async function routeTimes(from, to) {
+  const coordinates = `${from.lon},${from.lat};${to.lon},${to.lat}`;
+  const out = {};
+  await Promise.all(Object.entries(ROUTING_SERVERS).map(async ([mode, base]) => {
+    try {
+      const data = await fetchJson(`${base}${coordinates}?overview=false`);
+      if (data.routes && data.routes[0]) out[mode] = data.routes[0].duration;
+    } catch (err) {
+      /* no time for that mode — its button just shows none */
+    }
+  }));
+  return out;
 }
 
 /**

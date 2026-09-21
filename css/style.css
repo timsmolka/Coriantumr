@@ -1166,3 +1166,9 @@ body.panel-collapsed .side { display: none; }
   box-shadow: 0 1px 4px rgba(0,0,0,.45);
   cursor: pointer;
 }
+
+/* travel modes: an icon with the time it would take under it, like Google's */
+.mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 64px; height: 50px; gap: 0; border-radius: 14px; }
+.mode-icon { font-size: 18px; line-height: 22px; }
+.mode-time { font-size: 11px; line-height: 14px; color: var(--text-muted); min-height: 14px; }
+.mode-btn.on .mode-time { color: var(--blue); font-weight: 500; }

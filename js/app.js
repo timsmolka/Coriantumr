@@ -93,6 +93,7 @@ import {
   geocode,
   reverseGeocode,
   route,
+  routeTimes,
   getWeather,
 } from "./services.js";
 
@@ -167,6 +168,7 @@ const state = {
   layerMode: "default", // "default" | "satellite" | "terrain"
   routes: [], // every route found for the trip (the first is the fastest)
   routeIndex: 0, // which of them is chosen
+  modeTimes: {}, // seconds the trip takes on foot, by bike and by car, for the mode buttons
 };
 
 
@@ -856,6 +858,7 @@ async function requestRoute() {
     drawRoutes({ fit: !state.navigating });
     setMapStatus("");
     if (state.navigating) state.navNext = 1;             // a fresh route starts from its first turn
+    if (!state.navigating) loadModeTimes();
     if (state.pendingStart) {
       state.pendingStart = false;
       startNavigation();
@@ -1035,6 +1038,7 @@ function clearDirections() {
   state.routeData = null;
   state.routes = [];
   state.routeIndex = 0;
+  state.modeTimes = {};
   state.pendingStart = false;
   if (routeLine) { routeLine.remove(); routeLine = null; }
   if (destinationMarker) { destinationMarker.remove(); destinationMarker = null; }
@@ -1135,7 +1139,7 @@ function renderMode() {
   if (view === "home") renderHome();
   if (view === "list") renderList();
   if (view === "results") renderResults();
-  if (view === "trip") renderRouteOptions();
+  if (view === "trip") { renderRouteOptions(); renderModeButtons(); }
 
   if (showHead) {
     const r = state.routeData;
@@ -1525,6 +1529,7 @@ function chooseOrigin(place) {
   state.locationAccuracy = null;
   placeOriginMarker(place.lat, place.lon, place.name);
   if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+  el("search-input").value = state.destination ? state.destination.label : "";   // not the start's name
   if (state.selected && !state.destination) {
     setMapStatus(`Start set to ${place.name}.`);
   }
@@ -1575,6 +1580,28 @@ function chooseRoute(index) {
   state.navNext = 1;
   drawRoutes({ fit: false });
   render();
+}
+
+/** Ask how long the trip takes by each way of travelling, for the buttons. */
+async function loadModeTimes() {
+  const from = state.origin, to = state.destination;
+  if (!from || !to) return;
+  const times = await routeTimes(from, to);
+  // Only if it is still the same trip.
+  if (state.origin === from && state.destination === to) {
+    state.modeTimes = times;
+    render();
+  }
+}
+
+/** The three travel-mode buttons: which is chosen, and how long each would take. */
+function renderModeButtons() {
+  document.querySelectorAll(".mode-btn").forEach((b) => {
+    const mode = b.dataset.mode;
+    b.classList.toggle("on", mode === state.travelMode);
+    const seconds = state.modeTimes[mode];
+    b.querySelector(".mode-time").textContent = Number.isFinite(seconds) ? shortDuration(seconds) : "";
+  });
 }
 
 /** The list of routes on offer, when there is more than one. */
@@ -1692,7 +1719,29 @@ async function runSearch(query) {
 /** The area currently on screen, in the shape the search service wants. */
 function mapViewbox() {
   const b = map.getBounds();
-  return { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+  const box = { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+  // Zoomed far out, the view is wider than the world and its edges are past
+  // ±180°; the search service rejects that with an error. A view that wide is
+  // no hint about where to look anyway, so send none.
+  const sane = Object.values(box).every(Number.isFinite)
+    && box.west < box.east && box.south < box.north
+    && Math.abs(box.west) <= 180 && Math.abs(box.east) <= 180
+    && Math.abs(box.south) <= 90 && Math.abs(box.north) <= 90;
+  // Looking at the whole world says nothing about what is meant by "Barnes
+  // Park" (there are dozens). Where you are does: prefer what is near you.
+  if ((!sane || map.getZoom() < 8) && state.origin) {
+    const { lat, lon } = state.origin;
+    return { west: Math.max(-180, lon - 0.8), east: Math.min(180, lon + 0.8), south: Math.max(-90, lat - 0.6), north: Math.min(90, lat + 0.6) };
+  }
+  if (!sane) return undefined;
+  // A screenful is tiny (a street or two), and what is meant is often a few
+  // kilometres away — so search a generous area around where the map is looking.
+  const cx = (box.west + box.east) / 2, cy = (box.south + box.north) / 2;
+  const halfW = Math.max((box.east - box.west) / 2, 0.4), halfH = Math.max((box.north - box.south) / 2, 0.3);
+  return {
+    west: Math.max(-180, cx - halfW), east: Math.min(180, cx + halfW),
+    south: Math.max(-90, cy - halfH), north: Math.min(90, cy + halfH),
+  };
 }
 
 /**
@@ -2366,6 +2415,7 @@ function wireUpControls() {
   el("travel-mode-select").addEventListener("change", (e) => {
     state.travelMode = e.target.value;
     if (state.origin && state.destination) requestRoute();
+    render();
   });
 
   // Distance unit select: update state, then re-render.
@@ -2453,7 +2503,6 @@ function wireUpControls() {
   // The trip: travel mode buttons, choosing the ends, swapping them.
   document.querySelectorAll(".mode-btn").forEach((b) =>
     b.addEventListener("click", () => {
-      document.querySelectorAll(".mode-btn").forEach((x) => x.classList.toggle("on", x === b));
       const select = el("travel-mode-select");
       select.value = b.dataset.mode;
       select.dispatchEvent(new Event("change"));

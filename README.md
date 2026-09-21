@@ -454,7 +454,7 @@ browser by itself.
 - **The side panel, rail and extras (like Google Maps):** a left rail (menu, Saved, Recents, Science, plus links to Logic Lab and Chernobyl) and a full-height panel with the search box on top and one view underneath — home (explore buttons, recents, saved), a place, the trip, category results, or the Science panels. Over the map: category chips (Restaurants, Coffee, Hotels, …) that list what is near where you are looking, a weather chip, a layers button (Map / Satellite / Terrain, from Esri imagery), and a scale bar. Right-click for "What's here?", directions from/to a spot, and copy coordinates. Directions offers the routes the server finds to choose between, with swap and change-start. Save a place with ★ and share a link to it (the page opens straight to it). On a phone the panel is a bottom sheet.
 - **Keyboard movement (PC):** hold the arrow keys or W A S D to glide the map (two together go diagonally, Shift is faster); + / − or E / Q zoom. Works anywhere on the page except while typing in a box.
 - **Search (geocoding):** [Nominatim](https://nominatim.org/)
-- **Routing & turn-by-turn:** [OSRM](https://project-osrm.org/) public demo (car routing only)
+- **Routing & turn-by-turn:** [OSRM](https://project-osrm.org/) software on three free public servers — the OSRM demo for driving, and OpenStreetMap's [routing.openstreetmap.de](https://routing.openstreetmap.de/) for walking (footpaths) and cycling (bike-friendly roads). The mode buttons show each way's time. Bus and train routes are not offered: there is no free source for them.
 - **Weather:** [Open-Meteo](https://open-meteo.com/) — keyless, used for the speed-of-sound math
 
 > The project brief suggested OpenWeatherMap; Open-Meteo was used instead because

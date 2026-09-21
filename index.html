@@ -187,9 +187,9 @@
         <section class="view trip-view" id="view-trip" hidden>
           <div class="trip-top">
             <div class="mode-row" role="group" aria-label="Travel mode">
-              <button class="mode-btn on" type="button" data-mode="driving" title="Driving" aria-label="Driving">🚗</button>
-              <button class="mode-btn" type="button" data-mode="walking" title="Walking" aria-label="Walking">🚶</button>
-              <button class="mode-btn" type="button" data-mode="cycling" title="Cycling" aria-label="Cycling">🚲</button>
+              <button class="mode-btn on" type="button" data-mode="driving" title="Driving" aria-label="Driving"><span class="mode-icon">🚗</span><span class="mode-time"></span></button>
+              <button class="mode-btn" type="button" data-mode="walking" title="Walking" aria-label="Walking"><span class="mode-icon">🚶</span><span class="mode-time"></span></button>
+              <button class="mode-btn" type="button" data-mode="cycling" title="Cycling" aria-label="Cycling"><span class="mode-icon">🚲</span><span class="mode-time"></span></button>
             </div>
             <button class="card-close inline" id="route-clear" type="button" title="Close directions" aria-label="Close directions">✕</button>
           </div>
@@ -213,7 +213,7 @@
             <option value="walking">Walking</option>
             <option value="cycling">Cycling</option>
           </select>
-          <p id="mode-note" class="mode-note">The free routing server only knows car roads, so walking and cycling use them too.</p>
+          <p id="mode-note" class="mode-note">Drive, walk or cycle: each is routed on its own roads and paths. Bus and train times are not available — there is no free source for them.</p>
 
           <!-- Once directions exist: time and distance, and the button to begin. -->
           <div class="route-head" id="route-head" hidden>
