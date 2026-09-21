@@ -37,7 +37,7 @@ const COLOR = {
   park: "#c4f0d4",
   wood: "#cdf5dc",
   grass: "#d6f7e3",
-  sand: "#f6eee6",
+  sand: "#f1eee8",
   building: "#e9e9ea",
   buildingEdge: "#dcdcde",
   text: "#3c4043",
@@ -395,7 +395,7 @@ function overtureLandCover() {
     id: "ov-landcover", type: "fill", source: "ovbase", "source-layer": "land_cover", minzoom: 2,
     paint: {
       "fill-color": ["match", ["get", "subtype"],
-        "barren", "#f0e8da",
+        "barren", "#edebe6",
         ["grass", "shrub", "moss"], "#e3f2e2",
         "crop", "#eef3e1",
         "wetland", "#d0eee6",
@@ -486,7 +486,7 @@ function satelliteOverlay(layers) {
 export function buildStyle(options = {}) {
   const ov = !!options.overture;   // also draw Overture land cover and businesses
   const layers = [
-    { id: "background", type: "background", paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 0, "#ece9e2", 4, COLOR.land] } },
+    { id: "background", type: "background", paint: { "background-color": ["interpolate", ["linear"], ["zoom"], 0, "#eaeded", 4, COLOR.land] } },
 
     // Land cover and use: kept faint, so the map reads as streets and water first.
     {
@@ -527,8 +527,8 @@ export function buildStyle(options = {}) {
       id: "relief", type: "hillshade", source: "dem", maxzoom: 14,
       paint: {
         "hillshade-exaggeration": zoomed(0, 1, 3, 0.75, 5, 0.45, 8, 0.35, 12, 0.1, 14, 0),
-        "hillshade-shadow-color": "#8c8779", "hillshade-highlight-color": "#ffffff",
-        "hillshade-accent-color": "#b9b4a6", "hillshade-illumination-direction": 335,
+        "hillshade-shadow-color": "#7f8790", "hillshade-highlight-color": "#ffffff",
+        "hillshade-accent-color": "#a9b0b8", "hillshade-illumination-direction": 335,
       },
     },
 
@@ -781,4 +781,27 @@ export function buildStyle(options = {}) {
     glyphs: GLYPHS,
     layers: options.satellite ? satelliteOverlay(layers) : layers,
   };
+}
+
+// ---- the globe -------------------------------------------------------------
+/**
+ * The same map, for wrapping round a ball: zoomed far out, Google Maps shows
+ * the Earth as a globe, and so does this. Over satellite photographs the ball is
+ * the photographs themselves, with the names on top.
+ */
+export function buildGlobeStyle(options = {}) {
+  const style = buildStyle({ overture: options.overture, satellite: options.satellite });
+  if (options.satellite) {
+    style.sources.imagery = {
+      type: "raster", tileSize: 256, maxzoom: 19,
+      tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+    };
+    style.layers = [{ id: "imagery", type: "raster", source: "imagery", paint: { "raster-saturation": -0.2 } }, ...style.layers];
+  }
+  style.projection = { type: "globe" };
+  style.sky = {                                            // the thin blue glow around the edge
+    "sky-color": "#7fb6ef", "horizon-color": "#cfe3f7", "sky-horizon-blend": 0.6,
+    "atmosphere-blend": ["interpolate", ["linear"], ["zoom"], 0, 1, 4, 1, 6, 0],
+  };
+  return style;
 }

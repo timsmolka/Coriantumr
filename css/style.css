@@ -1173,8 +1173,6 @@ body.panel-collapsed .side { display: none; }
 .mode-time { font-size: 11px; line-height: 14px; color: var(--text-muted); min-height: 14px; }
 .mode-btn.on .mode-time { color: var(--blue); font-weight: 500; }
 
-/* Satellite photographs: a touch more colour and contrast, as in Google Maps. */
-.imagery-tiles { filter: saturate(1.1) contrast(1.05) brightness(1.02); }
 
 /* Up to five ways of travelling: they share the row, and hide when they do not apply. */
 .mode-row { flex: 1 1 auto; min-width: 0; }
@@ -1182,3 +1180,13 @@ body.panel-collapsed .side { display: none; }
 .mode-btn[hidden] { display: none; }
 .mode-time { white-space: nowrap; }
 #route-start[hidden], .route-head [hidden] { display: none; }
+
+/* The globe: black space behind the ball, above the flat map but under every button. */
+.map-area > .globe { position: absolute; inset: 0; z-index: 600; background: radial-gradient(circle at 50% 45%, #0f1730 0%, #04060c 100%); }
+.map-area > .globe[hidden] { display: none; }
+.globe .maplibregl-canvas { outline: none; }
+/* While the globe is up, "−" must not look switched off: it zooms the globe. */
+.globe-on .leaflet-control-zoom a.leaflet-disabled { background-color: #fff; color: #000; cursor: pointer; }
+
+/* Satellite photographs, a little less saturated so deserts do not glow orange. */
+.imagery-tiles { filter: saturate(0.85); }

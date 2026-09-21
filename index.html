@@ -39,7 +39,7 @@
 
   <!-- MapLibre GL draws the map itself from vector data, in our own style
        (js/mapstyle.js), instead of showing someone else's pre-made pictures. -->
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5.8.0/dist/maplibre-gl.css" />
 
   <!-- Our own styles. -->
   <link rel="stylesheet" href="css/style.css" />
@@ -389,6 +389,8 @@
          ================================================================ -->
     <div class="map-area">
       <div id="map" class="map" role="application" aria-label="Interactive map"></div>
+      <!-- The Earth as a ball, in place of the flat map when zoomed right out. -->
+      <div id="globe" class="globe" hidden aria-label="Globe"></div>
 
       <!-- Category chips along the top, like Google Maps. -->
       <div class="chips" id="chips" role="toolbar" aria-label="Search nearby"></div>
@@ -404,6 +406,7 @@
           <button class="layer-opt" type="button" data-layer="satellite"><span class="layer-swatch sw-satellite"></span><span>Satellite</span></button>
           <button class="layer-opt" type="button" data-layer="terrain"><span class="layer-swatch sw-terrain"></span><span>Terrain</span></button>
           <label class="layer-check"><input type="checkbox" id="layer-labels" checked /> <span>Labels</span></label>
+          <label class="layer-check"><input type="checkbox" id="layer-globe" checked /> <span>Globe view</span></label>
         </div>
         <button class="layers-btn" id="layers-btn" type="button" title="Map layers" aria-label="Map layers">
           <span class="layers-thumb" aria-hidden="true"></span>
@@ -455,7 +458,7 @@
 
   <!-- MapLibre GL, and the small bridge that lets it draw inside a Leaflet map
        (so the markers, route line and zoom buttons keep working as they are). -->
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/maplibre-gl@5.8.0/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
 
   <!-- PMTiles lets MapLibre read Overture Maps' data straight out of one big file,

@@ -89,6 +89,8 @@ import {
   nextTurnDistance,
 } from "./navigation.js";
 
+import { createGlobe } from "./globe.js";
+
 import {
   ESTIMATE_MODES,
   isEstimateMode,
@@ -289,6 +291,11 @@ let glMap = null; // the vector map drawing underneath Leaflet (null on the pict
 let glOverture = false; // whether that map also draws Overture data
 let glKind = "default"; // which of its two styles it wears: "default" or "satellite" (words over photographs)
 let glVisible = true; // false while the terrain map covers it
+let globe = null; // the Earth as a ball, for when the map is zoomed right out (js/globe.js)
+let globeActive = false; // true while the ball is showing instead of the flat map
+let globeEnabled = true; // the "Globe view" tick box
+let globeKey = null; // what was last drawn on the ball, so it is not drawn again for nothing
+const GLOBE_KEY = "sciencemaps.globe";
 
 /**
  * Draw the map itself: our own style (js/mapstyle.js) rendered in the browser
@@ -332,7 +339,7 @@ function addBasemap() {
   const inner = vector.getMaplibreMap();
   glMap = inner;
   registerMarkers(inner); // draws our own round place markers on demand
-  window.__sciencemaps = { get glMap() { return glMap; }, get map() { return map; } }; // for looking at the map from the console
+  window.__sciencemaps = { get glMap() { return glMap; }, get map() { return map; }, get globe() { return globe; } }; // for looking at the map from the console
 
   let mainDataArrived = false;
   inner.on("sourcedata", (event) => {
@@ -396,7 +403,22 @@ function initMap() {
   // Zoom buttons in the bottom-right corner, like Google Maps. The required
   // attribution keeps its default bottom-right spot — the bottom sheet sits at
   // the bottom-left, so it won't cover the credits.
-  L.control.zoom({ position: "bottomright" }).addTo(map);
+  const zoomControl = L.control.zoom({ position: "bottomright" }).addTo(map);
+  // While the globe is showing, the + and − buttons zoom it, not the hidden flat map.
+  zoomControl.getContainer().addEventListener("click", (e) => {
+    if (!globeActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target.closest(".leaflet-control-zoom-out")) globe.zoomOut();
+    else if (e.target.closest(".leaflet-control-zoom-in")) globe.zoomIn();
+  }, true);
+
+  // Zoomed right out, the flat map gives way to a globe (and back again).
+  map.on("zoomend", () => {
+    if (!globeEnabled) return;
+    if (!globeActive && map.getZoom() <= 2) enterGlobe();
+    else if (globeActive && map.getZoom() > 2) exitGlobe({ keepView: true });   // moved in by a search or a button
+  });
 
   // A scale bar, in miles and kilometres, beside the layers button.
   L.control.scale({ position: "bottomleft", maxWidth: 110 }).addTo(map);
@@ -440,8 +462,64 @@ function initMap() {
   });
 }
 
+// ---- the globe ---------------------------------------------------------------------
+
+/** Swap the flat map for the ball, looking at the same place. */
+function enterGlobe() {
+  if (globeActive || !globeEnabled || !glMap) return;
+  if (!globe) {
+    globe = createGlobe(el("globe"), { overture: glOverture });
+    globe.onZoom((zoom) => { if (globeActive && zoom >= 3.2) exitGlobe(); });   // close enough to be flat again
+  }
+  // Look at the middle of the trip if there is one (the flat map's centre can be off the route
+  // once it is zoomed out this far), otherwise at wherever the flat map was looking.
+  const trip = state.routes[state.routeIndex];
+  const mid = trip && trip.geometry.length ? trip.geometry[Math.floor(trip.geometry.length / 2)] : null;
+  const at = mid ? { lat: mid.lat, lng: ((mid.lon + 540) % 360) - 180 } : map.getCenter().wrap();
+  el("globe").hidden = false;                              // it must be showing to be measured
+  // On a phone the bottom sheet covers the lower part, so the ball is centred in what is left.
+  const narrow = window.innerWidth <= 900;
+  const ok = globe.open({
+    center: [at.lng, at.lat], zoom: narrow ? 0.95 : 1.5, isSatellite: state.layerMode === "satellite",
+    padding: narrow ? { top: 60, bottom: Math.round(window.innerHeight * 0.46) } : {},
+  });
+  if (!ok) {                                               // no WebGL globe here: stay flat
+    el("globe").hidden = true;
+    globeEnabled = false;
+    return;
+  }
+  globeActive = true;
+  globeKey = null;
+  document.body.classList.add("globe-on");
+  map.getPane("mapPane").style.visibility = "hidden";
+  syncGlobe();
+}
+
+/** Back to the flat map — at the place the globe was showing, unless the map has just been moved there. */
+function exitGlobe({ keepView = false } = {}) {
+  if (!globeActive) return;
+  const view = globe.view();
+  globeActive = false;
+  el("globe").hidden = true;
+  document.body.classList.remove("globe-on");
+  map.getPane("mapPane").style.visibility = "";
+  if (!keepView && view) map.setView([view.center.lat, view.center.lng], Math.max(3, Math.round(view.zoom) + 1), { animate: false });
+}
+
+/** Put the position, destination and route on the ball. */
+function syncGlobe() {
+  if (!globeActive || !globe) return;
+  const r = state.routes[state.routeIndex];
+  const o = state.origin, d = state.destination;
+  const key = [o && o.lat, o && o.lon, d && d.lat, d && d.lon, r ? r.geometry.length : 0, r && r.estimate, state.routeIndex].join("|");
+  if (key === globeKey) return;
+  globeKey = key;
+  globe.setTrip({ origin: o, destination: d, path: r ? r.geometry : null, estimate: Boolean(r && r.estimate) });
+}
+
 /**
- * The named place or house number under a spot on the map, or null. Looks a few
+ * The named place or house number under a spot on the map, or null.
+ Looks a few
  * pixels around it, so a small label is easy to hit, and takes whichever label
  * is nearest. The vector map is drawn a little larger than the visible window
  * (so panning never shows an edge), which means its pixels are not Leaflet's
@@ -1189,6 +1267,7 @@ function renderMode() {
   renderChips();
   renderWeatherChip();
   renderSavedPins();
+  syncGlobe();
 }
 
 // ---- the panel's lists ---------------------------------------------------------
@@ -1478,6 +1557,7 @@ function setLayerMode(mode) {
     terrain: "linear-gradient(135deg, #d8cfa8, #a9c790 55%, #7aa06b)",
   };
   el("layers-btn").style.setProperty("--thumb", thumbs[mode]);
+  if (globeActive) globe.setSatellite(mode === "satellite");
   document.querySelectorAll(".layer-opt").forEach((b) => b.classList.toggle("on", b.dataset.layer === mode));
   try { localStorage.setItem(LAYER_KEY, mode); } catch (err) { /* fine */ }
   // What the old map layer drew, the new one must be told about: the vector map
@@ -2598,7 +2678,14 @@ function wireUpControls() {
   // Layers, the right-click menu, and "Search this area".
   el("layers-btn").addEventListener("click", () => { el("layers-menu").hidden = !el("layers-menu").hidden; });
   document.querySelectorAll(".layer-opt").forEach((b) => b.addEventListener("click", () => setLayerMode(b.dataset.layer)));
-  el("layer-labels").addEventListener("change", () => { if (state.layerMode === "satellite") setLayerMode("satellite"); });
+  el("layer-globe").addEventListener("change", (e) => {
+    globeEnabled = e.target.checked;
+    try { localStorage.setItem(GLOBE_KEY, globeEnabled ? "on" : "off"); } catch (err) { /* fine */ }
+    if (!globeEnabled && globeActive) exitGlobe();
+    else if (globeEnabled && map.getZoom() <= 2) enterGlobe();
+  });
+  el("layer-labels").addEventListener("change",
+ () => { if (state.layerMode === "satellite") setLayerMode("satellite"); });
   document.addEventListener("click", (e) => {
     if (!e.target.closest(".layers-wrap")) el("layers-menu").hidden = true;
     if (!e.target.closest(".ctx-menu")) hideContextMenu();
@@ -2652,7 +2739,9 @@ function setupKeyboardMoves() {
     if (dx || dy) {
       const length = Math.hypot(dx, dy);          // diagonals are not faster
       const pixels = SPEED * (fast ? FAST : 1) * dt;
-      map.panBy([(dx / length) * pixels, (dy / length) * pixels], { animate: false });
+      const mx = (dx / length) * pixels, my = (dy / length) * pixels;
+      if (globeActive) globe.panBy(mx, my);
+      else map.panBy([mx, my], { animate: false });
     }
     requestAnimationFrame(step);
   };
@@ -2671,9 +2760,9 @@ function setupKeyboardMoves() {
         requestAnimationFrame(step);
       }
     } else if (["+", "=", "e"].includes(key) && !event.repeat) {
-      map.zoomIn();
+      (globeActive ? globe : map).zoomIn();
     } else if (["-", "_", "q"].includes(key) && !event.repeat) {
-      map.zoomOut();
+      (globeActive ? globe : map).zoomOut();
     }
   });
 
@@ -2697,6 +2786,7 @@ function init() {
   try {
     const mode = localStorage.getItem(LAYER_KEY);
     if (mode === "satellite" || mode === "terrain") setLayerMode(mode);
+    if (localStorage.getItem(GLOBE_KEY) === "off") { globeEnabled = false; el("layer-globe").checked = false; }
   } catch (err) { /* storage blocked: the default map */ }
   openFromHash();
   populateDistanceUnitSelect();
