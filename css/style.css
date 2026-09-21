@@ -1172,3 +1172,13 @@ body.panel-collapsed .side { display: none; }
 .mode-icon { font-size: 18px; line-height: 22px; }
 .mode-time { font-size: 11px; line-height: 14px; color: var(--text-muted); min-height: 14px; }
 .mode-btn.on .mode-time { color: var(--blue); font-weight: 500; }
+
+/* Satellite photographs: a touch more colour and contrast, as in Google Maps. */
+.imagery-tiles { filter: saturate(1.1) contrast(1.05) brightness(1.02); }
+
+/* Up to five ways of travelling: they share the row, and hide when they do not apply. */
+.mode-row { flex: 1 1 auto; min-width: 0; }
+.mode-btn { flex: 1 1 0; min-width: 0; max-width: 64px; width: auto; }
+.mode-btn[hidden] { display: none; }
+.mode-time { white-space: nowrap; }
+#route-start[hidden], .route-head [hidden] { display: none; }

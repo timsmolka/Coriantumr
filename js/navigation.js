@@ -108,6 +108,10 @@ export function shortDuration(seconds) {
   const minutes = Math.round(seconds / 60);
   if (minutes < 60) return `${minutes} min`;
   const h = Math.floor(minutes / 60), m = minutes % 60;
+  if (h >= 48) {                                            // a long sea crossing: days and hours
+    const d = Math.floor(h / 24), rest = h % 24;
+    return rest ? `${d} d ${rest} hr` : `${d} d`;
+  }
   return m ? `${h} hr ${m} min` : `${h} hr`;
 }
 

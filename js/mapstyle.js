@@ -435,6 +435,42 @@ function placeLabel(id, cls, extra) {
   };
 }
 
+// ---- the satellite overlay -------------------------------------------------
+// Over satellite pictures the map is only what a picture cannot say: names,
+// faint road lines, borders and the place markers. Every filled shape (land,
+// water, buildings) is dropped so the photograph shows through, and the words
+// turn white with a soft dark edge so they read on forest and on sand alike.
+const SAT_TEXT = { "water-label": "#bfdcff", "water-label-line": "#bfdcff", "park-label": "#c9f2cb", peak: "#f3dcc0" };
+
+function satelliteOverlay(layers) {
+  const drawn = (kind) => ["all", isOneOf("class", kind), ["match", ["get", "brunnel"], ["tunnel"], false, true]];
+  const roads = (id, kind, minzoom, alpha, widths) => ({
+    id, type: "line", source: SRC, "source-layer": "transportation", minzoom, filter: drawn(kind),
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": `rgba(255,255,255,${alpha})`, "line-width": zoomed(...widths) },
+  });
+  const borders = layers
+    .filter((l) => l.id.startsWith("boundary"))
+    .map((l) => ({ ...l, paint: { ...l.paint, "line-color": "rgba(255,255,255,0.7)" } }));
+  const words = layers
+    .filter((l) => l.type === "symbol")
+    .map((l) => (l.id === "road-shield" ? l : {
+      ...l,
+      paint: {
+        ...l.paint,
+        "text-color": SAT_TEXT[l.id] || "#ffffff",
+        "text-halo-color": "rgba(0,0,0,0.7)", "text-halo-width": 1.5, "text-halo-blur": 0.6,
+      },
+    }));
+  return [
+    roads("sat-street", ["minor", "service", "tertiary"], 13.5, 0.4, [13.5, 0.6, 16, 2, 19, 6]),
+    roads("sat-road", ["secondary", "primary"], 9, 0.55, [9, 0.6, 12, 1.4, 16, 4, 19, 9]),
+    roads("sat-highway", ["motorway", "trunk"], 6, 0.75, [6, 0.6, 10, 1.6, 14, 3.4, 19, 10]),
+    ...borders,
+    ...words,
+  ];
+}
+
 // ---- the style -------------------------------------------------------------
 export function buildStyle(options = {}) {
   const ov = !!options.overture;   // also draw Overture land cover and businesses
@@ -700,6 +736,6 @@ export function buildStyle(options = {}) {
       } : {}),
     },
     glyphs: GLYPHS,
-    layers,
+    layers: options.satellite ? satelliteOverlay(layers) : layers,
   };
 }

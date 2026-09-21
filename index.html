@@ -190,6 +190,8 @@
               <button class="mode-btn on" type="button" data-mode="driving" title="Driving" aria-label="Driving"><span class="mode-icon">🚗</span><span class="mode-time"></span></button>
               <button class="mode-btn" type="button" data-mode="walking" title="Walking" aria-label="Walking"><span class="mode-icon">🚶</span><span class="mode-time"></span></button>
               <button class="mode-btn" type="button" data-mode="cycling" title="Cycling" aria-label="Cycling"><span class="mode-icon">🚲</span><span class="mode-time"></span></button>
+              <button class="mode-btn" type="button" data-mode="boat" title="Boat (estimate)" aria-label="Boat (estimate)" hidden><span class="mode-icon">🚢</span><span class="mode-time"></span></button>
+              <button class="mode-btn" type="button" data-mode="flight" title="Flight (estimate)" aria-label="Flight (estimate)" hidden><span class="mode-icon">✈️</span><span class="mode-time"></span></button>
             </div>
             <button class="card-close inline" id="route-clear" type="button" title="Close directions" aria-label="Close directions">✕</button>
           </div>
@@ -212,6 +214,8 @@
             <option value="driving">Driving</option>
             <option value="walking">Walking</option>
             <option value="cycling">Cycling</option>
+            <option value="boat">Boat</option>
+            <option value="flight">Flight</option>
           </select>
           <p id="mode-note" class="mode-note">Drive, walk or cycle: each is routed on its own roads and paths. Bus and train times are not available — there is no free source for them.</p>
 

@@ -90,6 +90,14 @@ import {
 } from "./navigation.js";
 
 import {
+  ESTIMATE_MODES,
+  isEstimateMode,
+  estimateAvailable,
+  estimateSeconds,
+  estimateTrip,
+} from "./estimates.js";
+
+import {
   geocode,
   reverseGeocode,
   route,
@@ -278,6 +286,9 @@ let labelsLayer = null; // place names drawn over the satellite pictures
 let categoryDots = null; // the dots marking a category's results on the map
 let categoryCenter = null; // where the map was looking when the category was searched
 let glMap = null; // the vector map drawing underneath Leaflet (null on the picture fallback)
+let glOverture = false; // whether that map also draws Overture data
+let glKind = "default"; // which of its two styles it wears: "default" or "satellite" (words over photographs)
+let glVisible = true; // false while the terrain map covers it
 
 /**
  * Draw the map itself: our own style (js/mapstyle.js) rendered in the browser
@@ -304,6 +315,7 @@ function addBasemap() {
   // Overture Maps adds satellite land cover and real businesses on top of
   // OpenStreetMap. It needs the PMTiles reader; without it, OpenStreetMap alone.
   const overture = typeof pmtiles !== "undefined";
+  glOverture = overture;
   if (overture) maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
 
   const vector = L.maplibreGL({
@@ -434,7 +446,7 @@ function initMap() {
  * @param {{lat:number, lng:number}} latlng
  */
 function placeAtPoint(latlng) {
-  if (!glMap || !latlng || state.layerMode !== "default") return null;
+  if (!glMap || !latlng || !glVisible) return null;
   const point = glMap.project([latlng.lng, latlng.lat]);
   const layers = CLICKABLE_LAYERS.filter((id) => glMap.getLayer(id));
   if (!layers.length) return null;
@@ -618,12 +630,16 @@ function drawRoute(geometry, { fit = true } = {}) {
 
   // Draw the route as TWO stacked lines for the Google-Maps look: a wide white
   // "casing" underneath, then the blue route on top of it.
+  // An estimate (a flight, a boat) is drawn as dots, so it is never taken for a road.
+  const chosen = state.routes[state.routeIndex];
+  const dots = chosen && chosen.estimate ? { dashArray: "0.1 13" } : {};
   const casing = L.polyline(latLngs, {
     color: "#ffffff",
     weight: 9,
     opacity: 1,
     lineJoin: "round",
     lineCap: "round",
+    ...dots,
   });
   const line = L.polyline(latLngs, {
     color: "#1a73e8", // Google blue
@@ -631,6 +647,7 @@ function drawRoute(geometry, { fit = true } = {}) {
     opacity: 1,
     lineJoin: "round",
     lineCap: "round",
+    ...dots,
   });
   routeLine = L.layerGroup([casing, line]).addTo(map);
 
@@ -848,10 +865,17 @@ async function setDestination(lat, lon, label) {
 async function requestRoute() {
   if (!state.origin || !state.destination) return;
 
+  // A flight to next door makes no sense: an estimated way of travelling that
+  // does not suit this trip is dropped for driving.
+  const meters = distanceMeters(state.origin, state.destination);
+  if (isEstimateMode(state.travelMode) && !estimateAvailable(state.travelMode, meters)) state.travelMode = "driving";
+
   setMapStatus("Calculating route…");
 
   try {
-    const result = await route(state.origin, state.destination, state.travelMode);
+    const result = isEstimateMode(state.travelMode)
+      ? estimateTrip(state.origin, state.destination, state.travelMode)
+      : await route(state.origin, state.destination, state.travelMode);
     state.routes = [result, ...(result.alternatives || [])];
     state.routeIndex = 0;
     state.routeData = result;
@@ -861,9 +885,18 @@ async function requestRoute() {
     if (!state.navigating) loadModeTimes();
     if (state.pendingStart) {
       state.pendingStart = false;
-      startNavigation();
+      if (!result.estimate) startNavigation();
     }
   } catch (err) {
+    // No road, path or track joins them — across an ocean, say. For a trip that
+    // long, show the flight instead of an error, and say why.
+    if (!isEstimateMode(state.travelMode) && estimateAvailable("flight", meters)) {
+      state.travelMode = "flight";
+      state.pendingStart = false;
+      await requestRoute();
+      setMapStatus("There is no route by road or path, so this shows a flight estimate.");
+      return;
+    }
     // Don't crash — explain what happened and clear any stale route.
     state.routeData = null;
     state.pendingStart = false;
@@ -1050,7 +1083,7 @@ function clearDirections() {
 /** Begin following the route: the map sticks to you and a banner names each turn. */
 function startNavigation() {
   const steps = state.routeData && state.routeData.steps;
-  if (!steps || steps.length === 0) return;
+  if (!steps || steps.length === 0 || state.routeData.estimate) return;
   state.navigating = true;
   state.navNext = 1;
   state.locationManual = false;                         // navigating means trusting the real position
@@ -1144,6 +1177,7 @@ function renderMode() {
   if (showHead) {
     const r = state.routeData;
     el("route-head-time").textContent = shortDuration(r.durationSeconds);
+    el("route-start").hidden = Boolean(r.estimate);           // an estimate cannot be followed turn by turn
     const near = formatDistance(r.distanceMeters, familiarDistanceUnit(r.distanceMeters));
     const science = formatDistance(r.distanceMeters, primaryDistanceUnit(r.distanceMeters));
     el("route-head-detail").textContent = near === science ? near : `${near} · ${science}`;
@@ -1373,9 +1407,27 @@ function closeCategory() {
 const LAYER_KEY = "sciencemaps.layer";
 
 function baseLayersOff() {
-  for (const layer of [vectorLayer, pictureLayer, imageryLayer, topoLayer, labelsLayer]) {
+  // Our own vector map stays put — it is switched, not taken away and rebuilt.
+  for (const layer of [pictureLayer, imageryLayer, topoLayer, labelsLayer]) {
     if (layer && map.hasLayer(layer)) map.removeLayer(layer);
   }
+  if (!glMap && vectorLayer && map.hasLayer(vectorLayer)) map.removeLayer(vectorLayer);
+}
+
+/** Give the vector map its normal style, or the words-only one for over satellite pictures. */
+function setGlStyle(kind) {
+  if (!glMap || kind === glKind) return;
+  glKind = kind;
+  glMap.setStyle(buildStyle({ overture: glOverture, satellite: kind === "satellite" }));
+}
+
+/** Show or hide the vector map, and keep it above the photographs when they are there. */
+function setGlVisible(visible) {
+  glVisible = visible;
+  const box = vectorLayer && vectorLayer.getContainer && vectorLayer.getContainer();
+  if (!box) return;
+  box.style.display = visible ? "" : "none";
+  box.style.zIndex = 10;
 }
 
 /** Switch what the map is drawn from. The dots, pin and route stay where they are. */
@@ -1386,17 +1438,29 @@ function setLayerMode(mode) {
   if (mode === "satellite") {
     imageryLayer = imageryLayer || L.tileLayer(`${esri}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
+      zIndex: 1,
+      className: "imagery-tiles",
       attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
     });
     imageryLayer.addTo(map);
-    labelsLayer = labelsLayer || L.tileLayer(`${esri}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 });
-    if (el("layer-labels").checked) labelsLayer.addTo(map);
+    if (glMap) {
+      // The names, roads and markers come from our own map, drawn clear over the photographs.
+      setGlStyle("satellite");
+      setGlVisible(el("layer-labels").checked);
+    } else {
+      labelsLayer = labelsLayer || L.tileLayer(`${esri}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 });
+      if (el("layer-labels").checked) labelsLayer.addTo(map);
+    }
   } else if (mode === "terrain") {
     topoLayer = topoLayer || L.tileLayer(`${esri}/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`, {
       maxZoom: 19,
       attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, USGS, NGA, and others",
     });
     topoLayer.addTo(map);
+    if (glMap) setGlVisible(false);
+  } else if (glMap) {
+    setGlStyle("default");
+    setGlVisible(true);
   } else if (vectorLayer) {
     vectorLayer.addTo(map);
   } else {
@@ -1596,13 +1660,25 @@ async function loadModeTimes() {
 
 /** The three travel-mode buttons: which is chosen, and how long each would take. */
 function renderModeButtons() {
+  const meters = state.origin && state.destination ? distanceMeters(state.origin, state.destination) : NaN;
   document.querySelectorAll(".mode-btn").forEach((b) => {
     const mode = b.dataset.mode;
     b.classList.toggle("on", mode === state.travelMode);
-    const seconds = state.modeTimes[mode];
-    b.querySelector(".mode-time").textContent = Number.isFinite(seconds) ? shortDuration(seconds) : "";
+    let seconds = state.modeTimes[mode];
+    if (isEstimateMode(mode)) {
+      // Flights and boats are worked out here, and only offered for trips they suit.
+      b.hidden = !estimateAvailable(mode, meters);
+      seconds = estimateSeconds(mode, meters);
+    }
+    const text = Number.isFinite(seconds) ? shortDuration(seconds) : "";
+    // Long times are squeezed ("8 hr 30 min" is "8h 30m") so five buttons fit in a row.
+    b.querySelector(".mode-time").textContent = text.length > 6 ? text.replace(/ hr/g, "h").replace(/ min/g, "m").replace(/ d/g, "d") : text;
   });
+  const estimate = ESTIMATE_MODES[state.travelMode];
+  el("mode-note").textContent = estimate ? estimate.note : MODE_NOTE;
 }
+
+const MODE_NOTE = "Drive, walk or cycle: each is routed on its own roads and paths. Bus and train times are not available — there is no free source for them.";
 
 /** The list of routes on offer, when there is more than one. */
 function renderRouteOptions() {
