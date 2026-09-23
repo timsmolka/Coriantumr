@@ -3569,6 +3569,25 @@ function setBuzz(on) {
   } catch (e) { /* no sound is not an error */ }
 }
 
+/** A short burst of noise, fading fast — a capacitor popping. One-shot, so it
+    gets its own throwaway audio context rather than sharing the buzzer's. */
+function playPop() {
+  try {
+    if (!audioOK) return;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    const c = new AC(), dur = 0.16;
+    const buf = c.createBuffer(1, Math.round(c.sampleRate * dur), c.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / data.length, 2);
+    const src = c.createBufferSource(); src.buffer = buf;
+    const g = c.createGain(); g.gain.value = 0.4;
+    src.connect(g); g.connect(c.destination);
+    src.start();
+    setTimeout(() => c.close().catch(() => {}), (dur + 0.1) * 1000);
+  } catch (e) { /* no sound is not an error */ }
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
@@ -5670,7 +5689,7 @@ function compileBoard(b) {
 
   /* Resolve each part's pins to nets. */
   const supplies = [], resistors = [], diodes = [], leds = [], chips = [], displays = [], transistors = [];
-  const loads = [], lasers = [], fuses = [], relays = [], unos = [], ldrs = [];
+  const loads = [], lasers = [], fuses = [], relays = [], unos = [], ldrs = [], caps = [];
   for (const p of b.parts) {
     const holes = partHoles(p);
     p._nets = {};
@@ -5697,10 +5716,11 @@ function compileBoard(b) {
     else if (p.k === 'npn' || p.k === 'pnp') {
       transistors.push({ p, npn: p.k === 'npn', e: p._nets[1], b: p._nets[2], c: p._nets[3], on: false });
     }
-    /* A capacitor gets holes like anything else, and nothing else: in a real
-       circuit it smooths a supply that is already perfect here, or times a
-       delay this simulator does not have. It is on the board for a schematic
-       to look complete, not because current goes through it. */
+    /* A capacitor otherwise passes no current — in a real circuit it smooths a
+       supply that is already perfect here, or times a delay this simulator has
+       no room for — but it is not entirely inert: wired in backward across a
+       live supply, it pops (checked in BoardSim.tick, once nets have levels). */
+    else if (p.k === 'cap') caps.push({ p, a: p._nets[1], k: p._nets[2] });
   }
 
   /* The battery is 9 V, and the only thing on the bench built to take that is
@@ -5769,7 +5789,7 @@ function compileBoard(b) {
 
   return {
     board: b, nets: count, used: used.size, holeNet, supplies, resistors, diodes, leds, chips, displays, transistors, errors,
-    loads, lasers, fuses, relays, unos, ldrs, conductors,
+    loads, lasers, fuses, relays, unos, ldrs, conductors, caps,
   };
 }
 
@@ -5978,6 +5998,18 @@ class BoardSim {
       if (!f.p.blown && conf[f.a]) {
         f.p.blown = true; S.bdirty = true; scheduleSave();
         toast('A fuse blew — something was shorting 5 V to ground through it.', true);
+      }
+    }
+
+    /* A capacitor's own reverse voltage rating is a volt or two — nothing next
+       to a whole logic level or a battery — and unlike a diode, it does not
+       just block a level going the wrong way, it fails. Only counts when both
+       legs are actively driven (a resistor in series limits the current enough
+       to spare it, the same as it spares an LED). */
+    for (const c of this.c.caps) {
+      if (!c.p.popped && str[c.a] === STRONG && str[c.k] === STRONG && val[c.a] === 0 && val[c.k] === 1) {
+        c.p.popped = true; S.bdirty = true; scheduleSave(); playPop();
+        toast('A capacitor popped — it was wired in backward across a live supply. Turn it round and fit a new one.', true);
       }
     }
 
@@ -6304,20 +6336,37 @@ function drawBoardPart(p) {
       ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
       const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
       /* An electrolytic, lying down: a can with a pale stripe of minus signs
-         down the negative side. Nothing about it is round and glowing, which
-         is what an LED is. */
+         down the negative side, and a scored vent on top like the real thing —
+         which is exactly what splits open, and blackens the can, if it is ever
+         wired in backward. Nothing about it is round and glowing, which is
+         what an LED is. */
       const len = Math.min(40, Math.hypot(B.x - A.x, B.y - A.y) * 0.72), hgt = 15;
       ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
       roundRect(-len / 2, -hgt / 2, len, hgt, 3);
-      ctx.fillStyle = '#1f3f78'; ctx.fill();
-      ctx.strokeStyle = sel ? C.sel : '#0f2244'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
-      ctx.fillStyle = '#c8d3e8';                                     // the stripe, on the − end
+      ctx.fillStyle = p.popped ? '#241c1c' : '#1f3f78'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : p.popped ? '#0c0808' : '#0f2244'; ctx.lineWidth = sel ? 2.2 : 1.1; ctx.stroke();
+      ctx.fillStyle = p.popped ? '#5a4a48' : '#c8d3e8';               // the stripe, on the − end
       ctx.fillRect(len / 2 - 11, -hgt / 2 + 1, 9, hgt - 2);
-      ctx.fillStyle = '#1f3f78';
+      ctx.fillStyle = p.popped ? '#241c1c' : '#1f3f78';
       for (const dy of [-4, 0, 4]) ctx.fillRect(len / 2 - 8.5, dy - 0.7, 4, 1.4);
-      ctx.fillStyle = '#9fb4dc'; ctx.font = `700 6.5px ${FONT}`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('10µF', -len / 2 + 11, 0.5);
+      /* the vent, scored into the top edge — split apart and curled back if popped */
+      ctx.strokeStyle = p.popped ? '#0c0808' : 'rgba(0,0,0,.35)'; ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (p.popped) {
+        ctx.moveTo(-5, -hgt / 2); ctx.lineTo(-7, -hgt / 2 - 5); ctx.moveTo(-5, -hgt / 2); ctx.lineTo(-2, -hgt / 2 - 6);
+        ctx.moveTo(5, -hgt / 2); ctx.lineTo(3, -hgt / 2 - 6); ctx.moveTo(5, -hgt / 2); ctx.lineTo(8, -hgt / 2 - 5);
+      } else {
+        ctx.moveTo(0, -hgt / 2 + 2); ctx.lineTo(0, -hgt / 2 + 5); ctx.moveTo(-3, -hgt / 2 + 3.5); ctx.lineTo(3, -hgt / 2 + 3.5);
+      }
+      ctx.stroke();
+      if (p.popped) {
+        ctx.fillStyle = 'rgba(30,26,24,.5)';                         // a scorch cloud where the vent let go
+        ctx.beginPath(); ctx.ellipse(0, -hgt / 2 - 3, 11, 6, 0, 0, Math.PI * 2); ctx.fill();
+      } else {
+        ctx.fillStyle = '#9fb4dc'; ctx.font = `700 6.5px ${FONT}`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('10µF', -len / 2 + 11, 0.5);
+      }
       ctx.restore();
       break;
     }
@@ -7191,7 +7240,7 @@ function renderBoardPalette(host, q) {
   ]);
   add('More components', [
     { name: 'Diode', color: '#2a2c30', desc: 'Click two holes. First is the anode (+); it only conducts that way round.', arm: { type: 'diode' } },
-    { name: 'Capacitor', color: '#1f3f78', desc: "Click two holes. The pale stripe marks the − leg. Sits on the board like the real thing; nothing here is analogue enough to need one.", arm: { type: 'cap' } },
+    { name: 'Capacitor', color: '#1f3f78', desc: "Click two holes. The pale stripe marks the − leg — get that backward across a live supply and it pops. Otherwise it sits on the board like the real thing; nothing here is analogue enough to need one for its usual job.", arm: { type: 'cap' } },
     { name: 'Fuse', color: '#c9b06a', desc: 'Click two holes. Carries current like a wire until 5 V and ground meet through it — then it blows.', arm: { type: 'fuse' } },
     { name: 'Toggle switch', color: '#2b2f36', desc: 'Click two holes. Click it to close or open the gap between them.', arm: { type: 'tog' } },
     { name: 'Buzzer', color: '#191b1f', desc: 'Click two holes. First is +. Sounds while it has 5 V across it.', arm: { type: 'buzzer' } },
@@ -7324,7 +7373,7 @@ function renderBoardInspector(host) {
     res: ['Resistor', 'Holds current back. Put one in front of an LED so it does not burn out, or use one to gently hold a wire at 5 V or at ground when nothing else is driving it.'],
     led: ['LED', 'A light. Current flows from the anode (+, the first hole you clicked) to the cathode, and only that way round. Always give it a resistor.'],
     diode: ['Diode', 'A one-way valve for current: it conducts from the anode (+, the first hole you clicked) to the cathode — the end with the light band — and blocks the other way entirely. An LED is one of these that happens to glow; this is the plain kind, the sort a real board uses to stop current going somewhere it should not.'],
-    cap: ['Capacitor', "Sits between two holes and does nothing to either of them. A real one smooths a jittery supply or times a delay — both jobs this simulator has no room for, since power here is already perfect and there is no such thing as “almost 1”. It is on the board because a real circuit has one, not because leaving it off would change anything."],
+    cap: ['Capacitor', "The right way round, it sits between two holes and does nothing to either of them — a real one smooths a jittery supply or times a delay, both jobs this simulator has no room for, since power here is already perfect and there is no such thing as “almost 1”. Backward across a live supply — a battery, 5 V, a chip output — it pops, for good, the same as the real thing: an electrolytic's reverse voltage rating is a volt or two, nothing next to a whole logic level."],
     bat: ['Battery', 'A power source with two legs instead of two separate clips: the first hole you clicked is + (5 V), the second is ground. Electrically identical to a +5 V clip and a ground clip together — this is just what actually sits on a real bench instead of a bench supply.'],
     vcc: ['+5 V clip', 'Whatever hole it sits in becomes 5 volts — a logical 1. A shortcut from before there was an Arduino to power things: it is no longer in the palette, and only turns up on boards saved with one.'],
     gnd: ['Ground clip', 'Whatever hole it sits in becomes 0 volts — a logical 0. A shortcut from before there was an Arduino to power things: it is no longer in the palette, and only turns up on boards saved with one.'],
@@ -7391,6 +7440,22 @@ function renderBoardInspector(host) {
         onclick: () => { pushUndo(); part.blown = false; S.bdirty = true; scheduleSave(); renderInspector(); },
       }, 'Fit a new fuse'));
     }
+  }
+  if (part.k === 'cap') {
+    s2.append(h('div', { class: 'kv' }, h('span', {}, 'State'),
+      h('span', { style: part.popped ? 'color:var(--danger)' : '' }, part.popped ? 'popped' : 'intact')));
+    if (part.popped) {
+      s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' },
+        'Wired in backward across a live supply — an electrolytic only tolerates a volt or two of reverse voltage, nothing next to a whole logic level. It does nothing now; the vent has already done its job.'));
+      s2.append(h('button', {
+        class: 'btn primary', style: 'margin-bottom:7px',
+        onclick: () => { pushUndo(); part.popped = false; S.bdirty = true; scheduleSave(); renderInspector(); },
+      }, 'Fit a new capacitor'));
+    }
+    s2.append(h('button', {
+      class: 'btn', style: 'margin-bottom:7px',
+      onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
+    }, 'Turn it round (swap + and −)'));
   }
   if (part.k === 'tog') {
     s2.append(h('button', {
@@ -8606,6 +8671,8 @@ function refreshRuntimeWarnings() {
     if (burnt) out.push({ text: `<b>${burnt} laser diode${burnt > 1 ? 's are' : ' is'} burnt out.</b> Select ${burnt > 1 ? 'one' : 'it'} to fit a new one.`, bad: true });
     const blown = S.board.parts.filter((p) => p.k === 'fuse' && p.blown).length;
     if (blown) out.push({ text: `<b>${blown} fuse${blown > 1 ? 's have' : ' has'} blown.</b> Fix the short, then fit a new one.`, bad: true });
+    const popped = S.board.parts.filter((p) => p.k === 'cap' && p.popped).length;
+    if (popped) out.push({ text: `<b>${popped} capacitor${popped > 1 ? 's have' : ' has'} popped.</b> Wired in backward across a live supply. Select ${popped > 1 ? 'one' : 'it'} to fit a new one.`, bad: true });
     const fried = S.board.parts.filter((p) => p.fried).length;
     if (fried) out.push({ text: `<b>${fried} part${fried > 1 ? 's are' : ' is'} fried.</b> 9 V from the battery reached ${fried > 1 ? 'them' : 'it'}. Battery + goes to the Arduino’s VIN only; select a fried part to replace it.`, bad: true });
     const flat = S.board.parts.filter((p) => p.k === 'ext' && p.type === 'uno' && !p._on).length;
