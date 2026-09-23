@@ -5003,9 +5003,9 @@ function openFileMenu() {
    Row ids 0–9 are A–J; 100–103 are the four rails.
    ========================================================================== */
 
-/* One breadboard is 60 columns and holds about seven chips in the single row
-   that straddles its channel — which is why a real bench has several boards
-   bolted side by side. So does this one.
+/* One breadboard is 60 columns and holds about seven chips across its width
+   — which is why a real bench has several boards bolted side by side. So does
+   this one.
 
    A row is numbered board * 1000 + local row: 0–9 are A–J and 100–103 are the
    four rails, so board 0 keeps exactly the numbers it always had and anything
@@ -5481,7 +5481,7 @@ const ICS = {
   },
 };
 
-/* Modules that are not logic chips but still straddle the channel. */
+/* Modules that are not logic chips but still span two rows, the way a chip does. */
 const MODULES = {
   btn: { name: 'Push button', w: 3, desc: 'Two legs each side; pressing bridges them.' },
   dip: { name: 'DIP switch ×4', w: 4, desc: 'Four independent on/off switches.' },
@@ -5495,10 +5495,15 @@ const MODULES = {
 
 /* ---- where a part's legs land ------------------------------------------- */
 
-/** Which board a part sits on, and the row ids of that board's two chip rows. */
+/** Which board a part sits on, and the row ids of that board's two chip rows.
+    `row` is the upper of the pair (0–8, so the lower — row + 1 — never runs
+    off the bottom); a chip that never set one (every board saved before a
+    chip could go anywhere but the channel) defaults to 4, over the channel,
+    exactly where it always used to sit. */
 const partBoard = (p) => p.board || 0;
-const chipRowLo = (p) => BB.row(partBoard(p), 5);
-const chipRowHi = (p) => BB.row(partBoard(p), 4);
+const chipRow = (p) => (p.row === undefined ? 4 : p.row);
+const chipRowHi = (p) => BB.row(partBoard(p), chipRow(p));
+const chipRowLo = (p) => BB.row(partBoard(p), chipRow(p) + 1);
 
 /** Every hole a part occupies, as {r, c, pin}. Pin 1 sits at the notch end,
     on the lower row, and the numbering runs anticlockwise like the real thing. */
@@ -5618,6 +5623,16 @@ function inputPins(spec) {
   }
   spec._inPins = list;
   return list;
+}
+
+/** Which pins of a chip are outputs — the same set `inputPins` leaves out,
+    worked out the same way and remembered the same way. */
+function outputPins(spec) {
+  if (spec._outPins) return spec._outPins;
+  const out = new Set(spec.outs || []);
+  if (spec.gates) { out.clear(); for (const g of spec.gates) out.add(g.o); }
+  spec._outPins = [...out];
+  return spec._outPins;
 }
 
 function compileBoard(b) {
@@ -5745,7 +5760,7 @@ function compileBoard(b) {
       let victim = false;
       if (fragile[p.k]) victim = Object.keys(p._nets).some((i) => hot.has(p._nets[i]));
       else if (p.k === 'ext' && p.type === 'uno') victim = Object.keys(p._nets).some((i) => i !== '1' && hot.has(p._nets[i]));
-      if (victim && !p.fried) { p.fried = true; burned++; }
+      if (victim && !p.fried) { p.fried = true; p.friedWhy = 'battery'; burned++; }
     }
     if (burned && typeof toast === 'function') {
       toast(`9 V from the battery reached ${burned === 1 ? 'a part' : burned + ' parts'} not built for it — fried. Battery + goes to the Arduino’s VIN only.`, true);
@@ -5779,6 +5794,41 @@ function compileBoard(b) {
     l.ohms = least;
     l.p._bare = least === Infinity;
   }
+
+  /* Which chip pins and Arduino pins reach a given net directly — a wire
+     away, not through a transistor — for the two checks below. A transistor
+     in between is exactly what makes a connection safe, so it deliberately
+     does not count as reaching through. */
+  const pinsOnNet = (net) => {
+    const found = [];
+    for (const ch of chips) for (const pin of outputPins(ch.spec)) if (ch.p._nets[pin] === net) found.push(ch.p);
+    for (const u of unos) for (let d = 2; d <= 13; d++) if (u.p._nets[d + 3] === net) found.push(u.p);
+    return found;
+  };
+
+  /* A motor asks for real current the moment it starts turning — hundreds of
+     milliamps, next to the handful a chip pin or an Arduino pin is built to
+     give. Wired to one directly, it is the pin that gives out, not the motor
+     — a transistor switching the motor is what a chip pin can survive doing. */
+  for (const l of loads) {
+    if (l.p.k === 'motor') l.risky = [...pinsOnNet(l.a), ...pinsOnNet(l.k)];
+  }
+
+  /* A relay's coil is a small electromagnet, and breaking the current through
+     one fires a brief, high voltage kick back the way the current came — the
+     same reason a wall switch on an old fluorescent light sparks. A diode
+     across the coil gives that kick somewhere to go; without one, it goes
+     into whatever is switching the coil instead — a transistor, or a chip or
+     Arduino pin wired straight to it. */
+  for (const rl of relays) {
+    rl.flybackOk = diodes.some((d) =>
+      (d.a === rl.coilP && d.k === rl.coilN) || (d.a === rl.coilN && d.k === rl.coilP));
+    rl.risky = [...pinsOnNet(rl.coilP), ...pinsOnNet(rl.coilN)];
+    for (const t of transistors) {
+      if (t.c === rl.coilP || t.c === rl.coilN || t.e === rl.coilP || t.e === rl.coilN) rl.risky.push(t.p);
+    }
+  }
+
   const conductors = transistors.slice();
   for (const rl of relays) conductors.push(rl.no, rl.nc);
 
@@ -5937,6 +5987,23 @@ class BoardSim {
       const en = this.str[rl.coilP] !== FLOAT && this.val[rl.coilP] === 1
         && this.str[rl.coilN] !== FLOAT && this.val[rl.coilN] === 0;
       rl.p._on = en; rl.no.on = en; rl.nc.on = !en;
+
+      /* The coil is an electromagnet: cut the current that was flowing
+         through it and the collapsing field fires a brief, high-voltage kick
+         back the way the current came. A diode across the coil gives it
+         somewhere safe to go; without one, it goes into whatever was
+         switching the coil, the moment the coil turns off. */
+      let rst = this.st.get(rl.p.id);
+      if (!rst) this.st.set(rl.p.id, rst = { was: false });
+      if (rst.was && !en && !rl.flybackOk) {
+        for (const rp of rl.risky) {
+          if (rp.fried) continue;
+          rp.fried = true; rp.friedWhy = 'relay'; S.bdirty = true; scheduleSave();
+          const what = rp.k === 'ext' ? 'the Arduino pin' : rp.k === 'npn' || rp.k === 'pnp' ? 'the transistor' : 'the chip';
+          toast(`The relay coil switched off with nothing to absorb the kickback, and ${what} switching it took the hit — fried. Put a diode across the coil.`, true);
+        }
+      }
+      rst.was = en;
     }
     for (const r of this.c.ldrs) r.ohms = ldrOhms(r.p);
 
@@ -6024,6 +6091,16 @@ class BoardSim {
       const on = str[l.a] !== FLOAT && str[l.k] !== FLOAT && val[l.a] === 1 && val[l.k] === 0;
       l.p._lit = on;
       if (on && l.p.k === 'buzzer' && !l.p.mute) this.buzzing = true;
+      /* Spinning up asks for real current, and a chip pin or an Arduino pin
+         cannot give it — only a transistor switching the motor can. */
+      if (on && l.p.k === 'motor' && l.risky) {
+        for (const rp of l.risky) {
+          if (rp.fried) continue;
+          rp.fried = true; rp.friedWhy = 'motor'; S.bdirty = true; scheduleSave();
+          const what = rp.k === 'ext' ? 'an Arduino pin' : 'a chip';
+          toast(`A motor wired straight to ${what} drew more current than it could survive — fried. Drive a motor through a transistor instead.`, true);
+        }
+      }
     }
     /* Laser diodes. What the circuit around one does decides what it is:
        - how hard it is driven, from the resistor beside it, sets the class —
@@ -6784,7 +6861,7 @@ function drawBoardGhost() {
     }
   } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip' || a.type === 'relay') {
     const col = ghostColumn(S.bhoverHole);
-    const p = makeBoardPart(a, { r: BB.row(BB.boardOf(S.bhoverHole.r), 5), c: col });
+    const p = makeBoardPart(a, { r: S.bhoverHole.r, c: col });
     if (p) drawModule(p, false);
   } else if (EXT[a.type]) {
     if (S.bhoverPt) drawExt({ k: 'ext', id: 'ghost', type: a.type, x: snapExt(S.bhoverPt.x - EXT[a.type].w / 2), y: snapExt(S.bhoverPt.y - EXT[a.type].h / 2), leads: {} }, false);
@@ -6948,32 +7025,44 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'vcc') return { k: 'vcc', id, a: hole };
   if (a.type === 'gnd') return { k: 'gnd', id, a: hole };
   if (a.type === 'npn' || a.type === 'pnp') {
-    if (hole.r >= 100) { toast('Transistors go in the main rows, not the power rails.', true); return null; }
+    if (BB.isRail(hole.r)) { toast('Transistors go in the main rows, not the power rails.', true); return null; }
     return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3) };
   }
   const col = ghostColumn(hole);
   const board = BB.boardOf(hole.r);
-  if (a.type === 'ic') return { k: 'ic', id, type: a.ic, col, board };
-  if (a.type === 'seg') return { k: 'seg', id, col, board };
-  if (a.type === 'btn') return { k: 'btn', id, col, board, pressed: false };
-  if (a.type === 'dip') return { k: 'dip', id, col, board, n: 4, on: [false, false, false, false] };
-  if (a.type === 'relay') return { k: 'relay', id, col, board };
+  /* These used to be nailed to the channel — the only two rows that put half a
+     chip's legs on each side of it. They can sit anywhere in the main rows
+     now: wherever is clicked becomes the upper of the two rows it occupies,
+     clamped so the lower one never runs off row J. A part left straddling the
+     channel behaves exactly as before; put elsewhere, both its rows land in
+     the same five-hole group, tying its two rows together — which is exactly
+     what would happen setting a real chip down off the channel, too. */
+  const row = clamp(BB.local(hole.r), 0, 8);
+  if (a.type === 'ic') return { k: 'ic', id, type: a.ic, col, board, row };
+  if (a.type === 'seg') return { k: 'seg', id, col, board, row };
+  if (a.type === 'btn') return { k: 'btn', id, col, board, row, pressed: false };
+  if (a.type === 'dip') return { k: 'dip', id, col, board, row, n: 4, on: [false, false, false, false] };
+  if (a.type === 'relay') return { k: 'relay', id, col, board, row };
   return null;
 }
 
+/* Two of these parts collide only if their columns AND their rows overlap —
+   each covers exactly two rows (chipRow and chipRow + 1), so a difference of
+   more than one row means they share nothing. Rows used to be fixed, so
+   sharing a column was the whole story; now they are not. */
 function boardOverlaps(part) {
   const span = partSpan(part);
   if (!span) return false;
   return S.board.parts.some((q) => {
     if (q.id === part.id || partBoard(q) !== partBoard(part)) return false;
     const s = partSpan(q);
-    return s && !(span[1] < s[0] || span[0] > s[1]);
+    return s && !(span[1] < s[0] || span[0] > s[1]) && Math.abs(chipRow(part) - chipRow(q)) <= 1;
   });
 }
 
 function addBoardPart(part) {
   if (!part) return;
-  if (boardOverlaps(part)) { toast('Something is already sitting across the channel there.', true); return; }
+  if (boardOverlaps(part)) { toast('Something is already sitting there.', true); return; }
   pushUndo();
   S.board.parts.push(part);
   S.bsel = part.id;
@@ -7082,7 +7171,7 @@ function boardDown(ev) {
       return;
     }
     if (partSpan(part)) {
-      S.drag = { kind: 'bmove', part, sx: p.x, col0: part.col };
+      S.drag = { kind: 'bmove', part, sx: p.x, sy: p.y, col0: part.col, row0: chipRow(part) };
       return;
     }
     return;
@@ -7115,12 +7204,13 @@ function boardMove(ev, p, w) {
     const span = partSpan(d.part);
     const width = span[1] - span[0] + 1;
     const col = clamp(d.col0 + Math.round((p.x - d.sx) / (BB.P * S.bcam.z)), 0, boardCols() - width);
-    if (col !== d.part.col) {
-      const old = d.part.col;
-      d.part.col = col;
-      if (boardOverlaps(d.part)) d.part.col = old;
+    const row = clamp(d.row0 + Math.round((p.y - d.sy) / (BB.P * S.bcam.z)), 0, 8);
+    if (col !== d.part.col || row !== chipRow(d.part)) {
+      const oldCol = d.part.col, oldRow = d.part.row;
+      d.part.col = col; d.part.row = row;
+      if (boardOverlaps(d.part)) { d.part.col = oldCol; d.part.row = oldRow; }
       else {
-        if (!d.moved) { d.moved = true; d.part.col = old; pushUndo(); d.part.col = col; }
+        if (!d.moved) { d.moved = true; d.part.col = oldCol; d.part.row = oldRow; pushUndo(); d.part.col = col; d.part.row = row; }
         S.bdirty = true; scheduleSave();
       }
     }
@@ -7244,7 +7334,7 @@ function renderBoardPalette(host, q) {
     { name: 'Fuse', color: '#c9b06a', desc: 'Click two holes. Carries current like a wire until 5 V and ground meet through it — then it blows.', arm: { type: 'fuse' } },
     { name: 'Toggle switch', color: '#2b2f36', desc: 'Click two holes. Click it to close or open the gap between them.', arm: { type: 'tog' } },
     { name: 'Buzzer', color: '#191b1f', desc: 'Click two holes. First is +. Sounds while it has 5 V across it.', arm: { type: 'buzzer' } },
-    { name: 'DC motor', color: '#b9bcc2', desc: 'Click two holes. First is +. Spins while it has 5 V across it.', arm: { type: 'motor' } },
+    { name: 'DC motor', color: '#b9bcc2', desc: 'Click two holes. First is +. Spins while it has 5 V across it — wire it straight to a chip or Arduino pin rather than through a transistor and that pin fries.', arm: { type: 'motor' } },
     { name: 'Photoresistor', color: '#c9a25c', desc: 'Click two holes. Low resistance in light, very high in the dark. Set the light in the inspector.', arm: { type: 'ldr' } },
     { name: 'Laser diode', color: '#ff2a2a', sub: 'the circuit decides what kind',
       desc: 'Click two holes. First is the anode (+). The resistor beside it sets its class; a steady or switching drive sets its beam.', arm: { type: 'laser' } },
@@ -7260,7 +7350,7 @@ function renderBoardPalette(host, q) {
     { name: 'DIP switch ×4', color: '#c9302c', desc: MODULES.dip.desc, arm: { type: 'dip' } },
     { name: '7-seg display', color: '#1a1c20', desc: MODULES.seg.desc, arm: { type: 'seg' } },
     { name: 'Relay', color: '#2864b8', sub: 'a switch a coil closes',
-      desc: 'Straddles the channel. A high on coil + with coil − low pulls it in, joining COM to NO; otherwise COM sits on NC.', arm: { type: 'relay' } },
+      desc: 'Spans two rows, anywhere in the main rows. A high on coil + with coil − low pulls it in, joining COM to NO; otherwise COM sits on NC. Switch the coil off with nothing across it and the kickback fries whatever switched it.', arm: { type: 'relay' } },
   ]);
   /* Two dozen chips is too many for one list, so they are grouped by what they
      are for — which is how you would look for one anyway. */
@@ -7385,10 +7475,10 @@ function renderBoardInspector(host) {
     fuse: ['Fuse', 'A thin strip built to be the weakest thing in the circuit. It carries current like a wire — until 5 V and ground meet through it, when it blows open, for good, and the short goes with it. A blown one does not un-blow: replace it. Put one in series with the supply and a mistake costs you a fuse instead of the board.'],
     tog: ['Toggle switch', 'Two legs and a slider: closed, they are joined like a wire; open, they are a gap. It stays where you leave it — unlike the push button, which springs back. Click it to flip it, in Edit or Use mode.'],
     buzzer: ['Buzzer', 'Makes a tone while it has 5 V across it — the first hole you clicked is +. The sound plays through your speakers, quietly, once you have clicked anywhere on the page; the Sound switch below mutes just this one.'],
-    motor: ['DC motor', 'Spins while it has 5 V across it, the first hole being +. Real ones draw a lot more current than a chip pin can give — the usual fix is a transistor as the switch, which you can build here.'],
+    motor: ['DC motor', 'Spins while it has 5 V across it, the first hole being +. Real ones draw a lot more current than a chip pin or an Arduino pin can give — wired to one directly here, it is the pin that fries the moment the motor turns on, not the motor. The fix is a transistor as the switch, which you can build here.'],
     ldr: ['Photoresistor', 'A resistor whose value follows the light on it: a couple of hundred ohms in full light, up to a megohm in the dark. On its own it is a gap in the dark and a resistor in the light. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the light — a night-light, built out of two parts. A laser aimed at it counts as full light.'],
     laser: ['Laser diode', 'An LED that lases: past a threshold current its light stops being a dim glow and becomes a beam. The resistor beside it sets how hard it is driven, and that decides what kind of laser it is — read the panel below. With no resistor it dies the instant it is switched on.'],
-    relay: ['Relay', "An electromagnet that works a switch. Put 5 V across the coil (C+ high, C− low) and the middle contact COM swings from NC over to NO; take it away and it springs back. It is how a small signal switches something big, and how the first computers did their logic — every one of them was a room of these."],
+    relay: ['Relay', "An electromagnet that works a switch. Put 5 V across the coil (C+ high, C− low) and the middle contact COM swings from NC over to NO; take it away and it springs back. It is how a small signal switches something big, and how the first computers did their logic — every one of them was a room of these. Take the 5 V away, though, and the coil fires a brief kickback the way current came from; wired straight to a chip, an Arduino pin, or a transistor with no diode across the coil to catch it, that is what fries — a real reason relay circuits always carry one."],
     battery: ['Battery pack', 'A 9 V battery, sitting beside the board. Its + and − terminals go nowhere until you run leads: click a terminal, then the terminal of another device. 9 V is more than a chip or an LED will take — connect + to the Arduino’s VIN (which has a regulator behind it) and − to its GND, and never to the breadboard itself. Anything on the board that + reaches, directly or through a resistor under 470 Ω, is fried.'],
     uno: ['Arduino Uno', 'The board’s power supply, and a computer besides. Feed its VIN and GND from a battery — or switch on USB below — and it turns the 9 V into a clean 5 V on its 5V terminal, plus levels on D2–D13. Lead 5V and GND to the breadboard’s rails and that is what powers everything on it: the Arduino stands between the battery and the parts, which is the whole point. Pick what its “sketch” does below.'],
   };
@@ -7424,11 +7514,16 @@ function renderBoardInspector(host) {
       }))));
   }
   if (part.fried) {
+    const FRIED_WHY = {
+      battery: 'It was given more than it can take — most likely 9 V straight from the battery.',
+      motor: 'A motor was wired straight to it and asked for more current than it could survive. Drive a motor through a transistor instead.',
+      relay: 'A relay coil switched off with nothing to absorb the kickback, and this was switching it. Put a diode across the coil.',
+    };
     s2.append(h('p', { class: 'muted', style: 'color:var(--danger);margin:0 0 6px' },
-      'Fried. It was given more than it can take — most likely 9 V straight from the battery. It does nothing until you replace it.'));
+      `Fried. ${FRIED_WHY[part.friedWhy] || FRIED_WHY.battery} It does nothing until you replace it.`));
     s2.append(h('button', {
       class: 'btn primary', style: 'margin-bottom:7px',
-      onclick: () => { pushUndo(); part.fried = false; S.bdirty = true; scheduleSave(); renderInspector(); },
+      onclick: () => { pushUndo(); part.fried = false; part.friedWhy = undefined; S.bdirty = true; scheduleSave(); renderInspector(); },
     }, 'Fit a new one'));
   }
   if (part.k === 'fuse') {
@@ -8501,6 +8596,9 @@ back to the circuit.</p>
 <ul>
   <li>The copper is real: five holes in a column are one strip, the four rails run the
       length of the board, and the two halves are separated by the channel.</li>
+  <li>Chips and the modules beside them (button, DIP switch, display, relay) span two
+      rows and can go anywhere in the main rows, not just over the channel — click a
+      row to set one down there, or drag a placed one up or down.</li>
   <li><b>Hover any hole</b> to light up everything already connected to it.</li>
   <li>Jumpers, resistors and LEDs take two clicks — one hole, then the other. The LED's
       first hole is its anode.</li>
@@ -8673,8 +8771,16 @@ function refreshRuntimeWarnings() {
     if (blown) out.push({ text: `<b>${blown} fuse${blown > 1 ? 's have' : ' has'} blown.</b> Fix the short, then fit a new one.`, bad: true });
     const popped = S.board.parts.filter((p) => p.k === 'cap' && p.popped).length;
     if (popped) out.push({ text: `<b>${popped} capacitor${popped > 1 ? 's have' : ' has'} popped.</b> Wired in backward across a live supply. Select ${popped > 1 ? 'one' : 'it'} to fit a new one.`, bad: true });
-    const fried = S.board.parts.filter((p) => p.fried).length;
-    if (fried) out.push({ text: `<b>${fried} part${fried > 1 ? 's are' : ' is'} fried.</b> 9 V from the battery reached ${fried > 1 ? 'them' : 'it'}. Battery + goes to the Arduino’s VIN only; select a fried part to replace it.`, bad: true });
+    /* "Fried" has three different causes now, each with its own fix, so each
+       gets counted and worded separately rather than one line that assumes
+       the battery every time. */
+    const friedBy = (why) => S.board.parts.filter((p) => p.fried && (p.friedWhy || 'battery') === why).length;
+    const battery = friedBy('battery');
+    if (battery) out.push({ text: `<b>${battery} part${battery > 1 ? 's are' : ' is'} fried.</b> 9 V from the battery reached ${battery > 1 ? 'them' : 'it'}. Battery + goes to the Arduino’s VIN only; select a fried part to replace it.`, bad: true });
+    const motorFried = friedBy('motor');
+    if (motorFried) out.push({ text: `<b>${motorFried} part${motorFried > 1 ? 's' : ''} fried driving a motor directly.</b> Drive a motor through a transistor; select ${motorFried > 1 ? 'one' : 'it'} to replace it.`, bad: true });
+    const relayFried = friedBy('relay');
+    if (relayFried) out.push({ text: `<b>${relayFried} part${relayFried > 1 ? 's' : ''} fried by a relay coil's kickback.</b> Put a diode across the coil; select ${relayFried > 1 ? 'one' : 'it'} to replace it.`, bad: true });
     const flat = S.board.parts.filter((p) => p.k === 'ext' && p.type === 'uno' && !p._on).length;
     if (flat) out.push({ text: `<b>${flat} Arduino${flat > 1 ? 's are' : ' is'} not powered.</b> Lead a battery to VIN and GND, or switch on USB.`, bad: false });
   }
