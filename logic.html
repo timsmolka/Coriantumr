@@ -496,6 +496,7 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
     <div class="seg" role="tablist" aria-label="Workspace">
       <button id="mode-editor" class="on" role="tab">Circuit</button>
       <button id="mode-board" role="tab">Breadboard</button>
+      <button id="mode-design" role="tab" title="A bare board of your own, wired however you like">Design</button>
     </div>
 
     <div class="seg wide-only" role="tablist" aria-label="What clicking does">
@@ -1288,6 +1289,11 @@ const S = {
   ttable: null, stash: null, bsel: null, bpending: null, pressing: null, pendingWire: null,
   board: null,                                  // breadboard state (section 9)
   bsim: null, bdirty: true,
+  /* Design is a second board, independent of the Breadboard workspace's.
+     Both are loaded into the same board/bsel/bcam/bundo/bredo slots above —
+     entering or leaving Design just swaps what is in them (see setMode) —
+     and whichever one is not currently loaded waits here instead. */
+  boardSlot: null, designSlot: null,
 };
 
 const cv = $('#cv');
@@ -1321,6 +1327,10 @@ function resize() {
   cv.width = Math.round(VW * DPR); cv.height = Math.round(VH * DPR);
 }
 
+/** The Design workspace is a second, independent board, but everywhere the
+    breadboard's own canvas, tools and undo history are used, Design uses them
+    too — only the data they are pointed at differs (see setMode). */
+const inBoard = () => S.mode === 'board' || S.mode === 'design';
 const cam = () => (S.mode === 'editor' ? S.cam : S.bcam);
 const toWorld = (sx, sy) => { const c = cam(); return { x: (sx - c.x) / c.z, y: (sy - c.y) / c.z }; };
 const toScreen = (wx, wy) => { const c = cam(); return { x: wx * c.z + c.x, y: wy * c.z + c.y }; };
@@ -2494,14 +2504,15 @@ function hitTest(w, touch) {
 function deleteHandle() {
   const R = 13;
   if (S.play) return null;                         // nothing is deletable in Use mode
-  if (S.mode === 'board') {
+  if (inBoard()) {
     const p = S.board && S.board.parts.find((q) => q.id === S.bsel);
     if (!p) return null;
     const span = partSpan(p);
     let wx, wy;
     if (p.k === 'ext') { wx = p.x + EXT[p.type].w + 8; wy = p.y - 2; }
     else if (span) { wx = holeX(span[1]) + BB.P * 0.75; wy = holeY(chipRowHi(p)) - BB.P * 0.1; }
-    else if (p.k === 'npn' || p.k === 'pnp' || p.k === 'pot') { wx = holeX(p.c + 2) + BB.P * 0.75; wy = holeY(p.r) - BB.P * 1.6; }
+    else if (p.k === 'npn' || p.k === 'pnp' || p.k === 'pot' || p.k === 'reg' || p.k === 'scr') { wx = holeX(p.c + 2) + BB.P * 0.75; wy = holeY(p.r) - BB.P * 1.6; }
+    else if (p.k === 'rgbled') { wx = holeX(p.c + 3) + BB.P * 0.75; wy = holeY(p.r) - BB.P * 1.6; }
     else if (p.b) { wx = (holeX(p.a.c) + holeX(p.b.c)) / 2; wy = (holeY(p.a.r) + holeY(p.b.r)) / 2 - BB.P * 0.8; }
     else { wx = holeX(p.a.c) + BB.P * 0.55; wy = holeY(p.a.r) - BB.P * 0.55; }
     const s = toScreen(wx, wy);
@@ -2556,7 +2567,7 @@ function hitDeleteHandle(sx, sy) {
 /** Right-click deletes whatever is under the pointer, in either workspace. */
 function deleteAt(w) {
   if (S.armCancel) { S.armCancel = false; return; }   // that click cancelled a placement
-  if (S.mode === 'board') {
+  if (inBoard()) {
     const pin = hitExtPin(w);
     if (pin && pin.p.leads && pin.p.leads[pin.i]) {          // a lead comes off before the device does
       pushUndo(); delete pin.p.leads[pin.i];
@@ -2593,7 +2604,7 @@ function endBatch() { S.batching = false; S.batched = false; }
 
 /* History. Each workspace keeps its own stack, so undoing on the breadboard
    never reaches behind you and changes the circuit. */
-const hist = () => (S.mode === 'board'
+const hist = () => (inBoard()
   ? { undo: S.bundo, redo: S.bredo, read: () => JSON.stringify(S.board, noScratch) }
   : { undo: S.undo, redo: S.redo, read: () => JSON.stringify(S.work) });
 
@@ -2617,7 +2628,7 @@ function shiftHistory(from, to) {
   if (!h2[from].length) return;
   h2[to].push(h2.read());
   const state = JSON.parse(h2[from].pop());
-  if (S.mode === 'board') { S.board = state; S.bsel = null; S.bdirty = true; scheduleSave(); }
+  if (inBoard()) { S.board = state; S.bsel = null; S.bdirty = true; scheduleSave(); }
   else { S.work = state; S.sel.clear(); S.selWires.clear(); markDirty(); }
   syncUndoButtons(); renderInspector();
 }
@@ -3104,11 +3115,11 @@ cv.addEventListener('pointerdown', (ev) => {
   /* The ✕ on the selection sits above everything, in both workspaces. */
   const sp = pointerPos(ev);
   if (ev.button === 0 && hitDeleteHandle(sp.x, sp.y)) {
-    if (S.mode === 'board') boardDelete(); else deleteSelection();
+    if (inBoard()) boardDelete(); else deleteSelection();
     toast('Deleted. Ctrl+Z puts it back.');
     return;
   }
-  if (S.mode === 'board') { boardDown(ev); return; }
+  if (inBoard()) { boardDown(ev); return; }
 
   const p = sp;
   const w = toWorld(p.x, p.y);
@@ -3215,7 +3226,7 @@ cv.addEventListener('pointermove', (ev) => {
   if (pinch && ptrs.size >= 2) { movePinch(); return; }
   const p = pointerPos(ev);
   const w = toWorld(p.x, p.y);
-  if (S.mode === 'board') { boardMove(ev, p, w); return; }
+  if (inBoard()) { boardMove(ev, p, w); return; }
 
   const d = S.drag;
   if (!d) {
@@ -3313,7 +3324,7 @@ function finishDrag(ev) {
 cv.addEventListener('pointerup', (ev) => {
   ptrs.delete(ev.pointerId);
   if (pinch) { if (ptrs.size < 2) pinch = null; return; }
-  if (S.mode === 'board') { boardUp(ev); return; }
+  if (inBoard()) { boardUp(ev); return; }
   finishDrag(ev);
 });
 cv.addEventListener('pointercancel', (ev) => {
@@ -3455,7 +3466,7 @@ window.addEventListener('keyup', (ev) => { if (ev.key === ' ') spaceDown = false
 /* ---- view helpers ------------------------------------------------------- */
 
 function contentBounds() {
-  if (S.mode === 'board') return boardBounds();
+  if (inBoard()) return boardBounds();
   return contentBoundsOf(S.work.nodes);
 }
 
@@ -3693,11 +3704,13 @@ function armPart(p) {
     !!p && e.dataset.type === p.type && e.dataset.chip === sub
     && (p.type !== 'led' || e.dataset.color === undefined || e.dataset.color === p.color)));
   if (p) {
-    toast(S.mode === 'board' && BOARD_2T[p.type]
-      ? 'Click one hole, then the other.'
-      : S.mode === 'board' && EXT[p.type]
-        ? 'Click empty space beside the board to set it down. Esc cancels.'
-        : 'Click the board to place it. Esc cancels.');
+    toast(p.type === 'tracepen'
+      ? 'Press on a pad and drag across others to solder a run of copper. Esc cancels.'
+      : inBoard() && BOARD_2T[p.type]
+        ? 'Click one hole, then the other.'
+        : inBoard() && EXT[p.type]
+          ? 'Click empty space beside the board to set it down. Esc cancels.'
+          : 'Click the board to place it. Esc cancels.');
     $('#app').classList.remove('pal-open');
   } else {
     $('#hint').classList.remove('show');           // the "now click" hint is spent
@@ -3708,7 +3721,7 @@ function renderPalette() {
   const host = $('#pal-scroll');
   const q = $('#pal-q').value.trim().toLowerCase();
   host.innerHTML = '';
-  if (S.mode === 'board') { renderBoardPalette(host, q); return; }
+  if (inBoard()) { renderBoardPalette(host, q); return; }
 
   const groups = new Map();
   for (const [type, part] of Object.entries(PARTS)) {
@@ -3755,7 +3768,7 @@ function renderInspector() {
   if (previewObs) previewObs.disconnect();       // the old preview canvases are about to go
   host.innerHTML = '';
   refreshOperateButton();
-  if (S.mode === 'board') { renderBoardInspector(host); return; }
+  if (inBoard()) { renderBoardInspector(host); return; }
 
   const selNodes = S.work.nodes.filter((n) => S.sel.has(n.id));
 
@@ -4791,6 +4804,10 @@ async function clearBoard() {
 function renderCrumbs() {
   const c = $('#crumbs');
   c.innerHTML = '';
+  if (S.mode === 'design') {
+    c.append(h('span', {}, 'Design — a board of your own, entirely bare copper until you wire it'));
+    return;
+  }
   if (S.mode === 'board') {
     c.append(h('span', {}, 'Breadboard — wire it up the way you would on the bench'));
     return;
@@ -4849,10 +4866,16 @@ function saveNow() {
   } catch (e) { /* private mode, quota — the app still runs, just without memory */ }
 }
 function snapshot() {
+  /* Whichever of Breadboard/Design is not the one currently loaded into
+     S.board is sitting in its slot instead — read the true data for each
+     from wherever it actually is, so saving mid-visit to one never loses
+     the other. */
+  const boardNow = S.mode === 'design' ? (S.boardSlot ? S.boardSlot.board : null) : S.board;
+  const designNow = S.mode === 'design' ? S.board : (S.designSlot ? S.designSlot.board : null);
   return {
     v: 1, lib: LIB, work: S.work, editing: S.editing,
     stash: S.stash ? { work: S.stash.work } : null,
-    board: S.board, mode: S.mode,
+    board: boardNow, design: designNow, mode: S.mode,
     prefs: { theme: document.documentElement.dataset.theme || '', speed: S.speedIx, play: S.play },
   };
 }
@@ -4869,7 +4892,15 @@ function applySnapshot(d) {
   S.editing = d.editing && LIB[d.editing] ? d.editing : null;
   S.stash = d.stash && d.stash.work ? { work: d.stash.work, undo: [], redo: [], cam: { x: 0, y: 0, z: 1 } } : null;
   if (S.editing && !S.stash) S.stash = { work: newDef('Untitled'), undo: [], redo: [], cam: { x: 0, y: 0, z: 1 } };
-  S.board = d.board && d.board.parts ? d.board : null;
+  /* Loading a file can happen mid-session, in either workspace — not only at
+     boot, before Design has ever been visited — so whichever of the two is
+     currently live gets its data loaded straight into S.board, and the other
+     one's goes into its slot, the same split `setMode` keeps up between them. */
+  const boardData = d.board && d.board.parts ? d.board : null;
+  const designData = d.design && d.design.parts ? d.design : null;
+  const slotOf = (b) => (b ? { board: b, bsel: null, bcam: { x: 0, y: 0, z: 1 }, bundo: [], bredo: [] } : null);
+  if (S.mode === 'design') { S.board = designData; S.boardSlot = slotOf(boardData); }
+  else { S.board = boardData; S.designSlot = slotOf(designData); }
   if (d.prefs) {
     if (d.prefs.theme) document.documentElement.dataset.theme = d.prefs.theme;
     if (typeof d.prefs.speed === 'number') S.speedIx = clamp(d.prefs.speed, 0, SPEEDS.length - 1);
@@ -5057,11 +5088,15 @@ function tieKey(r, c) {
      are the ones you put there yourself. One line is the entire difference:
      the board's plastic decides what breadboard ties for free; perfboard
      just never asks the question. */
-  if (S.board && S.board.style === 'pcb') return `pcb-b${b}-${local}-${c}`;
+  if (S.board && (S.board.style === 'pcb' || S.board.style === 'design')) return `pcb-b${b}-${local}-${c}`;
   return local >= 100 ? `b${b}rail${local}` : `b${b}c${c}.${local < 5 ? 0 : 1}`;
 }
 
 function makeBoard() { return { cols: 90, boards: 2, parts: [], style: 'breadboard' }; }
+/** The Design workspace's own board: bare copper from the start, same as a
+    perfboard, but kept entirely separate from whatever is on the Breadboard
+    workspace so the two never mix. */
+function makeDesignBoard() { return { cols: 60, boards: 1, parts: [], style: 'design' }; }
 
 /* ---- the parts bin ------------------------------------------------------ */
 
@@ -5451,6 +5486,46 @@ const ICS = {
       put(5, st.q);
     },
   },
+  '555': {
+    name: '555', desc: 'timer, wired astable', nick: 'the classic blinker chip',
+    plain: "Wired astable, it free-runs on its own: high for a while, low for the rest, over and over. A real one sets that timing by charging and discharging a capacitor through a couple of resistors; this one skips straight to the answer — set the rate and how lopsided it is in the panel on the right.",
+    pins: 8, vcc: 8, gnd: 1, family: 'Clock',
+    pinNames: ['GND', 'TRIG', 'OUT', 'RESET', 'CTRL', 'THRES', 'DISCH', 'VCC'],
+    note: 'RESET (pin 4) is active low — pull it low and OUT stops dead, at 0; leave it floating or high and it free-runs. TRIG, CTRL and THRES are what a real 555 reads off its timing capacitor — this one reads the Rate and Duty controls instead, so those three pins do nothing here.',
+    outs: [3], hz: 1, duty: 0.5,
+    custom(read, put, st, part, now) {
+      if (!read(4)) { put(3, 0); st.t = now; st.q = 0; return; }
+      const period = 1000 / Math.max(0.05, part.hz || 1);
+      const duty = clamp(part.duty === undefined ? 0.5 : part.duty, 0.05, 0.95);
+      if (st.t === undefined) { st.t = now; st.q = 1; }
+      for (;;) {
+        const span = period * (st.q ? duty : 1 - duty);
+        if (now - st.t < span) break;
+        st.t += span; st.q ^= 1;
+      }
+      put(3, st.q);
+    },
+  },
+  '4017': {
+    name: '4017', desc: 'decade counter, one output at a time', nick: 'walks a light down ten outputs',
+    plain: 'Each clock pulse moves a single high output one step along, Q0 through Q9, then wraps back round to Q0 — a ready-made chaser for a row of LEDs, no decoding chip needed.',
+    pins: 16, vcc: 16, gnd: 8, family: 'Memory',
+    pinNames: ['Q5', 'Q1', 'Q0', 'Q2', 'Q6', 'Q7', 'Q3', 'GND', 'Q8', 'Q4', 'Q9', 'CARRY', 'INH', 'CLK', 'RESET', 'VCC'],
+    note: 'RESET held high stops it dead at Q0. INH (clock inhibit) held high freezes it wherever it is. CARRY runs at half the speed — low for Q5–Q9 — for chaining a second 4017 after the first counts ten.',
+    outs: [3, 2, 4, 7, 10, 1, 5, 6, 9, 11, 12],
+    custom(read, put, st) {
+      const pin = [3, 2, 4, 7, 10, 1, 5, 6, 9, 11];         // Q0..Q9
+      if (st.n === undefined) { st.n = 0; st.pc = 0; }
+      if (read(15)) st.n = 0;
+      else {
+        const c = read(14);
+        if (c && !st.pc && !read(13)) st.n = (st.n + 1) % 10;
+        st.pc = c;
+      }
+      for (let i = 0; i < 10; i++) put(pin[i], st.n === i ? 1 : 0);
+      put(12, st.n < 5 ? 1 : 0);
+    },
+  },
   /* ---- a board, not a chip -----------------------------------------------
      Everything else here is pure logic: give it inputs and it computes an
      output, the instant it is powered. A microcontroller is not that — it is
@@ -5512,6 +5587,7 @@ const chipRowLo = (p) => BB.row(partBoard(p), chipRow(p) + 1);
 const TWO_LEG = {
   wire: 1, res: 1, led: 1, diode: 1, cap: 1, bat: 1,
   fuse: 1, buzzer: 1, ldr: 1, therm: 1, laser: 1, motor: 1, tog: 1,
+  zener: 1, ind: 1,
 };
 
 /* Things that live beside the board, not in it. Every terminal is numbered from
@@ -5570,6 +5646,16 @@ function partHoles(p) {
   } else if (p.k === 'pot') {
     // Also three legs in a row: one end of the track, the wiper, the other end.
     out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
+  } else if (p.k === 'reg') {
+    // TO-220 tab, front pins in a row: in · ground · out.
+    out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
+  } else if (p.k === 'scr') {
+    // Three legs in a row: anode, gate, cathode.
+    out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
+  } else if (p.k === 'rgbled') {
+    // Four legs in a row: red anode, common cathode, green anode, blue anode.
+    out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 },
+      { r: p.r, c: p.c + 2, pin: 3 }, { r: p.r, c: p.c + 3, pin: 4 });
   } else if (p.k === 'btn') {
     out.push({ r: lo, c: p.col, pin: 1 }, { r: lo, c: p.col + 2, pin: 2 },
       { r: hi, c: p.col, pin: 3 }, { r: hi, c: p.col + 2, pin: 4 });
@@ -5644,7 +5730,7 @@ function compileBoard(b) {
   const keys = [];
   const nBoards = clamp(b.boards || 1, 1, BB.maxBoards);
   for (let bd = 0; bd < nBoards; bd++) {
-    if (b.style === 'pcb') {
+    if (b.style === 'pcb' || b.style === 'design') {
       /* Bare copper: every pad gets its own tie, full stop — nothing on a
          perfboard is joined to anything else until a trace says so. */
       for (const local of BB.localRows) for (let c = 0; c < b.cols; c++) keys.push(`pcb-b${bd}-${local}-${c}`);
@@ -5672,6 +5758,7 @@ function compileBoard(b) {
 
   for (const p of b.parts) {
     if (p.k === 'wire') U(tieKey(p.a.r, p.a.c), tieKey(p.b.r, p.b.c));
+    else if (p.k === 'ind') U(tieKey(p.a.r, p.a.c), tieKey(p.b.r, p.b.c));  // a coil is a short at DC — nothing here ever changes fast enough to feel otherwise
     else if (p.k === 'fuse') { if (!p.blown) U(tieKey(p.a.r, p.a.c), tieKey(p.b.r, p.b.c)); }
     else if (p.k === 'tog') { if (p.on) U(tieKey(p.a.r, p.a.c), tieKey(p.b.r, p.b.c)); }
     else if (p.k === 'ext') {
@@ -5709,6 +5796,7 @@ function compileBoard(b) {
   /* Resolve each part's pins to nets. */
   const supplies = [], resistors = [], diodes = [], leds = [], chips = [], displays = [], transistors = [];
   const loads = [], lasers = [], fuses = [], relays = [], unos = [], ldrs = [], caps = [], thermistors = [];
+  const zeners = [], regs = [], scrs = [];
   for (const p of b.parts) {
     const holes = partHoles(p);
     p._nets = {};
@@ -5732,7 +5820,20 @@ function compileBoard(b) {
       resistors.push({ p, a: p._nets[2], b: p._nets[3], ohms: Math.max(1, Math.round(total * (1 - pos))) });
     }
     else if (p.k === 'diode') diodes.push({ p, a: p._nets[1], k: p._nets[2] });
+    else if (p.k === 'zener') {
+      /* Forward, it is an ordinary diode — that half goes in the same list, so
+         it is fragile and hazard-traced exactly like one. The breakdown side
+         is handled separately, once nets have levels (see BoardSim.tick). */
+      const z = { p, a: p._nets[1], k: p._nets[2] };
+      diodes.push(z); zeners.push(z);
+    }
+    else if (p.k === 'reg') regs.push({ p, in: p._nets[1], gnd: p._nets[2], out: p._nets[3] });
+    else if (p.k === 'scr') scrs.push({ p, on: false, c: p._nets[1], g: p._nets[2], e: p._nets[3] });
     else if (p.k === 'led') leds.push({ p, a: p._nets[1], k: p._nets[2] });
+    else if (p.k === 'rgbled') {
+      leds.push({ p, a: p._nets[1], k: p._nets[2], ch: 'R' }, { p, a: p._nets[3], k: p._nets[2], ch: 'G' },
+        { p, a: p._nets[4], k: p._nets[2], ch: 'B' });
+    }
     else if (p.k === 'buzzer' || p.k === 'motor') loads.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'laser') lasers.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'fuse') fuses.push({ p, a: p._nets[1], b: p._nets[2] });
@@ -5768,7 +5869,10 @@ function compileBoard(b) {
       }
       for (const d of diodes) if (hot.has(d.a) && !hot.has(d.k)) { hot.add(d.k); grew = true; }
     }
-    const fragile = { led: 1, laser: 1, buzzer: 1, motor: 1, diode: 1, ic: 1, seg: 1, npn: 1, pnp: 1, relay: 1 };
+    const fragile = {
+      led: 1, laser: 1, buzzer: 1, motor: 1, diode: 1, ic: 1, seg: 1, npn: 1, pnp: 1, relay: 1,
+      zener: 1, scr: 1, rgbled: 1,
+    };
     let burned = 0;
     for (const p of b.parts) {
       let victim = false;
@@ -5781,19 +5885,23 @@ function compileBoard(b) {
     }
   }
   /* A fried part is out of the circuit: no light, no output, no switching. */
-  for (const list of [diodes, leds, loads, lasers, chips, transistors, displays, relays, unos]) {
+  for (const list of [diodes, leds, loads, lasers, chips, transistors, displays, relays, unos, zeners, scrs]) {
     for (let i = list.length - 1; i >= 0; i--) {
       const q = list[i].p;
       if (!q.fried) continue;
-      q._lit = false; q._on = false; q._bits = 0; q._dp = 0; q._d13 = 0; q._beam = false;
+      q._lit = false; q._litR = false; q._litG = false; q._litB = false;
+      q._on = false; q._bits = 0; q._dp = 0; q._d13 = 0; q._beam = false;
       list.splice(i, 1);
     }
   }
 
-  /* An LED with no resistor anywhere on either leg will not survive long. */
+  /* An LED with no resistor anywhere on either leg will not survive long. An
+     RGB LED pushes three of these sharing one part, so this only clears the
+     flag once per part and then lets any unguarded channel set it. */
+  for (const p of b.parts) if (p.k === 'led' || p.k === 'rgbled') p._bare = false;
   for (const l of leds) {
     const guarded = resistors.some((r) => r.a === l.a || r.b === l.a || r.a === l.k || r.b === l.k);
-    l.p._bare = !guarded;
+    if (!guarded) l.p._bare = true;
   }
   /* A laser diode is much less forgiving, and the size of the resistor beside
      it is the whole story: it sets how hard the diode is driven, which is what
@@ -5843,8 +5951,22 @@ function compileBoard(b) {
     }
   }
 
+  /* Whether an SCR's anode has anything at all feeding it — a resistor, a
+     supply, a chip or Arduino pin — worked out once from the wiring rather
+     than from the net's own value each tick. Its own conduction pulls that
+     value down the instant it turns on, so checking the value itself would
+     make it flicker off the very next tick and straight back on the one
+     after; checking the wiring instead is also the more honest answer, since
+     a real one only lets go when the path feeding it is actually broken, not
+     when whatever was driving it happens to read low for a moment. */
+  for (const s of scrs) {
+    s.fed = supplies.some((sp) => sp.net === s.c) || resistors.some((r) => r.a === s.c || r.b === s.c)
+      || pinsOnNet(s.c).length > 0;
+  }
+
   const conductors = transistors.slice();
   for (const rl of relays) conductors.push(rl.no, rl.nc);
+  conductors.push(...scrs);
 
   /* Every tie point is a net whether or not anything is plugged into it; the
      interesting number is how many nets the circuit actually touches. */
@@ -5853,7 +5975,7 @@ function compileBoard(b) {
 
   return {
     board: b, nets: count, used: used.size, holeNet, supplies, resistors, diodes, leds, chips, displays, transistors, errors,
-    loads, lasers, fuses, relays, unos, ldrs, conductors, caps, thermistors,
+    loads, lasers, fuses, relays, unos, ldrs, conductors, caps, thermistors, zeners, regs, scrs,
   };
 }
 
@@ -6040,6 +6162,35 @@ class BoardSim {
       t.p._on = t.on;
     }
 
+    /* A thyristor latches: a high gate turns it on while its anode has
+       something feeding it, and once it is on the gate no longer matters —
+       only the anode's own path being taken away turns it back off (see the
+       note by `fed` in compileBoard for why that is checked there and not
+       from the anode's value here). */
+    for (const s of this.c.scrs) {
+      if (s.p.fried) { s.on = false; s.p._on = false; continue; }
+      let st = this.st.get(s.p.id);
+      if (!st) this.st.set(s.p.id, st = { latched: false });
+      if (!s.fed) st.latched = false;
+      else if (this.str[s.g] !== FLOAT && this.val[s.g] === 1) st.latched = true;
+      s.on = st.latched;
+      s.p._on = s.on;
+    }
+
+    /* A regulator ties its OUT to a clean 5 V — a logical 1 — as long as its
+       IN is being driven and its GND is actually grounded, whatever else IN is
+       carrying. Nothing on this bench is noisy or over-volted enough for the
+       cleaning-up to show, but the one-way, only-while-powered behaviour is
+       real: it is why this is the part that lets the 9 V battery feed
+       anything beyond the Arduino's own VIN safely. */
+    for (const rg of this.c.regs) {
+      if (rg.p.fried) { rg.p._on = false; continue; }
+      const ready = this.str[rg.in] !== FLOAT && this.val[rg.in] === 1
+        && this.str[rg.gnd] !== FLOAT && this.val[rg.gnd] === 0;
+      rg.p._on = ready;
+      if (ready) put(rg.out, 1);
+    }
+
     /* Settle the passive side: closed transistors carry a level across at full
        strength, resistors pass a weak copy. Two strong nets joined by a
        resistor is a current path, not a short; joined by a transistor it is. */
@@ -6074,6 +6225,17 @@ class BoardSim {
           str[d.k] = str[d.a]; val[d.k] = 1; changed = true;
         }
       }
+      /* A zener conducts forward like any diode (above, since it went in that
+         list too) but also breaks down in reverse: hold its cathode at a
+         strong 5 V and it clamps its anode side up to match, which is the
+         useful half — a simple, fixed reference or clip on whatever is on the
+         anode side, instead of a level that would otherwise float or sag. */
+      for (const z of this.c.zeners) {
+        if (z.p.fried) continue;
+        if (str[z.k] === STRONG && val[z.k] === 1 && str[z.a] < STRONG) {
+          str[z.a] = STRONG; val[z.a] = 1; changed = true;
+        }
+      }
       if (!changed) break;
     }
 
@@ -6103,9 +6265,12 @@ class BoardSim {
       }
     }
 
-    /* Light the LEDs: current only flows from a high anode to a low cathode. */
+    /* Light the LEDs: current only flows from a high anode to a low cathode.
+       An RGB LED pushes three of these sharing one part, one per colour, so
+       each channel gets its own flag instead of overwriting the others. */
     for (const l of this.c.leds) {
-      l.p._lit = str[l.a] !== FLOAT && str[l.k] !== FLOAT && val[l.a] === 1 && val[l.k] === 0;
+      const lit = str[l.a] !== FLOAT && str[l.k] !== FLOAT && val[l.a] === 1 && val[l.k] === 0;
+      if (l.ch) l.p['_lit' + l.ch] = lit; else l.p._lit = lit;
     }
     /* Buzzers and motors want the same thing an LED does: a high end and a low
        end. A buzzer that is sounding is what the speakers get told about. */
@@ -6205,7 +6370,7 @@ function netOfHole(r, c) {
 
 function drawBoard() {
   const cm = S.bcam;
-  const isPcb = S.board.style === 'pcb';
+  const isPcb = S.board.style === 'pcb' || S.board.style === 'design';
   ctx.fillStyle = C.bg;
   ctx.fillRect(0, 0, VW, VH);
   ctx.save();
@@ -6310,7 +6475,7 @@ function drawBoard() {
   for (const p of S.board.parts) drawBoardPart(p);
 
   /* placement helpers */
-  if (S.armed && S.mode === 'board') drawBoardGhost();
+  if (S.armed && inBoard()) drawBoardGhost();
   if (S.blead && S.bhoverPt) {
     const q = extById(S.blead.id);
     if (q) {
@@ -6345,7 +6510,7 @@ function drawBoardPart(p) {
 
   switch (p.k) {
     case 'wire': {
-      if (S.board.style === 'pcb') {
+      if (S.board.style === 'pcb' || S.board.style === 'design') {
         /* A trace, not a jumper: solder does not arc through the air on its
            way over, it runs straight, and it ends in a blob, not a bare tip
            poking into a hole it can fall back out of. */
@@ -6427,6 +6592,47 @@ function drawBoardPart(p) {
       /* the cathode band, on the side current cannot leave by */
       ctx.fillStyle = '#e8e8e0';
       ctx.fillRect(len / 2 - 6, -hgt / 2 + 1, 2.4, hgt - 2);
+      ctx.restore();
+      break;
+    }
+    case 'zener': {
+      const ang = Math.atan2(B.y - A.y, B.x - A.x);
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const len = Math.min(28, Math.hypot(B.x - A.x, B.y - A.y) * 0.5), hgt = 10;
+      ctx.save(); ctx.translate(mx, my); ctx.rotate(ang);
+      roundRect(-len / 2, -hgt / 2, len, hgt, 3);
+      ctx.fillStyle = '#2a2c30'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#111214'; ctx.lineWidth = sel ? 2 : 1; ctx.stroke();
+      /* the cathode band, bent into a little Z so it reads as a zener rather
+         than a plain diode at a glance — the one thing that tells you it also
+         conducts backward once it breaks down */
+      ctx.strokeStyle = '#e8e8e0'; ctx.lineWidth = 1.6; ctx.lineCap = 'square';
+      ctx.beginPath();
+      ctx.moveTo(len / 2 - 3.5, -hgt / 2 + 1); ctx.lineTo(len / 2 - 6.5, -hgt / 2 + 1);
+      ctx.lineTo(len / 2 - 3.5, hgt / 2 - 1); ctx.lineTo(len / 2 - 6.5, hgt / 2 - 1);
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+    case 'ind': {
+      const ang = Math.atan2(B.y - A.y, B.x - A.x);
+      const len = Math.hypot(B.x - A.x, B.y - A.y);
+      ctx.save(); ctx.translate(A.x, A.y); ctx.rotate(ang);
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      const coilLen = Math.min(30, len * 0.6), lead = (len - coilLen) / 2;
+      ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(lead, 0); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(len - lead, 0); ctx.lineTo(len, 0); ctx.stroke();
+      // a row of humps, the copper winding of a coil
+      ctx.strokeStyle = sel ? C.sel : '#c9a35a'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      const bumps = 4, bw = coilLen / bumps;
+      ctx.beginPath();
+      for (let i = 0; i < bumps; i++) {
+        const x0 = lead + i * bw, x1 = x0 + bw;
+        ctx.moveTo(x0, 0); ctx.arc((x0 + x1) / 2, 0, bw / 2, Math.PI, 0, true);
+      }
+      ctx.stroke();
       ctx.restore();
       break;
     }
@@ -6672,6 +6878,81 @@ function drawBoardPart(p) {
       ['1', 'W', '2'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
       break;
     }
+    case 'reg': {
+      const P = BB.P;
+      const y = holeY(p.r);
+      const cx = holeX(p.c + 1), cy = y - P * 1.05, w = P * 1.9, hgt = P * 1.3;
+      ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const x = holeX(p.c + i);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy + hgt / 2 - 2); ctx.stroke();
+      }
+      // the black plastic tab, with the bare metal tang a real 7805 bolts a heatsink to
+      roundRect(cx - w / 2, cy - hgt / 2, w, hgt * 0.72, 2);
+      ctx.fillStyle = '#1c1f24'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : p._on ? C.accent : '#0c0e11';
+      ctx.lineWidth = sel || p._on ? 2.4 : 1; ctx.stroke();
+      ctx.fillStyle = '#b9bcc2';
+      ctx.fillRect(cx - w * 0.28, cy - hgt / 2 - hgt * 0.22, w * 0.56, hgt * 0.22);
+      ctx.fillStyle = p._on ? C.accent : '#9aa0a6'; ctx.font = `700 ${P * 0.32}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('7805', cx, cy + hgt * 0.08);
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.3}px ${FONT}`;
+      ['IN', 'GND', 'OUT'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
+      break;
+    }
+    case 'scr': {
+      const P = BB.P;
+      const y = holeY(p.r);
+      const cx = holeX(p.c + 1), cy = y - P * 1.05, R = P * 0.7;
+      ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const x = holeX(p.c + i);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy + R * 0.45); ctx.stroke();
+      }
+      roundRect(cx - R, cy - R * 0.85, R * 2, R * 1.7, R * 0.62);
+      ctx.fillStyle = '#1c1f24'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : p._on ? C.accent : '#0c0e11';
+      ctx.lineWidth = sel || p._on ? 2.4 : 1; ctx.stroke();
+      ctx.fillStyle = p._on ? C.accent : '#9aa0a6';
+      ctx.font = `700 ${P * 0.34}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('SCR', cx, cy - R * 0.05);
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.32}px ${FONT}`;
+      ['A', 'G', 'K'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
+      break;
+    }
+    case 'rgbled': {
+      const P = BB.P;
+      const y = holeY(p.r);
+      const cx = holeX(p.c) + P * 1.5, cy = y - P * 1.05;
+      const CH = [['R', p._litR, '#ff4436'], ['G', p._litG, '#4bd684'], ['B', p._litB, '#5cc8ff']];
+      ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 4; i++) {
+        const x = holeX(p.c + i);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy + P * 0.5); ctx.stroke();
+      }
+      // one clear lens, big enough to sit over all four legs, tinted by whichever channels are lit
+      const anyLit = p._litR || p._litG || p._litB;
+      if (anyLit) {
+        const g = ctx.createRadialGradient(cx, cy, 2, cx, cy, 30);
+        const mix = `rgb(${p._litR ? 255 : 40},${p._litG ? 214 : 40},${p._litB ? 255 : 40})`;
+        g.addColorStop(0, mix); g.addColorStop(1, mix.replace('rgb', 'rgba').replace(')', ',0)'));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, 30, 0, 7); ctx.fill();
+      }
+      ctx.beginPath(); ctx.ellipse(cx, cy, P * 1.05, P * 0.55, 0, 0, 7);
+      ctx.fillStyle = anyLit ? '#e8e8e8' : '#8d8f92'; ctx.globalAlpha = anyLit ? 0.9 : 0.6; ctx.fill(); ctx.globalAlpha = 1;
+      ctx.strokeStyle = sel ? C.sel : 'rgba(0,0,0,.35)'; ctx.lineWidth = sel ? 2.4 : 1.2; ctx.stroke();
+      CH.forEach(([nm, lit, col], i) => {
+        const x = cx + (i - 1) * P * 0.55;
+        ctx.beginPath(); ctx.arc(x, cy, 6, 0, 7);
+        ctx.fillStyle = lit ? col : shade(col, -0.5); ctx.fill();
+      });
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.3}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ['R', 'COM', 'G', 'B'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
+      break;
+    }
     case 'ic': case 'seg': case 'btn': case 'dip': case 'relay': drawModule(p, sel); break;
   }
   if (p.fried) drawScorch(p, A, B);
@@ -6684,7 +6965,7 @@ function drawScorch(p, A, B) {
   const span = partSpan(p);
   if (p.k === 'ext') { x = p.x + EXT[p.type].w / 2; y = p.y + EXT[p.type].h / 2; }
   else if (span) { x = (holeX(span[0]) + holeX(span[1])) / 2; y = (holeY(chipRowHi(p)) + holeY(chipRowLo(p))) / 2; }
-  else if (p.k === 'npn' || p.k === 'pnp') { x = holeX(p.c + 1); y = holeY(p.r) - BB.P; }
+  else if (p.k === 'npn' || p.k === 'pnp' || p.k === 'scr') { x = holeX(p.c + 1); y = holeY(p.r) - BB.P; }
   else if (A && B) { x = (A.x + B.x) / 2; y = (A.y + B.y) / 2; }
   else return;
   ctx.save();
@@ -6935,12 +7216,16 @@ function drawBoardGhost() {
   const a = S.armed;
   if (!a || (!S.bhoverHole && !EXT[a.type])) return;
   ctx.globalAlpha = 0.5;
-  if (a.type === 'npn' || a.type === 'pnp' || a.type === 'pot') {
+  if (a.type === 'npn' || a.type === 'pnp' || a.type === 'pot' || a.type === 'reg' || a.type === 'scr') {
     if (S.bhoverHole.r < 100) {
       drawBoardPart({
         k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, boardCols() - 3),
         ohms: 10000, pos: 0.5,
       });
+    }
+  } else if (a.type === 'rgbled') {
+    if (S.bhoverHole.r < 100) {
+      drawBoardPart({ k: 'rgbled', id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, boardCols() - 4) });
     }
   } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip' || a.type === 'relay') {
     const col = ghostColumn(S.bhoverHole);
@@ -7005,15 +7290,21 @@ function hitBoardPart(w) {
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
-    if (p.k === 'npn' || p.k === 'pnp') {
+    if (p.k === 'npn' || p.k === 'pnp' || p.k === 'scr') {
       const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 2) + P * 0.6;
       const y1 = holeY(p.r) + P * 0.4, y0 = y1 - P * 2.3;
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
-    if (p.k === 'pot') {
+    if (p.k === 'pot' || p.k === 'reg') {
       const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 2) + P * 0.6;
       const y1 = holeY(p.r) + P * 0.3, y0 = y1 - P * 1.6;
+      if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
+      continue;
+    }
+    if (p.k === 'rgbled') {
+      const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 3) + P * 0.6;
+      const y1 = holeY(p.r) + P * 0.3, y0 = y1 - P * 1.9;
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
@@ -7112,6 +7403,8 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'laser') return { k: 'laser', id, a: hole, b: second, nm: 650 };
   if (a.type === 'motor') return { k: 'motor', id, a: hole, b: second };
   if (a.type === 'tog') return { k: 'tog', id, a: hole, b: second, on: false };
+  if (a.type === 'zener') return { k: 'zener', id, a: hole, b: second };
+  if (a.type === 'ind') return { k: 'ind', id, a: hole, b: second };
   if (a.type === 'vcc') return { k: 'vcc', id, a: hole };
   if (a.type === 'gnd') return { k: 'gnd', id, a: hole };
   if (a.type === 'npn' || a.type === 'pnp') {
@@ -7121,6 +7414,18 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'pot') {
     if (BB.isRail(hole.r)) { toast('Potentiometers go in the main rows, not the power rails.', true); return null; }
     return { k: 'pot', id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3), ohms: 10000, pos: 0.5 };
+  }
+  if (a.type === 'reg') {
+    if (BB.isRail(hole.r)) { toast('Voltage regulators go in the main rows, not the power rails.', true); return null; }
+    return { k: 'reg', id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3) };
+  }
+  if (a.type === 'scr') {
+    if (BB.isRail(hole.r)) { toast('Thyristors go in the main rows, not the power rails.', true); return null; }
+    return { k: 'scr', id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3) };
+  }
+  if (a.type === 'rgbled') {
+    if (BB.isRail(hole.r)) { toast('RGB LEDs go in the main rows, not the power rails.', true); return null; }
+    return { k: 'rgbled', id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 4) };
   }
   const col = ghostColumn(hole);
   const board = BB.boardOf(hole.r);
@@ -7222,6 +7527,11 @@ function boardDown(ev) {
   }
 
   if (S.armed) {
+    if (S.armed.type === 'tracepen') {
+      if (!hole) return;
+      S.drag = { kind: 'tracepen', last: hole, moved: false };
+      return;
+    }
     if (EXT[S.armed.type]) {
       const s = EXT[S.armed.type], bb = boardBounds();
       const x = snapExt(w.x - s.w / 2), y = snapExt(w.y - s.h / 2);
@@ -7308,6 +7618,15 @@ function boardMove(ev, p, w) {
         S.bdirty = true; scheduleSave();
       }
     }
+    return;
+  }
+  if (d.kind === 'tracepen') {
+    if (hole && (hole.r !== d.last.r || hole.c !== d.last.c)) {
+      if (!d.moved) { d.moved = true; pushUndo(); }
+      S.board.parts.push(makeBoardPart({ type: 'wire', color: '#c9924f' }, d.last, hole));
+      d.last = hole;
+      S.bdirty = true; scheduleSave();
+    }
   }
 }
 
@@ -7332,21 +7651,27 @@ function renderBoardPalette(host, q) {
   /* These two get used constantly, and the chip list below is long, so they go
      at the top rather than at the bottom of a scroll. */
   if (!q) {
-    host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Board'), h('span', { class: 'rule' })));
+    const design = S.mode === 'design';
+    host.append(h('div', { class: 'pal-group' }, h('h3', {}, design ? 'Design board' : 'Board'), h('span', { class: 'rule' })));
     const n = boardCount();
-    const isPcb = S.board.style === 'pcb';
-    const setStyle = async (style) => {
-      if (style === S.board.style) return;
-      if (S.board.parts.length
-        && !await ask('Switch board type?', style === 'pcb'
-          ? 'A breadboard’s rows and rails are already wired together; a perfboard’s pads are not. Everything already placed stays, but nothing it relied on being pre-wired will still be joined — Ctrl+Z undoes this.'
-          : 'Any trace you soldered stays; the breadboard’s own rows and rails come back pre-wired underneath it, same as always.', 'Switch it')) return;
-      pushUndo();
-      S.board.style = style; S.bdirty = true; scheduleSave(); renderPalette(); renderInspector();
-    };
-    host.append(h('div', { class: 'seg', style: 'width:100%;margin-bottom:8px' },
-      h('button', { class: isPcb ? '' : 'on', style: 'flex:1', onclick: () => setStyle('breadboard') }, 'Breadboard'),
-      h('button', { class: isPcb ? 'on' : '', style: 'flex:1', onclick: () => setStyle('pcb') }, 'Perfboard')));
+    if (design) {
+      host.append(h('p', { class: 'muted', style: 'margin:0 0 8px' },
+        'Bare copper pads, entirely separate from whatever is on the Breadboard workspace. Nothing is joined until you solder a trace — use the Trace pen below to run one across several pads in a drag, or a Jumper wire for a single point-to-point link.'));
+    } else {
+      const isPcb = S.board.style === 'pcb';
+      const setStyle = async (style) => {
+        if (style === S.board.style) return;
+        if (S.board.parts.length
+          && !await ask('Switch board type?', style === 'pcb'
+            ? 'A breadboard’s rows and rails are already wired together; a perfboard’s pads are not. Everything already placed stays, but nothing it relied on being pre-wired will still be joined — Ctrl+Z undoes this.'
+            : 'Any trace you soldered stays; the breadboard’s own rows and rails come back pre-wired underneath it, same as always.', 'Switch it')) return;
+        pushUndo();
+        S.board.style = style; S.bdirty = true; scheduleSave(); renderPalette(); renderInspector();
+      };
+      host.append(h('div', { class: 'seg', style: 'width:100%;margin-bottom:8px' },
+        h('button', { class: isPcb ? '' : 'on', style: 'flex:1', onclick: () => setStyle('breadboard') }, 'Breadboard'),
+        h('button', { class: isPcb ? 'on' : '', style: 'flex:1', onclick: () => setStyle('pcb') }, 'Perfboard')));
+    }
     host.append(h('div', { class: 'stack' },
       h('button', { class: 'btn primary', onclick: addBenchPower }, 'Add bench power'),
       h('div', { class: 'row', style: 'margin:0' },
@@ -7372,7 +7697,7 @@ function renderBoardPalette(host, q) {
       h('button', {
         class: 'btn danger', onclick: async () => {
           if (!S.board.parts.length) return;
-          if (!await ask('Strip the breadboard bare?', 'Every part and jumper comes off. Ctrl+Z puts them back.', 'Strip it')) return;
+          if (!await ask('Strip the board bare?', 'Every part and jumper comes off. Ctrl+Z puts them back.', 'Strip it')) return;
           pushUndo();
           S.board.parts = []; S.bsel = null; S.bdirty = true; scheduleSave(); renderInspector();
         },
@@ -7408,9 +7733,15 @@ function renderBoardPalette(host, q) {
     host.append(wrap);
   };
 
-  add('Wiring', [
-    { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
-  ]);
+  add('Wiring', S.mode === 'design'
+    ? [
+      { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
+      { name: 'Trace pen', color: '#c9924f', sub: 'drag across pads to run a length of copper',
+        desc: 'Press on a pad and drag across others — each one you cross is soldered straight to the last, the way you would rout a real board.', arm: { type: 'tracepen' } },
+    ]
+    : [
+      { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
+    ]);
   add('Resistors', [
     { name: 'Resistor', color: '#d8c9a3', desc: 'Click two holes. A fixed value, 220 Ω by default — set it in the inspector.', arm: { type: 'res', ohms: 220 } },
     { name: 'Potentiometer', color: '#3a6b8f', sub: 'a resistor you turn',
@@ -7423,7 +7754,10 @@ function renderBoardPalette(host, q) {
   add('LEDs', [
     ['Red LED', '#ff5b4a'], ['Yellow LED', '#ffc247'], ['Green LED', '#4bd684'],
     ['Blue LED', '#5cc8ff'], ['Purple LED', '#c77dff'], ['White LED', '#ffffff'],
-  ].map(([name, color]) => ({ name, color, desc: 'Click two holes. First is the anode (+). Always give it a resistor.', arm: { type: 'led', color } })));
+  ].map(([name, color]) => ({ name, color, desc: 'Click two holes. First is the anode (+). Always give it a resistor.', arm: { type: 'led', color } })).concat([
+    { name: 'RGB LED', color: '#ffffff', sub: 'red, green and blue in one package',
+      desc: 'Click a hole. Four legs in a row: red anode, common cathode, green anode, blue anode — give each colour its own resistor.', arm: { type: 'rgbled' } },
+  ]));
   add('Power — beside the board', [
     { name: 'Battery pack', color: '#c9a227', sub: 'set down off the board',
       desc: 'Sits beside the board. Click its + and − terminals, then holes (or another device) to run leads.', arm: { type: 'battery' } },
@@ -7439,12 +7773,20 @@ function renderBoardPalette(host, q) {
     { name: 'DC motor', color: '#b9bcc2', desc: 'Click two holes. First is +. Spins while it has 5 V across it — wire it straight to a chip or Arduino pin rather than through a transistor and that pin fries.', arm: { type: 'motor' } },
     { name: 'Laser diode', color: '#ff2a2a', sub: 'the circuit decides what kind',
       desc: 'Click two holes. First is the anode (+). The resistor beside it sets its class; a steady or switching drive sets its beam.', arm: { type: 'laser' } },
+    { name: 'Zener diode', color: '#2a2c30', sub: 'conducts backward too, once it breaks down',
+      desc: 'Click two holes. First is the anode (+). Forward, a plain diode; hold the cathode at a strong 5 V and it clamps the anode side to match.', arm: { type: 'zener' } },
+    { name: 'Inductor', color: '#c9a35a', sub: 'a coil of wire',
+      desc: 'Click two holes. Passes current through like a wire — a real one resists a sudden change and stores energy in the field, which nothing here is fast enough to show.', arm: { type: 'ind' } },
+    { name: 'Voltage regulator (7805)', color: '#1c1f24', sub: 'the safe way to use the 9 V battery',
+      desc: 'Click a hole. Three legs: IN, GND, OUT. Ties OUT to a clean 5 V for as long as IN is driven and GND is grounded — wire the battery here instead of straight to the board.', arm: { type: 'reg' } },
   ]);
   add('Transistors — build a gate yourself', [
     { name: 'NPN transistor', color: '#1c1f24', sub: 'a switch a wire closes',
       desc: 'Conducts when its base is high.', arm: { type: 'npn' } },
     { name: 'PNP transistor', color: '#1c1f24', sub: 'a switch a wire opens',
       desc: 'Conducts when its base is low.', arm: { type: 'pnp' } },
+    { name: 'SCR (thyristor)', color: '#1c1f24', sub: 'a switch that latches on',
+      desc: 'Legs: anode, gate, cathode. A high pulse on the gate turns it on for as long as the anode has something feeding it; changing what feeds the anode is what turns it back off.', arm: { type: 'scr' } },
   ]);
   add('Modules', [
     { name: 'Push button', color: '#c0392b', desc: MODULES.btn.desc, arm: { type: 'btn' } },
@@ -7580,6 +7922,11 @@ function renderBoardInspector(host) {
     ldr: ['Photoresistor', 'A resistor whose value follows the light on it: a couple of hundred ohms in full light, up to a megohm in the dark. On its own it is a gap in the dark and a resistor in the light. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the light — a night-light, built out of two parts. A laser aimed at it counts as full light.'],
     therm: ['Thermistor', "A resistor whose value follows the heat on it — the opposite way round from the photoresistor: a hot one lets current through easily, a cold one barely at all, which is what ‘NTC’ (negative temperature coefficient) means. On its own it is a resistor whose size you set with the Heat slider. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the temperature — a thermostat, built out of two parts."],
     pot: ['Potentiometer', "A resistor with a sliding contact — the wiper, the middle leg — part way along its length, so it is really two resistors back to back that always add up to the total you set. Move the wiper and one side grows while the other shrinks, which is how a volume knob or a dimmer works: read the voltage at the wiper and it is a number you can turn by hand, from one end of the range to the other. Wire only two legs — an end and the wiper — and it works as a single adjustable resistor instead, called a rheostat."],
+    zener: ['Zener diode', 'A diode built to be run backward on purpose: forward, it behaves exactly like an ordinary one; hold its cathode (the banded, bent-Z end) at a strong 5 V and it also breaks down in reverse, pulling its anode side up to match. That is the useful half — a fixed, simple clamp or reference, instead of a point that would otherwise float or sag.'],
+    ind: ['Inductor', 'A coil of wire. A real one resists a sudden change in current and stores energy in the magnetic field that makes, which is what makes it useful for filtering and for timing — both jobs this simulator has no room for, since every level here changes instantly. Electrically it just passes current through, like a wire with a coil drawn on it.'],
+    reg: ['Voltage regulator (7805)', 'Ties its OUT to a clean 5 V for as long as its IN is being driven and its GND is actually grounded — whatever else IN is carrying. This is the proper way to run the 9 V battery pack into anything besides the Arduino’s own VIN: wire battery + to IN, battery − and the rest of the board’s ground to GND, and take 5 V for the board off OUT. Legs, left to right: IN, GND, OUT.'],
+    scr: ['SCR (thyristor)', "A switch that latches: a high pulse on the gate turns it on for as long as its anode has something feeding it, and once it is on the gate stops mattering. It only turns off if the wiring feeding the anode is actually changed — a real one needs its current cut, not just a signal, which is why simple SCR circuits are reset by breaking the power rather than by a second pulse. Legs, left to right: anode, gate, cathode."],
+    rgbled: ['RGB LED', 'Three LEDs in one package sharing a common cathode: red, green and blue, each with its own anode leg and its own resistor. Light more than one colour at once and the lens shows the mix. Legs, left to right: red anode, common cathode, green anode, blue anode.'],
     laser: ['Laser diode', 'An LED that lases: past a threshold current its light stops being a dim glow and becomes a beam. The resistor beside it sets how hard it is driven, and that decides what kind of laser it is — read the panel below. With no resistor it dies the instant it is switched on.'],
     relay: ['Relay', "An electromagnet that works a switch. Put 5 V across the coil (C+ high, C− low) and the middle contact COM swings from NC over to NO; take it away and it springs back. It is how a small signal switches something big, and how the first computers did their logic — every one of them was a room of these. Take the 5 V away, though, and the coil fires a brief kickback the way current came from; wired straight to a chip, an Arduino pin, or a transistor with no diode across the coil to catch it, that is what fries — a real reason relay circuits always carry one."],
     battery: ['Battery pack', 'A 9 V battery, sitting beside the board. Its + and − terminals go nowhere until you run leads: click a terminal, then the terminal of another device. 9 V is more than a chip or an LED will take — connect + to the Arduino’s VIN (which has a regulator behind it) and − to its GND, and never to the breadboard itself. Anything on the board that + reaches, directly or through a resistor under 470 Ω, is fried.'],
@@ -7788,11 +8135,18 @@ function renderBoardInspector(host) {
       onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
     }, 'Turn it round (swap anode and cathode)'));
   }
-  if (part.k === 'diode') {
+  if (part.k === 'diode' || part.k === 'zener') {
     s2.append(h('button', {
       class: 'btn', style: 'margin-bottom:7px',
       onclick: () => { const t = part.a; part.a = part.b; part.b = t; S.bdirty = true; scheduleSave(); renderInspector(); },
     }, 'Turn it round (swap anode and cathode)'));
+  }
+  if (part.k === 'scr') {
+    const st = S.bsim ? S.bsim.st.get(part.id) : null;
+    s2.append(h('div', { class: 'kv' }, h('span', {}, 'Right now'),
+      h('span', { style: part._on ? 'color:var(--accent)' : '' }, part._on ? 'latched on' : 'off')));
+    s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' },
+      st && st.latched ? 'Latched on — it will stay this way until whatever feeds its anode is changed.' : 'Needs a high pulse on the gate, with something already feeding the anode, to latch on.'));
   }
   if (part.k === 'bat') {
     s2.append(h('button', {
@@ -7814,6 +8168,20 @@ function renderBoardInspector(host) {
         type: 'number', min: '0.1', step: '0.1', value: String(part.hz || 2),
         oninput: (e) => { part.hz = clamp(parseFloat(e.target.value) || 2, 0.05, 200); scheduleSave(); },
       }))));
+  }
+  if (part.k === 'ic' && part.type === '555') {
+    s2.append(h('div', { class: 'row' }, h('label', {}, 'Rate (Hz)'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'number', min: '0.05', step: '0.1', value: String(part.hz || 1),
+        oninput: (e) => { part.hz = clamp(parseFloat(e.target.value) || 1, 0.05, 200); scheduleSave(); },
+      }))));
+    s2.append(h('div', { class: 'row' }, h('label', {}, 'Duty (% high)'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'range', min: '0.05', max: '0.95', step: '0.01', value: String(part.duty === undefined ? 0.5 : part.duty),
+        oninput: (e) => { part.duty = parseFloat(e.target.value); scheduleSave(); },
+      }))));
+    s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' },
+      `On real astable wiring these come from two resistors and a capacitor charging and discharging; this one skips to the answer — set the rate and how lopsided it is directly. Right now: ${Math.round((part.duty === undefined ? 0.5 : part.duty) * 100)}% high.`));
   }
   if (part.k === 'ic' && part.type === 'ARDUINO') {
     const spec = ICS.ARDUINO;
@@ -8586,10 +8954,10 @@ const BOARD_EXAMPLES = [
 ];
 
 function openExamples() {
-  const list = S.mode === 'board' ? BOARD_EXAMPLES : EDITOR_EXAMPLES;
+  const list = inBoard() ? BOARD_EXAMPLES : EDITOR_EXAMPLES;
   const body = h('div', {},
-    h('p', { class: 'muted' }, S.mode === 'board'
-      ? 'Loading an example replaces what is on the breadboard.'
+    h('p', { class: 'muted' }, inBoard()
+      ? 'Loading an example replaces what is on this board.'
       : 'Loading an example replaces the circuit on the board. Chips already in your library are left alone.'),
     h('div', { class: 'cards', style: 'margin-top:12px' },
       ...list.map((ex) => h('button', {
@@ -8617,11 +8985,11 @@ function installChips(chips, work) {
 }
 
 async function loadExample(ex) {
-  const board = S.mode === 'board';
+  const board = inBoard();
   const occupied = board ? !!(S.board && S.board.parts.length) : !!S.work.nodes.length;
   if (occupied) {
     const go = await ask(
-      board ? 'Replace what is on the breadboard?' : 'Replace the circuit on the board?',
+      board ? 'Replace what is on this board?' : 'Replace the circuit on the board?',
       `“${ex.name}” needs the board to itself.` + (board ? '' : ' Your saved chips are not affected.'),
       'Replace it');
     if (!go) { openExamples(); return; }        // back to the list they came from
@@ -8651,8 +9019,9 @@ async function loadExample(ex) {
 function openHelp() {
   const body = h('div', { class: 'help' });
   body.innerHTML = `
-<p>Two workspaces, one simulator. <b>Circuit</b> is a schematic you build from gates;
-<b>Breadboard</b> is the physical bench, with real chips that need real power.</p>
+<p>Three workspaces, one simulator. <b>Circuit</b> is a schematic you build from gates;
+<b>Breadboard</b> is the physical bench, with real chips that need real power; <b>Design</b>
+is a second, separate board of your own with nothing pre-wired at all.</p>
 
 <h4>Circuit editor</h4>
 <ul>
@@ -8769,7 +9138,29 @@ select it and fit a new one.</p>
       100–470 Ω: Class 3R; under 100 Ω: Class 3B); a steady drive makes a continuous beam and
       a switching one makes a pulsed beam; no resistor at all burns it out. Aim it at a
       photoresistor and the beam becomes light on it.</li>
+  <li><b>Zener diode</b> — a plain diode forward, and a fixed clamp in reverse once its
+      cathode sees a strong 5 V. <b>Inductor</b> — a coil, electrically just a wire here.</li>
+  <li><b>Voltage regulator (7805)</b> — legs IN, GND, OUT. Ties OUT to a clean 5 V for as
+      long as IN is driven and GND is grounded: the proper way to run the 9 V battery into
+      anything besides the Arduino's own VIN.</li>
+  <li><b>SCR (thyristor)</b> — legs anode, gate, cathode. A high pulse on the gate latches
+      it on for as long as something feeds the anode; only changing what feeds the anode
+      turns it off again — a real one needs its current cut, not just a signal.</li>
+  <li><b>RGB LED</b> — three LEDs, red/green/blue, sharing one common-cathode leg. Give each
+      colour its own resistor.</li>
+  <li><b>555 timer</b> and <b>4017 decade counter</b> join the chip families: the 555 wired
+      astable (Rate and Duty in the inspector stand in for its usual resistor-and-capacitor
+      timing), the 4017 walking a single high output down ten pins — a ready-made LED chaser.</li>
 </ul>
+
+<h4>Design</h4>
+<p>A second board, with its own parts and its own history, entirely separate from whatever
+is on the Breadboard workspace — switch to it from the same tabs at the top, from either
+other workspace. It starts as bare copper pads, like Perfboard, but adds a <b>Trace pen</b>:
+press on a pad and drag across others, and each one you cross is soldered straight to the
+last, the way you would rout a real board, instead of placing one jumper at a time. Every
+part in the palette works here too, so it is the place to lay a circuit out however makes
+sense to you rather than onto a breadboard's fixed rows and rails.</p>
 
 <h4>How the simulation works</h4>
 <p>Everything compiles to a flat netlist. Each tick, every gate reads its inputs and writes
@@ -8831,25 +9222,40 @@ single JSON file with your chip library, the current circuit and the breadboard 
    ========================================================================== */
 
 function setMode(m) {
+  if (m !== S.mode && (m === 'design' || S.mode === 'design')) {
+    /* Crossing into or out of Design: stash the board-like workspace we are
+       leaving in its own slot, and load whichever we are entering — a save
+       slot swap, so every line of code that reads S.board, S.bsel, S.bcam,
+       S.bundo and S.bredo keeps working without ever needing to know which
+       of the two boards it is looking at. */
+    S[S.mode === 'design' ? 'designSlot' : 'boardSlot'] =
+      { board: S.board, bsel: S.bsel, bcam: S.bcam, bundo: S.bundo, bredo: S.bredo };
+    const slot = S[m === 'design' ? 'designSlot' : 'boardSlot']
+      || { board: null, bsel: null, bcam: { x: 0, y: 0, z: 1 }, bundo: [], bredo: [] };
+    S.board = slot.board; S.bsel = slot.bsel; S.bcam = slot.bcam; S.bundo = slot.bundo; S.bredo = slot.bredo;
+    S.bsim = null; S.bcompiled = null;
+  }
   S.mode = m;
   S.armed = null; S.bpending = null; S.drag = null; S.pendingWire = null;
   $('#mode-editor').classList.toggle('on', m === 'editor');
   $('#mode-board').classList.toggle('on', m === 'board');
+  $('#mode-design').classList.toggle('on', m === 'design');
   $('#btn-chip').style.display = m === 'editor' ? '' : 'none';
-  $('#pal-q').placeholder = m === 'board' ? 'Search parts…' : 'Search gates and chips…';
+  $('#pal-q').placeholder = m === 'editor' ? 'Search gates and chips…' : 'Search parts…';
   if (m === 'board' && !S.board) S.board = makeBoard();
+  if (m === 'design' && !S.board) S.board = makeDesignBoard();
   setStatusTip();
   renderPalette(); renderInspector(); renderCrumbs(); syncUndoButtons();
-  if (m === 'board' && !S.bcam.set) { S.bcam.set = 1; fitView(); }
+  if ((m === 'board' || m === 'design') && !S.bcam.set) { S.bcam.set = 1; fitView(); }
   scheduleSave();
 }
 
 function setStatusTip() {
   $('#status-tip').textContent = S.play
-    ? (S.mode === 'board'
+    ? (inBoard()
       ? 'Use mode: click at or near a button or switch to work it — you do not have to be exact. Right-drag moves the view. Nothing you click can move a part or change a wire.'
       : 'Use mode: click at or near an input pin to flip it — you do not have to be exact. Right-drag moves the view. Nothing you click can move a part or change a wire.')
-    : (S.mode === 'board'
+    : (inBoard()
       ? 'Pick a part, then click a hole. Jumpers, resistors and LEDs take two clicks. To remove something: click it and press Delete, tap the red ✕, or right-click it.'
       : 'Click a part on the left, then click the board. To wire: click one port, then the other. To remove something: click it and press Delete, tap the red ✕, or right-click it.');
 }
@@ -8934,6 +9340,7 @@ function boot() {
   /* top bar */
   $('#mode-editor').onclick = () => setMode('editor');
   $('#mode-board').onclick = () => setMode('board');
+  $('#mode-design').onclick = () => setMode('design');
   $('#act-edit').onclick = () => setPlay(false);
   $('#act-run').onclick = () => setPlay(true);
   $('#act-toggle').onclick = () => setPlay(!S.play);
