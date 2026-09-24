@@ -49,9 +49,61 @@ import {
 import { distanceFact, speedFact } from "./facts.js";
 
 import {
+  buildStyle,
+  registerMarkers,
+  ATTRIBUTION,
+  ATTRIBUTION_OVERTURE,
+  CLICKABLE_LAYERS,
+} from "./mapstyle.js";
+
+import {
+  placeFromFeature,
+  matchPlaces,
+  looksLikeAddress,
+  loadRecents,
+  addRecent,
+  removeRecent,
+  clearRecents,
+  filterRecents,
+  prettyCategory,
+  CATEGORIES,
+  matchesCategory,
+  placeIcon,
+  nearestFirst,
+  loadSaved,
+  isSaved,
+  toggleSaved,
+  placeToHash,
+  placeFromHash,
+} from "./places.js";
+
+import {
+  distanceMeters,
+  distanceToRoute,
+  advanceStep,
+  hasArrived,
+  remaining,
+  arrivalClock,
+  shortDuration,
+  arrowFor,
+  nextTurnDistance,
+} from "./navigation.js";
+
+import { createGlobe } from "./globe.js";
+
+import {
+  ESTIMATE_MODES,
+  isEstimateMode,
+  estimateAvailable,
+  estimateSeconds,
+  estimateTrip,
+} from "./estimates.js";
+
+import {
   geocode,
   reverseGeocode,
   route,
+  routeTimes,
   getWeather,
 } from "./services.js";
 
@@ -105,6 +157,28 @@ const state = {
   distanceUnit: "lms", // default scientific distance unit: light-milliseconds
   speedUnit: "mach", // default scientific speed unit: Mach
   smartMode: false, // when true, ignore the two selects above and auto-pick
+
+  // THE PICK-A-PLACE FLOW (like Google Maps): click a place -> its card ->
+  // Directions -> Start. Each step is a separate thing you have to ask for.
+  selected: null, // a place that has been clicked but not asked directions to yet
+  pendingStart: false, // "Start" was pressed before the route had arrived
+  navigating: false, // following the route, turn by turn?
+  navNext: 1, // index of the next manoeuvre (steps[0] is "head out")
+  voice: false, // speak the directions aloud
+
+  // WHERE YOU ARE. The browser reports a position and how much it doubts it.
+  locationAccuracy: null, // metres of doubt in the blue dot, or null
+  locationManual: false, // the user dragged the dot to where they really are
+
+  // WHAT THE SIDE PANEL IS SHOWING (see renderMode).
+  tab: null, // "saved" | "recents" | "science": opened from the left rail
+  category: null, // a CATEGORIES entry while "Restaurants" and the like are being browsed
+  categoryResults: null, // its places, nearest first, or null while searching
+  searchFor: "destination", // what the search box is choosing: "destination", "origin" or "edit" (replace the destination)
+  layerMode: "default", // "default" | "satellite" | "terrain"
+  routes: [], // every route found for the trip (the first is the fastest)
+  routeIndex: 0, // which of them is chosen
+  modeTimes: {}, // seconds the trip takes on foot, by bike and by car, for the mode buttons
 };
 
 
@@ -205,10 +279,110 @@ let map = null; // the Leaflet map instance
 let originMarker = null; // marker for the start point
 let destinationMarker = null; // marker for the destination
 let routeLine = null; // the polyline drawn along the route
+let accuracyCircle = null; // the pale ring showing how sure the blue dot is
+let vectorLayer = null; // our own map, drawn from vector data (null if this browser cannot)
+let pictureLayer = null; // the ready-made picture map used when it cannot
+let imageryLayer = null; // satellite pictures, when asked for
+let topoLayer = null; // terrain map, when asked for
+let labelsLayer = null; // place names drawn over the satellite pictures
+let categoryDots = null; // the dots marking a category's results on the map
+let categoryCenter = null; // where the map was looking when the category was searched
+let glMap = null; // the vector map drawing underneath Leaflet (null on the picture fallback)
+let glOverture = false; // whether that map also draws Overture data
+let glKind = "default"; // which of its two styles it wears: "default" or "satellite" (words over photographs)
+let glVisible = true; // false while the terrain map covers it
+let globe = null; // the Earth as a ball, for when the map is zoomed right out (js/globe.js)
+let globeActive = false; // true while the ball is showing instead of the flat map
+let globeEnabled = true; // the "Globe view" tick box
+let globeKey = null; // what was last drawn on the ball, so it is not drawn again for nothing
+const GLOBE_KEY = "sciencemaps.globe";
 
 /**
- * Create the Leaflet map, add the OpenStreetMap tile layer (keeping the
- * required attribution), and let the user click the map to set a destination.
+ * Draw the map itself: our own style (js/mapstyle.js) rendered in the browser
+ * from OpenStreetMap vector data. If this browser cannot do that — no WebGL,
+ * or the libraries or the tile server could not be reached — fall back to a
+ * ready-made picture map so there is always something to look at.
+ */
+function addBasemap() {
+  const canUseVector = (() => {
+    try {
+      if (typeof maplibregl === "undefined" || typeof L.maplibreGL !== "function") return false;
+      const probe = document.createElement("canvas");
+      return !!(probe.getContext("webgl2") || probe.getContext("webgl"));
+    } catch (err) {
+      return false;
+    }
+  })();
+
+  if (!canUseVector) {
+    addPictureBasemap();
+    return;
+  }
+
+  // Overture Maps adds satellite land cover and real businesses on top of
+  // OpenStreetMap. It needs the PMTiles reader; without it, OpenStreetMap alone.
+  const overture = typeof pmtiles !== "undefined";
+  glOverture = overture;
+  if (overture) maplibregl.addProtocol("pmtiles", new pmtiles.Protocol().tile);
+
+  const vector = L.maplibreGL({
+    style: buildStyle({ overture }),
+    attribution: overture ? ATTRIBUTION_OVERTURE : ATTRIBUTION,
+  });
+  vector.addTo(map);
+  vectorLayer = vector;
+
+  // If the main map data cannot be had (tile server down, blocked network),
+  // swap in the picture map rather than leaving an empty grey rectangle. One
+  // stray error is not enough — a single tile can fail while the rest load —
+  // so this waits a few seconds and only gives up if nothing ever arrived.
+  const inner = vector.getMaplibreMap();
+  glMap = inner;
+  registerMarkers(inner); // draws our own round place markers on demand
+  window.__sciencemaps = { get glMap() { return glMap; }, get map() { return map; }, get globe() { return globe; } }; // for looking at the map from the console
+
+  let mainDataArrived = false;
+  inner.on("sourcedata", (event) => {
+    if (event.sourceId === "openmaptiles" && event.isSourceLoaded) mainDataArrived = true;
+  });
+  let checking = false;
+  inner.on("error", (event) => {
+    // Only the main map data (or the style itself) failing means there is no
+    // map. If the extras from Overture are unreachable, carry on without them.
+    if (event.sourceId && event.sourceId !== "openmaptiles") return;
+    if (checking) return;
+    checking = true;
+    setTimeout(() => {
+      if (mainDataArrived || inner.isSourceLoaded("openmaptiles") || !map.hasLayer(vector)) return;
+      map.removeLayer(vector);
+      vectorLayer = null;
+      glMap = null;
+      addPictureBasemap();
+    }, 8000);
+  });
+}
+
+
+/**
+ * The fallback basemap: Esri's "World Street Map", free and keyless. Its path
+ * orders y before x, unlike the {z}/{x}/{y} most tile servers use — that is
+ * not a typo. (This used to be CARTO's basemap until CARTO began requiring an
+ * API key.) The attribution is required and must stay visible.
+ */
+function addPictureBasemap() {
+  pictureLayer = L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+    {
+      attribution:
+        "&copy; OpenStreetMap contributors — Tiles &copy; Esri &mdash; Source: Esri, DeLorme, NAVTEQ",
+      maxZoom: 19,
+    }
+  ).addTo(map);
+}
+
+/**
+ * Create the Leaflet map, add the basemap (keeping the required attribution),
+ * and let the user click the map to set a destination.
  */
 function initMap() {
   // Start with a gentle world view (centered roughly on the Atlantic) so the
@@ -216,33 +390,240 @@ function initMap() {
   map = L.map("map", {
     center: [20, 0],
     zoom: 3,
+    minZoom: 2,
+    maxZoom: 19, // a vector layer has no limit of its own, so say it here
     zoomControl: false, // we add our own zoom control in the bottom-right (Google-style)
+    maxBounds: [[-85.05, -3600], [85.05, 3600]], // no scrolling past the poles into blank grey
+    maxBoundsViscosity: 1,
+    keyboard: false, // Leaflet's own arrow keys only work while the map has focus; see setupKeyboardMoves()
   });
 
-  // CARTO "Voyager" basemap — a clean, colorful, Google-Maps-like style built
-  // on OpenStreetMap data. It is free and keyless. The attribution (OSM + CARTO)
-  // is REQUIRED and must stay visible, so we set it here on the tile layer.
-  // The {r} placeholder lets Leaflet load sharper @2x tiles on retina screens.
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-    {
-      attribution: "&copy; OpenStreetMap contributors &copy; CARTO",
-      subdomains: "abcd",
-      maxZoom: 20,
-    }
-  ).addTo(map);
+  addBasemap();
 
   // Zoom buttons in the bottom-right corner, like Google Maps. The required
   // attribution keeps its default bottom-right spot — the bottom sheet sits at
   // the bottom-left, so it won't cover the credits.
-  L.control.zoom({ position: "bottomright" }).addTo(map);
+  const zoomControl = L.control.zoom({ position: "bottomright" }).addTo(map);
+  // While the globe is showing, the + and − buttons zoom it, not the hidden flat map.
+  zoomControl.getContainer().addEventListener("click", (e) => {
+    if (!globeActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.target.closest(".leaflet-control-zoom-out")) globe.zoomOut();
+    else if (e.target.closest(".leaflet-control-zoom-in")) globe.zoomIn();
+  }, true);
 
-  // Clicking anywhere on the map sets that point as the destination. This is a
-  // handy alternative to typing a search query.
-  map.on("click", (event) => {
-    const { lat, lng } = event.latlng;
-    setDestination(lat, lng, "Dropped pin");
+  // Zoomed right out, the flat map gives way to a globe (and back again).
+  map.on("zoomend", () => {
+    if (!globeEnabled) return;
+    if (!globeActive && map.getZoom() <= 2) enterGlobe();
+    else if (globeActive && map.getZoom() > 2) exitGlobe({ keepView: true });   // moved in by a search or a button
   });
+
+  // A scale bar, in miles and kilometres, beside the layers button.
+  L.control.scale({ position: "bottomleft", maxWidth: 110 }).addTo(map);
+
+  // Right-click for "What's here?", directions from or to the spot, and its coordinates.
+  map.on("contextmenu", (event) => {
+    if (state.navigating) return;
+    event.originalEvent.preventDefault();
+    showContextMenu(event.containerPoint, event.latlng);
+  });
+  map.on("movestart zoomstart click", hideContextMenu);
+
+  // When a category is on screen and the map has been moved away from where it
+  // was searched, offer to search the new place.
+  map.on("moveend", () => {
+    if (!state.category || !categoryCenter) return;
+    const size = map.getSize();
+    const moved = map.latLngToContainerPoint(categoryCenter);
+    const far = Math.hypot(moved.x - size.x / 2, moved.y - size.y / 2) > size.x * 0.3;
+    el("search-area").hidden = !far;
+  });
+
+  // Clicking a named place or a house number selects it as the destination;
+  // clicking bare map drops a pin there. Either way it is a quick alternative
+  // to typing a search query.
+  map.on("click", (event) => {
+    if (state.navigating) return;                 // a stray tap must not end a trip
+    const place = placeAtPoint(event.latlng);
+    if (place) {
+      selectPlace(place);
+      return;
+    }
+    // Bare map: drop a pin there and say what is under it.
+    const { lat, lng } = event.latlng;
+    showPlaceCard({ kind: "dropped", name: "Dropped pin", category: "Dropped pin", address: "", lat, lon: lng });
+  });
+
+  // A pointing hand over anything clickable, so it is obvious what is.
+  map.on("mousemove", (event) => {
+    map.getContainer().style.cursor = placeAtPoint(event.latlng) ? "pointer" : "";
+  });
+}
+
+// ---- the globe ---------------------------------------------------------------------
+
+/** Swap the flat map for the ball, looking at the same place. */
+function enterGlobe() {
+  if (globeActive || !globeEnabled || !glMap) return;
+  if (!globe) {
+    globe = createGlobe(el("globe"), { overture: glOverture });
+    globe.onZoom((zoom) => { if (globeActive && zoom >= 3.2) exitGlobe(); });   // close enough to be flat again
+  }
+  // Look at the middle of the trip if there is one (the flat map's centre can be off the route
+  // once it is zoomed out this far), otherwise at wherever the flat map was looking.
+  const trip = state.routes[state.routeIndex];
+  const mid = trip && trip.geometry.length ? trip.geometry[Math.floor(trip.geometry.length / 2)] : null;
+  const at = mid ? { lat: mid.lat, lng: ((mid.lon + 540) % 360) - 180 } : map.getCenter().wrap();
+  el("globe").hidden = false;                              // it must be showing to be measured
+  // On a phone the bottom sheet covers the lower part, so the ball is centred in what is left.
+  const narrow = window.innerWidth <= 900;
+  const ok = globe.open({
+    center: [at.lng, at.lat], zoom: narrow ? 0.95 : 1.5, isSatellite: state.layerMode === "satellite",
+    padding: narrow ? { top: 60, bottom: Math.round(window.innerHeight * 0.46) } : {},
+  });
+  if (!ok) {                                               // no WebGL globe here: stay flat
+    el("globe").hidden = true;
+    globeEnabled = false;
+    return;
+  }
+  globeActive = true;
+  globeKey = null;
+  document.body.classList.add("globe-on");
+  map.getPane("mapPane").style.visibility = "hidden";
+  syncGlobe();
+}
+
+/** Back to the flat map — at the place the globe was showing, unless the map has just been moved there. */
+function exitGlobe({ keepView = false } = {}) {
+  if (!globeActive) return;
+  const view = globe.view();
+  globeActive = false;
+  el("globe").hidden = true;
+  document.body.classList.remove("globe-on");
+  map.getPane("mapPane").style.visibility = "";
+  if (!keepView && view) map.setView([view.center.lat, view.center.lng], Math.max(3, Math.round(view.zoom) + 1), { animate: false });
+}
+
+/** Put the position, destination and route on the ball. */
+function syncGlobe() {
+  if (!globeActive || !globe) return;
+  const r = state.routes[state.routeIndex];
+  const o = state.origin, d = state.destination;
+  const key = [o && o.lat, o && o.lon, d && d.lat, d && d.lon, r ? r.geometry.length : 0, r && r.estimate, state.routeIndex].join("|");
+  if (key === globeKey) return;
+  globeKey = key;
+  globe.setTrip({ origin: o, destination: d, path: r ? r.geometry : null, estimate: Boolean(r && r.estimate) });
+}
+
+/**
+ * The named place or house number under a spot on the map, or null.
+ Looks a few
+ * pixels around it, so a small label is easy to hit, and takes whichever label
+ * is nearest. The vector map is drawn a little larger than the visible window
+ * (so panning never shows an edge), which means its pixels are not Leaflet's
+ * pixels — so the spot goes in as a latitude and longitude and is converted.
+ * @param {{lat:number, lng:number}} latlng
+ */
+function placeAtPoint(latlng) {
+  if (!glMap || !latlng || !glVisible) return null;
+  const point = glMap.project([latlng.lng, latlng.lat]);
+  const layers = CLICKABLE_LAYERS.filter((id) => glMap.getLayer(id));
+  if (!layers.length) return null;
+  const pad = 14;
+  const found = glMap.queryRenderedFeatures(
+    [[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]],
+    { layers }
+  );
+  // A business or house number beats the name of a neighbourhood, which beats a
+  // road's name — so clicking a shop inside a named area picks the shop.
+  const rank = (id) => (/^(ov-|poi-|housenumber)/.test(id) ? 0 : /^road-label/.test(id) ? 2 : 1);
+  const spot = { lat: latlng.lat, lon: latlng.lng };
+  let best = null;
+  let bestKey = [Infinity, Infinity];
+  for (const feature of found) {
+    const place = placeFromFeature(feature, spot);
+    if (!place) continue;
+    const at = glMap.project([place.lon, place.lat]);
+    const key = [rank(feature.layer.id), Math.hypot(at.x - point.x, at.y - point.y)];
+    if (key[0] < bestKey[0] || (key[0] === bestKey[0] && key[1] < bestKey[1])) {
+      best = place;
+      bestKey = key;
+    }
+  }
+  return best;
+}
+
+/**
+ * Choose a place — from the map, a search result or the recent list — as the
+ * destination: remember it, show its name in the search box, and (when it came
+ * from a search, so it may be off screen) bring it into view.
+ * @param {{kind:string, name:string, detail?:string, lat:number, lon:number}} place
+ * @param {{show?: boolean}} [options] show: move the map to it
+ */
+function selectPlace(place, { show = false, keepCategory = false } = {}) {
+  el("search-results").hidden = true;
+
+  // "Your location" chosen from the start-point list.
+  if (place.kind === "here") {
+    endChoosing();
+    state.locationManual = false;
+    useMyLocation();
+    return;
+  }
+  // The search box is choosing a starting point: that is all it does.
+  if (state.searchFor === "origin") {
+    endChoosing();
+    chooseOrigin(place);
+    return;
+  }
+  const replacing = state.searchFor === "edit";
+  endChoosing();
+
+  addRecent(place);
+  el("search-input").value = place.name;
+  if (show) {
+    const broad = ["city", "town", "village", "hamlet", "suburb", "administrative", "state", "county", "country", "island", "peak", "lake", "bay"];
+    const zoom = place.kind === "address" ? 18 : broad.includes(place.placeType) ? 12 : 17;
+    map.setView([place.lat, place.lon], Math.max(map.getZoom(), zoom));
+  }
+  if (replacing) {
+    state.selected = place;                               // change the destination of the trip in front of you
+    getDirections();
+  } else {
+    if (!keepCategory) clearCategory();      // from a list of results, the list stays behind the card
+    showPlaceCard(place);
+  }
+}
+
+/**
+ * A small popup body built from plain text, never HTML — place names come from
+ * outside and must not be able to inject anything.
+ * @param {string} title
+ * @param {string} [detail]
+ * @param {{label:string, onClick:Function}} [action]
+ */
+function popupNode(title, detail, action) {
+  const box = document.createElement("div");
+  const strong = document.createElement("strong");
+  strong.textContent = title;
+  box.appendChild(strong);
+  if (detail) {
+    const line = document.createElement("div");
+    line.className = "popup-detail";
+    line.textContent = detail;
+    box.appendChild(line);
+  }
+  if (action) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "popup-action";
+    button.textContent = action.label;
+    button.addEventListener("click", action.onClick);
+    box.appendChild(button);
+  }
+  return box;
 }
 
 /**
@@ -251,7 +632,7 @@ function initMap() {
  * @param {number} lon
  * @param {string} label - a popup label
  */
-function placeOriginMarker(lat, lon, label) {
+function placeOriginMarker(lat, lon, label, accuracy) {
   // A Google-style blue "you are here" dot, drawn purely with CSS (see .gm-here).
   const icon = L.divIcon({
     className: "gm-here-icon",
@@ -262,9 +643,31 @@ function placeOriginMarker(lat, lon, label) {
   if (originMarker) {
     originMarker.setLatLng([lat, lon]);
   } else {
-    originMarker = L.marker([lat, lon], { icon, title: "Start" }).addTo(map);
+    // Draggable, so if the browser's idea of where you are is a few houses off
+    // (a computer has no GPS, only Wi-Fi and network guesses) you can put the
+    // dot on your actual spot.
+    originMarker = L.marker([lat, lon], { icon, title: "You are here", draggable: true, zIndexOffset: 500 }).addTo(map);
+    originMarker.on("drag", () => {
+      if (accuracyCircle) accuracyCircle.setLatLng(originMarker.getLatLng());
+    });
+    originMarker.on("dragend", onOriginDragged);
   }
-  originMarker.bindPopup(`<strong>Start</strong><br>${label}`);
+  const doubt = Number.isFinite(accuracy) ? `Accurate to about ${Math.round(accuracy)} m. ` : "";
+  originMarker.bindPopup(popupNode(label, `${doubt}Not right? Drag the dot to where you really are.`));
+
+  // The ring is the browser's own admission of how far off it might be.
+  if (Number.isFinite(accuracy) && accuracy > 8 && !state.locationManual) {
+    if (accuracyCircle) {
+      accuracyCircle.setLatLng([lat, lon]).setRadius(accuracy);
+    } else {
+      accuracyCircle = L.circle([lat, lon], {
+        radius: accuracy, color: "#1a73e8", weight: 1, fillColor: "#1a73e8", fillOpacity: 0.12, interactive: false,
+      }).addTo(map);
+    }
+  } else if (accuracyCircle) {
+    accuracyCircle.remove();
+    accuracyCircle = null;
+  }
 }
 
 /**
@@ -273,7 +676,7 @@ function placeOriginMarker(lat, lon, label) {
  * @param {number} lon
  * @param {string} label - a popup label
  */
-function placeDestinationMarker(lat, lon, label) {
+function placeDestinationMarker(lat, lon) {
   // A Google-style red map pin, drawn as an inline SVG so it needs no image file.
   const icon = L.divIcon({
     className: "gm-pin-icon",
@@ -283,14 +686,12 @@ function placeDestinationMarker(lat, lon, label) {
       '<circle cx="13" cy="13" r="5" fill="#fff"/></svg>',
     iconSize: [26, 38],
     iconAnchor: [13, 38],
-    popupAnchor: [0, -34],
   });
   if (destinationMarker) {
     destinationMarker.setLatLng([lat, lon]);
   } else {
     destinationMarker = L.marker([lat, lon], { icon, title: "Destination" }).addTo(map);
   }
-  destinationMarker.bindPopup(`<strong>Destination</strong><br>${label}`);
 }
 
 /**
@@ -298,7 +699,7 @@ function placeDestinationMarker(lat, lon, label) {
  * existing line, and zoom the map to fit the whole route.
  * @param {Array<{lat:number, lon:number}>} geometry
  */
-function drawRoute(geometry) {
+function drawRoute(geometry, { fit = true } = {}) {
   // Remove the previous line if there was one.
   if (routeLine) {
     routeLine.remove();
@@ -310,12 +711,16 @@ function drawRoute(geometry) {
 
   // Draw the route as TWO stacked lines for the Google-Maps look: a wide white
   // "casing" underneath, then the blue route on top of it.
+  // An estimate (a flight, a boat) is drawn as dots, so it is never taken for a road.
+  const chosen = state.routes[state.routeIndex];
+  const dots = chosen && chosen.estimate ? { dashArray: "0.1 13" } : {};
   const casing = L.polyline(latLngs, {
     color: "#ffffff",
     weight: 9,
     opacity: 1,
     lineJoin: "round",
     lineCap: "round",
+    ...dots,
   });
   const line = L.polyline(latLngs, {
     color: "#1a73e8", // Google blue
@@ -323,11 +728,17 @@ function drawRoute(geometry) {
     opacity: 1,
     lineJoin: "round",
     lineCap: "round",
+    ...dots,
   });
   routeLine = L.layerGroup([casing, line]).addTo(map);
 
   // Fit the map view to the whole route, with a little padding.
-  map.fitBounds(line.getBounds(), { padding: [60, 60] });
+  // (Not while navigating: the map is following you then, not the whole route.)
+  // The left edge is kept clear of the trip sheet on wide screens.
+  if (fit) {
+    const wide = window.innerWidth > 720;
+    map.fitBounds(line.getBounds(), { paddingTopLeft: [wide ? 460 : 40, 90], paddingBottomRight: [40, wide ? 40 : 260] });
+  }
 }
 
 
@@ -346,29 +757,144 @@ function useMyLocation() {
     return;
   }
 
+  // Pressing this is asking to be found again: forget any hand-placed dot.
+  state.locationManual = false;
+  locatingMessage = true;
   setMapStatus("Locating you…");
+  startLocationWatch();
 
-  navigator.geolocation.getCurrentPosition(
-    // SUCCESS callback.
-    async (position) => {
-      const { latitude, longitude } = position.coords;
-      setMapStatus("");
+  // Go to the last spot straight away; the live fix will refine it.
+  if (state.origin) {
+    map.setView([state.origin.lat, state.origin.lon], Math.max(map.getZoom(), 16));
+  }
+  // One direct reading as well, in case the watch is slow to report.
+  navigator.geolocation.getCurrentPosition(onLocationFix, onLocationError, {
+    enableHighAccuracy: true,
+    timeout: 12000,
+  });
+}
 
-      // Set this as the origin and center the map there.
-      await setOrigin(latitude, longitude, "Your location");
-      map.setView([latitude, longitude], 13);
-    },
-    // ERROR callback — show a friendly message instead of crashing.
-    (error) => {
-      let message = "Could not get your location.";
-      if (error.code === error.PERMISSION_DENIED) {
-        message =
-          "Location permission denied. You can still search for places or click the map.";
-      }
-      setMapStatus(message, true);
-    },
-    { enableHighAccuracy: true, timeout: 10000 }
-  );
+// --- KNOWING WHERE YOU ARE -----------------------------------------------------
+// The page finds you as soon as it opens (the browser asks permission the first
+// time), keeps the blue dot up to date, and remembers the last spot so the map
+// opens where you were rather than on the whole world.
+
+const LASTFIX_KEY = "sciencemaps.lastfix";
+let locationWatchId = null;
+let liveFixSeen = false; // has a real reading arrived yet, as opposed to the remembered one?
+let locatingMessage = false; // is "Locating you…" up, to be cleared by the next fix?
+
+function loadLastFix() {
+  try {
+    const fix = JSON.parse(localStorage.getItem(LASTFIX_KEY) || "null");
+    return fix && Number.isFinite(fix.lat) && Number.isFinite(fix.lon) ? fix : null;
+  } catch (err) {
+    return null;
+  }
+}
+function saveLastFix(fix) {
+  try {
+    localStorage.setItem(LASTFIX_KEY, JSON.stringify(fix));
+  } catch (err) {
+    /* storage full or blocked: the map just opens on the world next time */
+  }
+}
+
+/** Called once at start-up: open where you last were, then find where you are now. */
+function locateOnStart() {
+  const last = loadLastFix();
+  if (last) {
+    state.origin = { lat: last.lat, lon: last.lon, label: "Your location", stale: true };
+    placeOriginMarker(last.lat, last.lon, "Your last known location", last.accuracy);
+    map.setView([last.lat, last.lon], 15, { animate: false });
+  }
+  if (!("geolocation" in navigator)) return;
+  // Ask only if the person has not already said no.
+  if (navigator.permissions && navigator.permissions.query) {
+    navigator.permissions.query({ name: "geolocation" }).then(
+      (status) => { if (status.state !== "denied") startLocationWatch(); },
+      () => startLocationWatch()
+    );
+  } else {
+    startLocationWatch();
+  }
+}
+
+function startLocationWatch() {
+  if (!("geolocation" in navigator) || locationWatchId !== null) return;
+  locationWatchId = navigator.geolocation.watchPosition(onLocationFix, onLocationError, {
+    enableHighAccuracy: true, // a phone uses GPS; a computer just asks for its best guess
+    maximumAge: 5000,
+    timeout: 30000,
+  });
+}
+
+function onLocationError(error) {
+  if (error.code === error.PERMISSION_DENIED) {
+    setMapStatus("Location is turned off for this page — allow it in your browser to see where you are.", true);
+    if (locationWatchId !== null) navigator.geolocation.clearWatch(locationWatchId);
+    locationWatchId = null;
+  } else if (locatingMessage) {
+    setMapStatus("Could not find you just yet — still trying.", true);
+  }
+}
+
+/** A new position reading arrived. */
+async function onLocationFix(position) {
+  const { latitude: lat, longitude: lon, accuracy } = position.coords;
+  if (locatingMessage) { locatingMessage = false; setMapStatus(""); }
+
+  // Someone who dragged the dot to their real spot has already said where they
+  // are; the browser's guess must not yank it back — unless they are driving.
+  if (state.locationManual && !state.navigating) return;
+
+  saveLastFix({ lat, lon, accuracy });
+  const first = !liveFixSeen;
+  liveFixSeen = true;
+
+  // A vaguer reading than the one we have, from nearly the same spot, is noise.
+  if (!first && state.origin && state.locationAccuracy && accuracy > state.locationAccuracy * 1.5) {
+    const drift = distanceMeters(state.origin, { lat, lon });
+    if (drift < state.locationAccuracy) return;
+  }
+
+  const moved = state.origin ? distanceMeters(state.origin, { lat, lon }) : Infinity;
+  const wasStale = Boolean(state.origin && state.origin.stale);
+  state.locationAccuracy = accuracy;
+  state.origin = { lat, lon, label: "Your location" };
+  placeOriginMarker(lat, lon, "Your location", accuracy);
+
+  // Weather and route only need refreshing when you have really gone somewhere.
+  if (first || moved > 250) {
+    loadWeather(lat, lon).then(render);
+    if (state.destination && !state.navigating) requestRoute();
+  }
+  // The first reading brings the map to you — unless you are already looking at something.
+  if (first && !state.selected && !state.destination) {
+    map.setView([lat, lon], Math.max(map.getZoom(), 16), { animate: !wasStale });
+  }
+  if (state.navigating) navProgress({ lat, lon });
+  render();
+}
+
+/** The blue dot was dragged: that is now where you are. */
+async function onOriginDragged() {
+  const { lat, lng } = originMarker.getLatLng();
+  state.locationManual = true;
+  state.locationAccuracy = null;
+  if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+  state.origin = { lat, lon: lng, label: "Your location (set by hand)" };
+  saveLastFix({ lat, lon: lng, accuracy: 0 });
+  if (state.destination) requestRoute();
+  render();
+  loadWeather(lat, lng).then(render);
+  try {
+    const where = await reverseGeocode(lat, lng);
+    if (state.locationManual && state.origin && state.origin.lat === lat) {
+      state.origin.label = `Near ${where.shortAddress}`;
+      render();
+    }
+  } catch (err) { /* the coordinates alone are fine */ }
 }
 
 /**
@@ -400,13 +926,14 @@ async function setOrigin(lat, lon, label) {
  */
 async function setDestination(lat, lon, label) {
   state.destination = { lat, lon, label };
-  placeDestinationMarker(lat, lon, label);
+  placeDestinationMarker(lat, lon);
 
   if (state.origin) {
     await requestRoute();
   } else {
-    // No origin yet — nudge the user toward setting one.
-    setMapStatus("Destination set. Tap the location button to set your start and get a route.");
+    // We do not know where you are yet — find you, and the route follows.
+    setMapStatus("Finding you so the route can start from where you are…");
+    useMyLocation();
   }
 
   render();
@@ -419,16 +946,41 @@ async function setDestination(lat, lon, label) {
 async function requestRoute() {
   if (!state.origin || !state.destination) return;
 
+  // A flight to next door makes no sense: an estimated way of travelling that
+  // does not suit this trip is dropped for driving.
+  const meters = distanceMeters(state.origin, state.destination);
+  if (isEstimateMode(state.travelMode) && !estimateAvailable(state.travelMode, meters)) state.travelMode = "driving";
+
   setMapStatus("Calculating route…");
 
   try {
-    const result = await route(state.origin, state.destination, state.travelMode);
+    const result = isEstimateMode(state.travelMode)
+      ? estimateTrip(state.origin, state.destination, state.travelMode)
+      : await route(state.origin, state.destination, state.travelMode);
+    state.routes = [result, ...(result.alternatives || [])];
+    state.routeIndex = 0;
     state.routeData = result;
-    drawRoute(result.geometry);
+    drawRoutes({ fit: !state.navigating });
     setMapStatus("");
+    if (state.navigating) state.navNext = 1;             // a fresh route starts from its first turn
+    if (!state.navigating) loadModeTimes();
+    if (state.pendingStart) {
+      state.pendingStart = false;
+      if (!result.estimate) startNavigation();
+    }
   } catch (err) {
+    // No road, path or track joins them — across an ocean, say. For a trip that
+    // long, show the flight instead of an error, and say why.
+    if (!isEstimateMode(state.travelMode) && estimateAvailable("flight", meters)) {
+      state.travelMode = "flight";
+      state.pendingStart = false;
+      await requestRoute();
+      setMapStatus("There is no route by road or path, so this shows a flight estimate.");
+      return;
+    }
     // Don't crash — explain what happened and clear any stale route.
     state.routeData = null;
+    state.pendingStart = false;
     setMapStatus(`Routing failed: ${err.message}`, true);
   }
 
@@ -466,6 +1018,813 @@ async function loadWeather(lat, lon) {
 }
 
 
+// --- THE PLACE CARD, DIRECTIONS AND NAVIGATION -------------------------------
+// Google Maps keeps these apart on purpose, and so does this: clicking a place
+// only tells you about it (a card). "Directions" then shows the route and how
+// long it takes. "Start" — on either — begins following it, turn by turn.
+
+/**
+ * Show a place: drop the pin on it and open its card. Nothing else happens until
+ * a button on the card is pressed.
+ * @param {{kind:string, name:string, category?:string, address?:string, detail?:string, lat:number, lon:number, website?:string, phone?:string}} place
+ */
+function showPlaceCard(place) {
+  state.selected = place;
+  placeDestinationMarker(place.lat, place.lon);
+  el("search-results").hidden = true;
+
+  el("place-name").textContent = place.name;
+  el("place-kind").textContent =
+    place.kind === "dropped"
+      ? `${place.lat.toFixed(5)}, ${place.lon.toFixed(5)}`
+      : place.category || (place.kind === "address" ? "Address" : "");
+
+  const setRow = (id, text) => {
+    el(id).textContent = text || "";
+    el(id).parentElement.hidden = !text;
+  };
+  setRow("place-address", place.address);
+  setRow("place-away", awayText(place));
+  renderPlaceSave();
+
+  // Contact links: only ones that are real web addresses or phone numbers.
+  const links = el("place-links");
+  links.innerHTML = "";
+  const addLink = (icon, href, label, external) => {
+    const row = document.createElement("div");
+    row.className = "place-row";
+    const i = document.createElement("span");
+    i.className = "place-row-icon";
+    i.setAttribute("aria-hidden", "true");
+    i.textContent = icon;
+    const a = document.createElement("a");
+    a.href = href;
+    a.textContent = label;
+    if (external) { a.target = "_blank"; a.rel = "noopener noreferrer"; }
+    row.appendChild(i);
+    row.appendChild(a);
+    links.appendChild(row);
+  };
+  if (place.website) addLink("🌐", place.website, place.website.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, ""), true);
+  if (place.phone) addLink("📞", `tel:${place.phone.replace(/[^\d+]/g, "")}`, place.phone, false);
+
+  // Many places (parks, dropped pins) come without a street address — ask.
+  if (!place.address) {
+    reverseGeocode(place.lat, place.lon)
+      .then((where) => {
+        if (state.selected !== place) return;          // they have moved on
+        place.address = where.shortAddress;
+        setRow("place-address", place.address);
+      })
+      .catch(() => { /* no address is fine */ });
+  }
+  rememberInAddressBar(place);
+  render();
+}
+
+/** Put the place in the page's address, so copying the link shares it. */
+function rememberInAddressBar(place) {
+  try {
+    history.replaceState(null, "", place ? placeToHash(place) : location.pathname + location.search);
+  } catch (err) { /* some embeds forbid it */ }
+}
+
+/** The Save button reflects whether this place is already saved. */
+function renderPlaceSave() {
+  const place = state.selected;
+  const saved = Boolean(place) && isSaved(place);
+  el("place-save-icon").textContent = saved ? "★" : "☆";
+  el("place-save-label").textContent = saved ? "Saved" : "Save";
+  el("place-save").classList.toggle("on", saved);
+}
+
+/** "1.9 km from you · 6.3 light-ms" — how far, in the units this app likes. */
+function awayText(place) {
+  if (!state.origin) return "";
+  const meters = distanceMeters(state.origin, place);
+  if (!Number.isFinite(meters)) return "";
+  const near = formatDistance(meters, familiarDistanceUnit(meters));
+  const science = formatDistance(meters, primaryDistanceUnit(meters));
+  return near === science ? `${near} from you` : `${near} from you · ${science}`;
+}
+
+/** Close the card, and take the pin away unless directions are still using it. */
+function closePlaceCard() {
+  state.selected = null;
+  rememberInAddressBar(null);
+  if (!state.destination && destinationMarker) {
+    destinationMarker.remove();
+    destinationMarker = null;
+  }
+  render();
+}
+
+/**
+ * "Directions" (or "Start") was pressed on the card: make this place the
+ * destination and work out the route.
+ */
+async function getDirections({ start = false } = {}) {
+  const place = state.selected;
+  if (!place) return;
+  state.selected = null;
+  state.destination = { lat: place.lat, lon: place.lon, label: place.name };
+  state.pendingStart = start;
+  state.routeData = null;
+  state.routes = [];
+  el("search-input").value = place.name;
+  addRecent(place);
+  placeDestinationMarker(place.lat, place.lon);
+  rememberInAddressBar(null);
+  render();
+
+  if (state.origin) {
+    await requestRoute();
+  } else {
+    setMapStatus("Finding you so the route can start from where you are…");
+    useMyLocation();                                    // the first fix triggers the route
+  }
+}
+
+/** Take the whole trip away: the route, the destination and the pin. */
+function clearDirections() {
+  if (state.navigating) stopNavigation();
+  state.destination = null;
+  state.routeData = null;
+  state.routes = [];
+  state.routeIndex = 0;
+  state.modeTimes = {};
+  state.pendingStart = false;
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  if (destinationMarker) { destinationMarker.remove(); destinationMarker = null; }
+  el("search-input").value = "";
+  setMapStatus("");
+  render();
+}
+
+/** Begin following the route: the map sticks to you and a banner names each turn. */
+function startNavigation() {
+  const steps = state.routeData && state.routeData.steps;
+  if (!steps || steps.length === 0 || state.routeData.estimate) return;
+  state.navigating = true;
+  state.navNext = 1;
+  state.locationManual = false;                         // navigating means trusting the real position
+  navOffRouteCount = 0;
+  startLocationWatch();
+  if (state.origin) {
+    map.setView([state.origin.lat, state.origin.lon], 17);
+    navProgress(state.origin);
+  }
+  speak(steps[0].instruction);
+  render();
+}
+
+function stopNavigation() {
+  state.navigating = false;
+  if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+  render();
+}
+
+let navOffRouteCount = 0;
+let lastReroute = 0;
+
+/** A new position while navigating: pass the turns you have passed, follow, re-route if lost. */
+function navProgress(position) {
+  const data = state.routeData;
+  if (!state.navigating || !data) return;
+  const before = state.navNext;
+
+  if (hasArrived(data.steps, position)) {
+    setMapStatus("You have arrived.");
+    speak("You have arrived.");
+    stopNavigation();
+    return;
+  }
+  state.navNext = advanceStep(data.steps, state.navNext, position);
+  if (state.navNext !== before) speak(data.steps[state.navNext].instruction);
+
+  // Well away from the line for two readings running: it is a wrong turn, not a wobble.
+  if (distanceToRoute(data.geometry, position) > 70) navOffRouteCount++;
+  else navOffRouteCount = 0;
+  if (navOffRouteCount >= 2 && Date.now() - lastReroute > 15000) {
+    lastReroute = Date.now();
+    navOffRouteCount = 0;
+    setMapStatus("Re-routing…");
+    requestRoute();
+  }
+
+  map.panTo([position.lat, position.lon], { animate: true });
+  render();
+}
+
+/** Say an instruction aloud, if the speaker button is on. */
+function speak(text) {
+  if (!state.voice || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+}
+
+/** Show whichever panels the current stage of the flow calls for. */
+function renderMode() {
+  const hasRoute = Boolean(state.routeData && state.destination);
+  const showHead = hasRoute && !state.navigating;
+
+  // WHICH VIEW the side panel shows, most urgent first: following a route,
+  // the Science panels (asked for from the rail), a place, a trip, category
+  // results, then saved / recents, and otherwise the home view.
+  let view = "home";
+  if (state.navigating) view = "trip";
+  else if (state.tab === "science") view = "science";
+  else if (state.selected) view = "place";
+  else if (state.destination) view = "trip";
+  else if (state.category) view = "results";
+  else if (state.tab === "saved" || state.tab === "recents") view = "list";
+  const ids = { home: "view-home", list: "view-list", results: "view-results", place: "place-card", trip: "view-trip", science: "view-science" };
+  el("side").dataset.view = view;
+  for (const [name, id] of Object.entries(ids)) el(id).hidden = name !== view;
+
+  document.body.classList.toggle("mode-place", view === "place");
+  document.body.classList.toggle("mode-route", showHead);
+  document.body.classList.toggle("mode-nav", state.navigating);
+  el("route-head").hidden = !showHead;
+  el("nav-banner").hidden = !state.navigating;
+  el("nav-bar").hidden = !state.navigating;
+  document.querySelectorAll(".rail-btn[data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === state.tab));
+
+  if (view === "home") renderHome();
+  if (view === "list") renderList();
+  if (view === "results") renderResults();
+  if (view === "trip") { renderRouteOptions(); renderModeButtons(); }
+
+  if (showHead) {
+    const r = state.routeData;
+    el("route-head-time").textContent = shortDuration(r.durationSeconds);
+    el("route-start").hidden = Boolean(r.estimate);           // an estimate cannot be followed turn by turn
+    const near = formatDistance(r.distanceMeters, familiarDistanceUnit(r.distanceMeters));
+    const science = formatDistance(r.distanceMeters, primaryDistanceUnit(r.distanceMeters));
+    el("route-head-detail").textContent = near === science ? near : `${near} · ${science}`;
+  }
+  if (state.navigating && state.routeData && state.origin) renderNav();
+  renderChips();
+  renderWeatherChip();
+  renderSavedPins();
+  syncGlobe();
+}
+
+// ---- the panel's lists ---------------------------------------------------------
+
+/** One row in a list of places: an icon, the name, a quiet line, and how far. */
+function placeRow(place) {
+  const li = document.createElement("li");
+  li.className = "place-item";
+  const icon = document.createElement("span");
+  icon.className = "place-item-icon";
+  icon.setAttribute("aria-hidden", "true");
+  icon.textContent = placeIcon(place);
+  const text = document.createElement("div");
+  text.className = "place-item-text";
+  const name = document.createElement("div");
+  name.className = "place-item-name";
+  name.textContent = place.name;
+  const sub = document.createElement("div");
+  sub.className = "place-item-sub";
+  sub.textContent = place.detail || place.address || place.category || "";
+  text.appendChild(name);
+  text.appendChild(sub);
+  li.appendChild(icon);
+  li.appendChild(text);
+  if (Number.isFinite(place.away)) {
+    const away = document.createElement("span");
+    away.className = "place-item-side";
+    away.textContent = formatDistance(place.away, familiarDistanceUnit(place.away));
+    li.appendChild(away);
+  }
+  li.addEventListener("click", () => selectPlace(place, { show: true, keepCategory: Boolean(state.category) }));
+  return li;
+}
+
+function fillList(ul, places) {
+  ul.replaceChildren(...places.map(placeRow));
+}
+
+/** Home: the explore buttons, then a few recent and saved places. */
+function renderHome() {
+  const explore = el("explore");
+  if (!explore.children.length) {
+    for (const cat of CATEGORIES.slice(0, 8)) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "explore-btn";
+      const i = document.createElement("span");
+      i.className = "explore-icon";
+      i.textContent = cat.icon;
+      const t = document.createElement("span");
+      t.textContent = cat.label;
+      b.appendChild(i);
+      b.appendChild(t);
+      b.addEventListener("click", () => openCategory(cat));
+      explore.appendChild(b);
+    }
+  }
+  const recents = loadRecents().slice(0, 4);
+  const saved = loadSaved().slice(0, 4);
+  fillList(el("home-recents"), recents);
+  fillList(el("home-saved"), saved);
+  el("home-recents-head").hidden = recents.length === 0;
+  el("home-saved-head").hidden = saved.length === 0;
+}
+
+/** Saved places, or recent searches — the two lists the rail opens. */
+function renderList() {
+  const saved = state.tab === "saved";
+  const items = saved ? loadSaved() : loadRecents();
+  el("list-title").textContent = saved ? "Saved places" : "Recent searches";
+  el("list-clear").hidden = saved || items.length === 0;
+  fillList(el("list-items"), items);
+  const empty = el("list-empty");
+  empty.hidden = items.length > 0;
+  empty.textContent = saved
+    ? "Nothing saved yet. Open a place and press Save."
+    : "Nothing here yet. Places you look up will appear here.";
+}
+
+/** The places found for a category. */
+function renderResults() {
+  const cat = state.category;
+  el("results-title").textContent = cat ? cat.label : "";
+  const list = state.categoryResults;
+  const empty = el("results-empty");
+  if (list === null) {
+    el("results-items").replaceChildren();
+    empty.hidden = false;
+    empty.textContent = "Looking around…";
+  } else {
+    fillList(el("results-items"), list);
+    empty.hidden = list.length > 0;
+    empty.textContent = "Nothing found in this part of the map. Move it, or zoom in a little, and try “Search this area”.";
+  }
+}
+
+function renderNav() {
+  const data = state.routeData;
+  const next = data.steps[Math.min(state.navNext, data.steps.length - 1)];
+  const left = remaining(data.steps, state.navNext, state.origin);
+  el("nav-arrow").textContent = arrowFor(next.instruction);
+  el("nav-distance").textContent = nextTurnDistance(left.toNextMeters);
+  el("nav-instruction").textContent = next.instruction;
+  el("nav-eta-time").textContent = shortDuration(left.seconds);
+  const dist = formatDistance(left.meters, familiarDistanceUnit(left.meters));
+  el("nav-eta-detail").textContent = `${dist} · arrive ${arrivalClock(left.seconds)}`;
+  el("nav-voice").textContent = state.voice ? "🔊" : "🔇";
+}
+
+
+// --- GOOGLE-MAPS-STYLE EXTRAS ----------------------------------------------------
+// The category chips, layers, right-click menu, weather, saved places, routes to
+// choose between, and the left rail's tabs.
+
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// ---- category chips and "search nearby" --------------------------------------
+
+/** The row of chips along the top of the map. Built once, then marked as on or off. */
+function renderChips() {
+  const bar = el("chips");
+  if (!bar.children.length) {
+    for (const cat of CATEGORIES) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.dataset.cat = cat.id;
+      const i = document.createElement("span");
+      i.className = "chip-icon";
+      i.setAttribute("aria-hidden", "true");
+      i.textContent = cat.icon;
+      const t = document.createElement("span");
+      t.textContent = cat.label;
+      b.appendChild(i);
+      b.appendChild(t);
+      b.addEventListener("click", () => (state.category && state.category.id === cat.id ? closeCategory() : openCategory(cat)));
+      bar.appendChild(b);
+    }
+  }
+  for (const b of bar.children) b.classList.toggle("on", Boolean(state.category) && b.dataset.cat === state.category.id);
+}
+
+/** Start browsing a category near where the map is looking. */
+async function openCategory(cat) {
+  if (state.navigating) return;
+  if (state.destination) clearDirections();
+  state.selected = null;
+  state.tab = null;
+  state.category = cat;
+  state.categoryResults = null;
+  el("search-input").value = "";
+  el("search-area").hidden = true;
+  rememberInAddressBar(null);
+  // Businesses only load once the map is zoomed in far enough to draw them.
+  if (map.getZoom() < 16) map.setZoom(16);
+  render();
+  await runCategorySearch();
+}
+
+/** Look at what the map has loaded for the chosen category and list it, nearest first. */
+async function runCategorySearch() {
+  const cat = state.category;
+  if (!cat) return;
+  categoryCenter = map.getCenter();
+  state.categoryResults = null;
+  el("search-area").hidden = true;
+  render();
+
+  let found = [];
+  const view = map.getBounds().pad(0.1);
+  for (let attempt = 0; attempt < 16; attempt++) {
+    found = loadedPlaces("").filter((p) => matchesCategory(p, cat) && view.contains([p.lat, p.lon]));
+    if (found.length >= 8 || (found.length > 0 && attempt >= 5)) break;
+    await sleep(900);                                   // the tiles are still arriving
+    if (state.category !== cat) return;                 // they picked something else
+  }
+  const seen = new Set();
+  const unique = found.filter((p) => {
+    const key = `${p.name}|${p.lat.toFixed(4)}|${p.lon.toFixed(4)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  const from = state.origin && view.contains([state.origin.lat, state.origin.lon])
+    ? state.origin
+    : { lat: categoryCenter.lat, lon: categoryCenter.lng };
+  state.categoryResults = nearestFirst(unique, from, distanceMeters).slice(0, 40);
+  drawCategoryDots(state.categoryResults);
+  render();
+}
+
+/** Mark the results on the map so the list and the map agree. */
+function drawCategoryDots(places) {
+  if (categoryDots) categoryDots.remove();
+  categoryDots = L.layerGroup(
+    places.map((p) =>
+      L.circleMarker([p.lat, p.lon], { radius: 7, color: "#ffffff", weight: 2, fillColor: "#ea4335", fillOpacity: 1 })
+        .bindTooltip(p.name)
+        .on("click", (e) => { L.DomEvent.stopPropagation(e); selectPlace(p, { show: false, keepCategory: true }); })
+    )
+  ).addTo(map);
+}
+
+function clearCategory() {
+  state.category = null;
+  state.categoryResults = null;
+  categoryCenter = null;
+  if (categoryDots) { categoryDots.remove(); categoryDots = null; }
+  el("search-area").hidden = true;
+}
+
+function closeCategory() {
+  clearCategory();
+  render();
+}
+
+// ---- layers: map, satellite, terrain ------------------------------------------
+
+const LAYER_KEY = "sciencemaps.layer";
+
+function baseLayersOff() {
+  // Our own vector map stays put — it is switched, not taken away and rebuilt.
+  for (const layer of [pictureLayer, imageryLayer, topoLayer, labelsLayer]) {
+    if (layer && map.hasLayer(layer)) map.removeLayer(layer);
+  }
+  if (!glMap && vectorLayer && map.hasLayer(vectorLayer)) map.removeLayer(vectorLayer);
+}
+
+/** Give the vector map its normal style, or the words-only one for over satellite pictures. */
+function setGlStyle(kind) {
+  if (!glMap || kind === glKind) return;
+  glKind = kind;
+  glMap.setStyle(buildStyle({ overture: glOverture, satellite: kind === "satellite" }));
+}
+
+/** Show or hide the vector map, and keep it above the photographs when they are there. */
+function setGlVisible(visible) {
+  glVisible = visible;
+  const box = vectorLayer && vectorLayer.getContainer && vectorLayer.getContainer();
+  if (!box) return;
+  box.style.display = visible ? "" : "none";
+  box.style.zIndex = 10;
+}
+
+/** Switch what the map is drawn from. The dots, pin and route stay where they are. */
+function setLayerMode(mode) {
+  state.layerMode = mode;
+  baseLayersOff();
+  const esri = "https://server.arcgisonline.com/ArcGIS/rest/services";
+  if (mode === "satellite") {
+    imageryLayer = imageryLayer || L.tileLayer(`${esri}/World_Imagery/MapServer/tile/{z}/{y}/{x}`, {
+      maxZoom: 19,
+      zIndex: 1,
+      className: "imagery-tiles",
+      attribution: "Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+    });
+    imageryLayer.addTo(map);
+    if (glMap) {
+      // The names, roads and markers come from our own map, drawn clear over the photographs.
+      setGlStyle("satellite");
+      setGlVisible(el("layer-labels").checked);
+    } else {
+      labelsLayer = labelsLayer || L.tileLayer(`${esri}/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}`, { maxZoom: 19 });
+      if (el("layer-labels").checked) labelsLayer.addTo(map);
+    }
+  } else if (mode === "terrain") {
+    topoLayer = topoLayer || L.tileLayer(`${esri}/World_Topo_Map/MapServer/tile/{z}/{y}/{x}`, {
+      maxZoom: 19,
+      attribution: "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, USGS, NGA, and others",
+    });
+    topoLayer.addTo(map);
+    if (glMap) setGlVisible(false);
+  } else if (glMap) {
+    setGlStyle("default");
+    setGlVisible(true);
+  } else if (vectorLayer) {
+    vectorLayer.addTo(map);
+  } else {
+    if (!pictureLayer) addPictureBasemap(); else pictureLayer.addTo(map);
+  }
+  // The pin, dots and route belong on top of whichever is showing.
+  for (const layer of [routeLine, categoryDots]) if (layer && map.hasLayer(layer)) layer.remove(), layer.addTo(map);
+
+  const thumbs = {
+    default: "linear-gradient(135deg, #f5f5f5 45%, #c4f0d4 45% 60%, #90daee 60%)",
+    satellite: "linear-gradient(135deg, #3d5a3a, #24404f 55%, #57503b)",
+    terrain: "linear-gradient(135deg, #d8cfa8, #a9c790 55%, #7aa06b)",
+  };
+  el("layers-btn").style.setProperty("--thumb", thumbs[mode]);
+  if (globeActive) globe.setSatellite(mode === "satellite");
+  document.querySelectorAll(".layer-opt").forEach((b) => b.classList.toggle("on", b.dataset.layer === mode));
+  try { localStorage.setItem(LAYER_KEY, mode); } catch (err) { /* fine */ }
+  // What the old map layer drew, the new one must be told about: the vector map
+  // needs to know its container's size after being off screen.
+  if (mode === "default") map.invalidateSize();
+}
+
+// ---- the right-click menu ------------------------------------------------------
+
+let contextSpot = null;
+
+function showContextMenu(point, latlng) {
+  contextSpot = latlng;
+  const menu = el("ctx-menu");
+  menu.hidden = false;
+  const size = map.getSize();
+  menu.style.left = `${Math.min(point.x, size.x - menu.offsetWidth - 8)}px`;
+  menu.style.top = `${Math.min(point.y, size.y - menu.offsetHeight - 8)}px`;
+  menu.querySelector("li").focus();
+}
+
+function hideContextMenu() {
+  el("ctx-menu").hidden = true;
+}
+
+function runContextAction(action) {
+  hideContextMenu();
+  const spot = contextSpot;
+  if (!spot) return;
+  const here = { kind: "dropped", name: "Dropped pin", category: "Dropped pin", address: "", lat: spot.lat, lon: spot.lng };
+  if (action === "here") {
+    clearCategory();
+    showPlaceCard(here);
+  } else if (action === "to") {
+    clearCategory();
+    showPlaceCard(here);
+    getDirections();
+  } else if (action === "from") {
+    chooseOrigin({ ...here, name: "Chosen start" });
+  } else if (action === "copy") {
+    copyText(`${spot.lat.toFixed(6)}, ${spot.lng.toFixed(6)}`, "Coordinates copied.");
+  }
+}
+
+/** Copy text to the clipboard and say so; where that is not allowed, show it to copy by hand. */
+async function copyText(text, message) {
+  try {
+    await navigator.clipboard.writeText(text);
+    setMapStatus(message);
+    setTimeout(() => { if (el("map-status").textContent === message) setMapStatus(""); }, 2200);
+  } catch (err) {
+    window.prompt("Copy this:", text);
+  }
+}
+
+// ---- saved places, as pins on the map --------------------------------------
+
+let savedPins = null;
+let savedPinsKey = "";
+
+/** A gold star on the map for every saved place, like Google's starred places. Redrawn only when the list changes. */
+function renderSavedPins() {
+  if (!map) return;
+  const list = loadSaved();
+  const key = JSON.stringify(list.map((p) => [p.lat, p.lon, p.name]));
+  if (key === savedPinsKey) return;
+  savedPinsKey = key;
+  if (savedPins) savedPins.remove();
+  savedPins = L.layerGroup(
+    list.map((p) =>
+      L.marker([p.lat, p.lon], {
+        icon: L.divIcon({ className: "gm-saved-icon", html: '<span class="gm-saved">★</span>', iconSize: [26, 26], iconAnchor: [13, 13] }),
+        title: p.name,
+        zIndexOffset: 200,
+      }).on("click", (e) => { L.DomEvent.stopPropagation(e); selectPlace(p, { show: false }); })
+    )
+  ).addTo(map);
+}
+
+// ---- weather chip ---------------------------------------------------------------
+
+function renderWeatherChip() {
+  const chip = el("weather-chip");
+  const w = state.weather;
+  if (!w) { chip.hidden = true; return; }
+  const code = w.weatherCode;
+  const icon = code === 0 ? "☀️" : code <= 2 ? "🌤️" : code === 3 ? "☁️" : code <= 48 ? "🌫️" : code <= 67 ? "🌧️" : code <= 77 ? "🌨️" : code <= 82 ? "🌦️" : "⛈️";
+  const fahrenheit = /^en-(US|LR|MM)$/i.test(navigator.language || "en-US");
+  const degrees = fahrenheit ? w.temperatureC * 9 / 5 + 32 : w.temperatureC;
+  chip.textContent = `${icon} ${Math.round(degrees)}°${fahrenheit ? "F" : "C"}`;
+  chip.title = `${w.description}. Mach 1 here is ${Math.round(state.speedOfSound * 2.23694)} mph.`;
+  chip.hidden = false;
+}
+
+// ---- choosing the start and destination of a trip ------------------------------------
+
+/** Make the search box choose something else: "origin" (the start) or "edit" (the destination). */
+function beginChoosing(which) {
+  state.searchFor = which;
+  const input = el("search-input");
+  input.value = "";
+  input.placeholder = which === "origin" ? "Choose starting point" : "Choose destination";
+  input.focus();
+  runSearch("");
+}
+
+function endChoosing() {
+  state.searchFor = "destination";
+  el("search-input").placeholder = "Search Science Maps";
+}
+
+/** Set the start of the trip to a place, and take it from there. */
+function chooseOrigin(place) {
+  state.origin = { lat: place.lat, lon: place.lon, label: place.name };
+  state.locationManual = true;                          // a chosen start is not the GPS's to move
+  state.locationAccuracy = null;
+  placeOriginMarker(place.lat, place.lon, place.name);
+  if (accuracyCircle) { accuracyCircle.remove(); accuracyCircle = null; }
+  el("search-input").value = state.destination ? state.destination.label : "";   // not the start's name
+  if (state.selected && !state.destination) {
+    setMapStatus(`Start set to ${place.name}.`);
+  }
+  if (state.destination) requestRoute();
+  render();
+}
+
+/** Swap the start and the destination. */
+function swapEnds() {
+  if (!state.origin || !state.destination) return;
+  const o = state.origin, d = state.destination;
+  state.origin = { lat: d.lat, lon: d.lon, label: d.label };
+  state.destination = { lat: o.lat, lon: o.lon, label: o.label };
+  state.locationManual = true;
+  placeOriginMarker(state.origin.lat, state.origin.lon, state.origin.label);
+  placeDestinationMarker(state.destination.lat, state.destination.lon);
+  requestRoute();
+}
+
+// ---- routes to choose between --------------------------------------------------------
+
+/** Draw every route, the chosen one in blue on top and the others in grey to click. */
+function drawRoutes({ fit = true } = {}) {
+  if (routeLine) { routeLine.remove(); routeLine = null; }
+  const parts = [];
+  state.routes.forEach((r, i) => {
+    if (i === state.routeIndex) return;
+    const pts = r.geometry.map((p) => [p.lat, p.lon]);
+    parts.push(L.polyline(pts, { color: "#ffffff", weight: 8, opacity: 1, lineCap: "round", lineJoin: "round" }));
+    parts.push(L.polyline(pts, { color: "#9aa0a6", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round" })
+      .on("click", (e) => { L.DomEvent.stopPropagation(e); chooseRoute(i); }));
+  });
+  routeLine = L.layerGroup(parts).addTo(map);
+  // The chosen route goes on last, so it is on top; drawRoute makes it and fits the view.
+  const chosen = state.routes[state.routeIndex];
+  const layer = routeLine;
+  drawRoute(chosen.geometry, { fit });
+  // drawRoute replaced routeLine with only the chosen one; put the greys back beneath it.
+  const chosenGroup = routeLine;
+  chosenGroup.remove();                     // so it is added after the greys, and so sits on top of them
+  routeLine = L.layerGroup([layer, chosenGroup]).addTo(map);
+}
+
+function chooseRoute(index) {
+  if (index === state.routeIndex || !state.routes[index]) return;
+  state.routeIndex = index;
+  state.routeData = state.routes[index];
+  state.navNext = 1;
+  drawRoutes({ fit: false });
+  render();
+}
+
+/** Ask how long the trip takes by each way of travelling, for the buttons. */
+async function loadModeTimes() {
+  const from = state.origin, to = state.destination;
+  if (!from || !to) return;
+  const times = await routeTimes(from, to);
+  // Only if it is still the same trip.
+  if (state.origin === from && state.destination === to) {
+    state.modeTimes = times;
+    render();
+  }
+}
+
+/** The three travel-mode buttons: which is chosen, and how long each would take. */
+function renderModeButtons() {
+  const meters = state.origin && state.destination ? distanceMeters(state.origin, state.destination) : NaN;
+  document.querySelectorAll(".mode-btn").forEach((b) => {
+    const mode = b.dataset.mode;
+    b.classList.toggle("on", mode === state.travelMode);
+    let seconds = state.modeTimes[mode];
+    if (isEstimateMode(mode)) {
+      // Flights and boats are worked out here, and only offered for trips they suit.
+      b.hidden = !estimateAvailable(mode, meters);
+      seconds = estimateSeconds(mode, meters);
+    }
+    const text = Number.isFinite(seconds) ? shortDuration(seconds) : "";
+    // Long times are squeezed ("8 hr 30 min" is "8h 30m") so five buttons fit in a row.
+    b.querySelector(".mode-time").textContent = text.length > 6 ? text.replace(/ hr/g, "h").replace(/ min/g, "m").replace(/ d/g, "d") : text;
+  });
+  const estimate = ESTIMATE_MODES[state.travelMode];
+  el("mode-note").textContent = estimate ? estimate.note : MODE_NOTE;
+}
+
+const MODE_NOTE = "Drive, walk or cycle: each is routed on its own roads and paths. Bus and train times are not available — there is no free source for them.";
+
+/** The list of routes on offer, when there is more than one. */
+function renderRouteOptions() {
+  const box = el("route-options");
+  if (state.routes.length < 2) { box.hidden = true; box.replaceChildren(); return; }
+  box.hidden = false;
+  box.replaceChildren(...state.routes.map((r, i) => {
+    const row = document.createElement("div");
+    row.className = "route-option" + (i === state.routeIndex ? " on" : "");
+    const time = document.createElement("div");
+    time.className = "route-option-time";
+    time.textContent = shortDuration(r.durationSeconds);
+    const text = document.createElement("div");
+    text.className = "route-option-text";
+    const via = document.createElement("div");
+    via.className = "route-option-via";
+    via.textContent = r.via ? `via ${r.via}` : "Route";
+    const sub = document.createElement("div");
+    sub.className = "route-option-sub";
+    sub.textContent = i === 0 ? `${formatDistance(r.distanceMeters, familiarDistanceUnit(r.distanceMeters))} · Fastest route` : formatDistance(r.distanceMeters, familiarDistanceUnit(r.distanceMeters));
+    text.appendChild(via);
+    text.appendChild(sub);
+    row.appendChild(time);
+    row.appendChild(text);
+    row.addEventListener("click", () => chooseRoute(i));
+    return row;
+  }));
+}
+
+// ---- the left rail -----------------------------------------------------------------------
+
+/** Open Saved, Recents or Science from the rail; pressing the open one again closes it. */
+function openTab(tab) {
+  if (state.navigating) return;
+  const closing = state.tab === tab;
+  if (tab !== "science") {
+    if (state.destination) clearDirections();
+    state.selected = null;
+    clearCategory();
+  }
+  state.tab = closing ? null : tab;
+  document.body.classList.remove("panel-collapsed");
+  map.invalidateSize();
+  render();
+}
+
+/** The back arrow on a list, results or Science view. */
+function goBack() {
+  if (state.tab === "science") state.tab = null;
+  else if (state.category) clearCategory();
+  else state.tab = null;
+  render();
+}
+
+/** Open a place given in the page's link (#place=lat,lon,Name). */
+function openFromHash() {
+  const place = placeFromHash(location.hash);
+  if (!place) return;
+  map.setView([place.lat, place.lon], 17, { animate: false });
+  clearCategory();
+  showPlaceCard(place);
+}
+
 // --- SEARCH -----------------------------------------------------------------
 
 /**
@@ -477,21 +1836,114 @@ async function runSearch(query) {
   const trimmed = query.trim();
   const list = el("search-results");
 
-  // Empty (or too-short) query: hide the dropdown and do nothing.
-  if (trimmed.length < 3) {
-    list.hidden = true;
-    list.innerHTML = "";
+  // Nothing typed: offer the places used before.
+  if (trimmed.length === 0) {
+    showRecents();
     return;
   }
 
+  // Straight away, without waiting on the network: recent places that match,
+  // and places already drawn on the map that match (businesses, addresses).
+  const recents = filterRecents(loadRecents(), trimmed).slice(0, 4);
+  const onMap = matchPlaces(loadedPlaces(trimmed), trimmed, 4);
+  const early = [
+    { title: "Recent", items: recents, icon: "🕘", removable: true },
+    { title: "On the map", items: onMap, icon: "📍" },
+  ];
+  renderSearchList(early);
+
+  // Too short to ask the online search about.
+  if (trimmed.length < 3) return;
+
   try {
-    const results = await geocode(trimmed);
-    showSearchResults(results);
+    const results = await geocode(trimmed, { viewbox: mapViewbox() });
+    // The box may have changed while we waited; drop a stale answer.
+    if (el("search-input").value.trim() !== trimmed) return;
+    const online = results.map((r) => ({
+      kind: looksLikeAddress(trimmed) ? "address" : "search",
+      name: r.name || r.displayName,
+      detail: r.displayName,
+      lat: r.lat,
+      lon: r.lon,
+      placeType: r.type,
+      category: r.type && r.type !== "yes" ? prettyCategory(r.type) : "",
+    }));
+    renderSearchList([...early, { title: "Places and addresses", items: online, icon: "🔎" }], true);
   } catch (err) {
-    // A failed search shouldn't break the page; show a single info row.
-    list.hidden = false;
-    list.innerHTML = `<li class="result-detail">Search failed: ${err.message}</li>`;
+    // A failed search shouldn't break the page; keep what we already have and say so.
+    renderSearchList(early, true, `Online search failed: ${err.message}`);
   }
+}
+
+/** The area currently on screen, in the shape the search service wants. */
+function mapViewbox() {
+  const b = map.getBounds();
+  const box = { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() };
+  // Zoomed far out, the view is wider than the world and its edges are past
+  // ±180°; the search service rejects that with an error. A view that wide is
+  // no hint about where to look anyway, so send none.
+  const sane = Object.values(box).every(Number.isFinite)
+    && box.west < box.east && box.south < box.north
+    && Math.abs(box.west) <= 180 && Math.abs(box.east) <= 180
+    && Math.abs(box.south) <= 90 && Math.abs(box.north) <= 90;
+  // Looking at the whole world says nothing about what is meant by "Barnes
+  // Park" (there are dozens). Where you are does: prefer what is near you.
+  if ((!sane || map.getZoom() < 8) && state.origin) {
+    const { lat, lon } = state.origin;
+    return { west: Math.max(-180, lon - 0.8), east: Math.min(180, lon + 0.8), south: Math.max(-90, lat - 0.6), north: Math.min(90, lat + 0.6) };
+  }
+  if (!sane) return undefined;
+  // A screenful is tiny (a street or two), and what is meant is often a few
+  // kilometres away — so search a generous area around where the map is looking.
+  const cx = (box.west + box.east) / 2, cy = (box.south + box.north) / 2;
+  const halfW = Math.max((box.east - box.west) / 2, 0.4), halfH = Math.max((box.north - box.south) / 2, 0.3);
+  return {
+    west: Math.max(-180, cx - halfW), east: Math.min(180, cx + halfW),
+    south: Math.max(-90, cy - halfH), north: Math.min(90, cy + halfH),
+  };
+}
+
+/**
+ * Everything the map has already loaded that a name could match: businesses and
+ * OpenStreetMap places, and — when what was typed looks like the start of a
+ * street address — house numbers. Only what is near the view is loaded, which is
+ * exactly what makes these suggestions "close to you".
+ * @param {string} query
+ */
+function loadedPlaces(query) {
+  if (!glMap) return [];
+  const out = [];
+  const collect = (source, sourceLayer, layerId) => {
+    if (!glMap.getSource(source)) return;
+    let features = [];
+    try {
+      features = glMap.querySourceFeatures(source, { sourceLayer });
+    } catch (err) {
+      return;        // the source may not have loaded yet
+    }
+    for (const f of features) {
+      const place = placeFromFeature({ geometry: f.geometry, properties: f.properties, layer: { id: layerId } });
+      if (place) out.push(place);
+    }
+  };
+  collect("ovplaces", "place", "ov-place");
+  collect("openmaptiles", "poi", "poi");
+  if (looksLikeAddress(query)) collect("ovaddr", "address", "ov-address");
+  return out;
+}
+
+/** With an empty box: the places used before, newest first. */
+function showRecents() {
+  const recents = loadRecents();
+  const sections = [{ title: "Recent searches", items: recents, icon: "🕘", removable: true, clearable: true }];
+  if (state.searchFor === "origin" && state.origin) {
+    sections.unshift({ title: "", items: [{ kind: "here", name: "Your location", detail: "Use where I am now", lat: state.origin.lat, lon: state.origin.lon }], icon: "📍" });
+  }
+  if (recents.length === 0 && sections.length === 1) {
+    el("search-results").hidden = true;
+    return;
+  }
+  renderSearchList(sections);
 }
 
 /**
@@ -499,43 +1951,98 @@ async function runSearch(query) {
  * the destination.
  * @param {Array<{name:string, displayName:string, lat:number, lon:number, type:string}>} results
  */
-function showSearchResults(results) {
+function renderSearchList(sections, final = false, note = "") {
   const list = el("search-results");
   list.innerHTML = "";
+  const seen = new Set();
+  let count = 0;
 
-  if (!results || results.length === 0) {
-    list.hidden = false;
-    list.innerHTML = `<li class="result-detail">No matches found.</li>`;
-    return;
-  }
-
-  for (const place of results) {
-    const item = document.createElement("li");
-
-    // A bold short name on top, a quieter full address underneath.
-    const name = document.createElement("div");
-    name.className = "result-name";
-    name.textContent = place.name || place.displayName;
-
-    const detail = document.createElement("div");
-    detail.className = "result-detail";
-    detail.textContent = place.displayName;
-
-    item.appendChild(name);
-    item.appendChild(detail);
-
-    // Clicking a result: hide the dropdown, set the destination, center there.
-    item.addEventListener("click", () => {
-      list.hidden = true;
-      el("search-input").value = place.name || place.displayName;
-      map.setView([place.lat, place.lon], 13);
-      setDestination(place.lat, place.lon, place.name || place.displayName);
+  for (const section of sections) {
+    // The same place can turn up in more than one section (a recent one that
+    // is also on the map); show it once, under the first heading it fits.
+    const items = section.items.filter((place) => {
+      const key = `${place.name}|${place.lat.toFixed(4)}|${place.lon.toFixed(4)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
+    if (items.length === 0) continue;
 
-    list.appendChild(item);
+    const header = document.createElement("li");
+    header.className = "result-heading";
+    header.textContent = section.title;
+    if (section.clearable) {
+      const clear = document.createElement("button");
+      clear.type = "button";
+      clear.className = "result-clear";
+      clear.textContent = "Clear";
+      clear.addEventListener("mousedown", (e) => e.preventDefault());
+      clear.addEventListener("click", () => {
+        clearRecents();
+        list.hidden = true;
+      });
+      header.appendChild(clear);
+    }
+    list.appendChild(header);
+
+    for (const place of items) {
+      count++;
+      const item = document.createElement("li");
+      item.className = "result-row";
+
+      const icon = document.createElement("span");
+      icon.className = "result-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.textContent = place.kind === "address" ? "🏠" : section.icon;
+
+      // A bold short name on top, a quieter line underneath (its kind and address).
+      const text = document.createElement("div");
+      text.className = "result-text";
+      const name = document.createElement("div");
+      name.className = "result-name";
+      name.textContent = place.name;
+      const detail = document.createElement("div");
+      detail.className = "result-detail";
+      detail.textContent = place.detail || "";
+      text.appendChild(name);
+      text.appendChild(detail);
+
+      item.appendChild(icon);
+      item.appendChild(text);
+
+      if (section.removable) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "result-remove";
+        remove.title = "Remove from recent searches";
+        remove.textContent = "×";
+        remove.addEventListener("click", (e) => {
+          e.stopPropagation();
+          removeRecent(place);
+          item.remove();
+        });
+        item.appendChild(remove);
+      }
+
+      // Choosing a result: remember it, set it as the destination, go there.
+      item.addEventListener("click", () => selectPlace(place, { show: true }));
+      list.appendChild(item);
+    }
   }
 
-  list.hidden = false;
+  if (note) {
+    const li = document.createElement("li");
+    li.className = "result-detail";
+    li.textContent = note;
+    list.appendChild(li);
+  } else if (count === 0 && final) {
+    const li = document.createElement("li");
+    li.className = "result-detail";
+    li.textContent = "No matches found.";
+    list.appendChild(li);
+  }
+
+  list.hidden = list.children.length === 0;
 }
 
 
@@ -695,6 +2202,7 @@ function primarySpeedUnit(mps) {
  * piece stays small and readable.
  */
 function render() {
+  renderMode();
   renderTrip();
   renderUnitControls();
   renderRoute();
@@ -789,32 +2297,10 @@ function renderRoute() {
  * so the HTML stays simple — app.js owns this dynamic chunk.
  */
 function renderSteps() {
-  const details = el("route-details");
-
-  // Find (or create) the container that holds the steps heading + list.
-  let container = el("route-steps");
-  if (!container) {
-    container = document.createElement("div");
-    container.id = "route-steps";
-
-    const heading = document.createElement("div");
-    heading.className = "metric-label";
-    heading.textContent = "Turn-by-turn directions";
-    heading.style.marginTop = "12px";
-
-    const ol = document.createElement("ol");
-    ol.id = "route-steps-list";
-    ol.className = "steps-list";
-
-    container.appendChild(heading);
-    container.appendChild(ol);
-    details.appendChild(container);
-  }
-
-  const ol = el("route-steps-list");
+  const ol = el("trip-steps");
   ol.innerHTML = ""; // clear any previous route's steps
 
-  const steps = state.routeData.steps || [];
+  const steps = (state.routeData && state.routeData.steps) || [];
   for (const step of steps) {
     const li = document.createElement("li");
 
@@ -1056,6 +2542,31 @@ function wireUpControls() {
   // "Use my location" button.
   el("locate-btn").addEventListener("click", useMyLocation);
 
+  // The place card, the route strip and the navigation bar.
+  el("place-close").addEventListener("click", closePlaceCard);
+  el("place-directions").addEventListener("click", () => getDirections());
+  el("place-start").addEventListener("click", () => getDirections({ start: true }));
+  el("route-start").addEventListener("click", startNavigation);
+  el("route-clear").addEventListener("click", clearDirections);
+  el("nav-exit").addEventListener("click", () => { stopNavigation(); clearDirections(); });
+  el("nav-voice").addEventListener("click", () => {
+    state.voice = !state.voice;
+    if (!state.voice && "speechSynthesis" in window) window.speechSynthesis.cancel();
+    render();
+  });
+  // Escape steps back one stage: navigation, then the card, then the directions.
+  window.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape" || /^(INPUT|SELECT|TEXTAREA)$/.test((e.target && e.target.tagName) || "")) return;
+    hideContextMenu();
+    el("layers-menu").hidden = true;
+    if (state.searchFor !== "destination") endChoosing();
+    if (state.navigating) { stopNavigation(); clearDirections(); }
+    else if (state.selected) closePlaceCard();
+    else if (state.tab) { state.tab = null; render(); }
+    else if (state.category) closeCategory();
+    else if (state.destination) clearDirections();
+  });
+
   // "Start/Stop tracking" button.
   el("track-btn").addEventListener("click", toggleTracking);
 
@@ -1063,6 +2574,7 @@ function wireUpControls() {
   el("travel-mode-select").addEventListener("change", (e) => {
     state.travelMode = e.target.value;
     if (state.origin && state.destination) requestRoute();
+    render();
   });
 
   // Distance unit select: update state, then re-render.
@@ -1090,6 +2602,25 @@ function wireUpControls() {
     debouncedSearch(e.target.value);
   });
 
+  // Clicking into an empty box shows the places used before, like any map app.
+  el("search-input").addEventListener("focus", (e) => {
+    if (!e.target.value.trim()) showRecents();
+  });
+  // Enter picks the first suggestion, so a typed name or address needs no mouse.
+  el("search-input").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const pickFirst = () => {
+        const first = el("search-results").querySelector(".result-row");
+        if (first) first.click();
+      };
+      // If suggestions are not up yet (Enter came quickly), fetch them first.
+      if (el("search-results").querySelector(".result-row")) pickFirst();
+      else runSearch(e.target.value).then(pickFirst);
+    } else if (e.key === "Escape") {
+      el("search-results").hidden = true;
+    }
+  });
+
   // Hide the search dropdown when the user clicks elsewhere on the page.
   document.addEventListener("click", (e) => {
     const wrap = document.querySelector(".search-wrap");
@@ -1100,11 +2631,147 @@ function wireUpControls() {
 
   // The bottom sheet's grab handle expands/collapses the panel, like the
   // draggable bottom sheet in Google Maps.
-  const sheet = el("sheet");
+  const side = el("side");
   const handle = el("sheet-handle");
-  if (sheet && handle) {
-    handle.addEventListener("click", () => sheet.classList.toggle("expanded"));
+  if (side && handle) {
+    handle.addEventListener("click", () => side.classList.toggle("expanded"));
   }
+
+  // The left rail, the back arrows, and the menu button that folds the panel away.
+  document.querySelectorAll("[data-tab]").forEach((b) => b.addEventListener("click", () => openTab(b.dataset.tab)));
+  document.querySelectorAll("[data-back]").forEach((b) => b.addEventListener("click", goBack));
+  el("rail-menu").addEventListener("click", () => {
+    document.body.classList.toggle("panel-collapsed");
+    // The map's column just changed width; tell it.
+    setTimeout(() => map.invalidateSize(), 50);
+  });
+  el("list-clear").addEventListener("click", () => { clearRecents(); render(); });
+
+  // The place card's Save and Share.
+  el("place-save").addEventListener("click", () => {
+    if (!state.selected) return;
+    toggleSaved(state.selected);
+    renderPlaceSave();
+    render();
+  });
+  el("place-share").addEventListener("click", () => {
+    if (!state.selected) return;
+    copyText(location.href.split("#")[0] + placeToHash(state.selected), "Link copied.");
+  });
+
+  // The trip: travel mode buttons, choosing the ends, swapping them.
+  document.querySelectorAll(".mode-btn").forEach((b) =>
+    b.addEventListener("click", () => {
+      const select = el("travel-mode-select");
+      select.value = b.dataset.mode;
+      select.dispatchEvent(new Event("change"));
+    })
+  );
+  el("swap-btn").addEventListener("click", swapEnds);
+  const activate = (row, which) => {
+    row.addEventListener("click", () => beginChoosing(which));
+    row.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); beginChoosing(which); } });
+  };
+  activate(el("trip-origin-row"), "origin");
+  activate(el("trip-dest-row"), "edit");
+
+  // Layers, the right-click menu, and "Search this area".
+  el("layers-btn").addEventListener("click", () => { el("layers-menu").hidden = !el("layers-menu").hidden; });
+  document.querySelectorAll(".layer-opt").forEach((b) => b.addEventListener("click", () => setLayerMode(b.dataset.layer)));
+  el("layer-globe").addEventListener("change", (e) => {
+    globeEnabled = e.target.checked;
+    try { localStorage.setItem(GLOBE_KEY, globeEnabled ? "on" : "off"); } catch (err) { /* fine */ }
+    if (!globeEnabled && globeActive) exitGlobe();
+    else if (globeEnabled && map.getZoom() <= 2) enterGlobe();
+  });
+  el("layer-labels").addEventListener("change",
+ () => { if (state.layerMode === "satellite") setLayerMode("satellite"); });
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".layers-wrap")) el("layers-menu").hidden = true;
+    if (!e.target.closest(".ctx-menu")) hideContextMenu();
+  });
+  el("ctx-menu").querySelectorAll("li").forEach((li) => {
+    li.addEventListener("click", () => runContextAction(li.dataset.act));
+    li.addEventListener("keydown", (e) => { if (e.key === "Enter") runContextAction(li.dataset.act); });
+  });
+  el("search-area").addEventListener("click", runCategorySearch);
+  window.addEventListener("hashchange", openFromHash);
+}
+
+/**
+ * Move the map with the keyboard, like a game: hold the arrow keys or W A S D
+ * and it glides, hold two at once to go diagonally, hold Shift to go faster.
+ * + and − (or E and Q) zoom in and out. Works wherever the focus is on the
+ * page — except while typing in a box, where the letters are for typing.
+ *
+ * Movement runs on the display's own frame clock, one small step per frame
+ * scaled by real elapsed time, so it is smooth and the same speed on a slow
+ * or a fast screen. It stops the instant the keys come up, and if the window
+ * loses focus (so a key-up is never seen) it stops rather than run away.
+ */
+function setupKeyboardMoves() {
+  const HELD = new Map();                      // key -> true, while it is down
+  const DIRECTIONS = {
+    arrowleft: [-1, 0], a: [-1, 0],
+    arrowright: [1, 0], d: [1, 0],
+    arrowup: [0, -1], w: [0, -1],
+    arrowdown: [0, 1], s: [0, 1],
+  };
+  const SPEED = 520;                            // screen pixels per second
+  const FAST = 2.4;                             // Shift multiplier
+  let running = false;
+  let last = 0;
+  let fast = false;
+
+  const typingInABox = (target) =>
+    target instanceof HTMLElement &&
+    (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+
+  const step = (now) => {
+    if (HELD.size === 0) { running = false; return; }
+    const dt = Math.min(0.05, (now - last) / 1000);   // never leap after a hiccup
+    last = now;
+    let dx = 0, dy = 0;
+    for (const key of HELD.keys()) {
+      const dir = DIRECTIONS[key];
+      if (dir) { dx += dir[0]; dy += dir[1]; }
+    }
+    if (dx || dy) {
+      const length = Math.hypot(dx, dy);          // diagonals are not faster
+      const pixels = SPEED * (fast ? FAST : 1) * dt;
+      const mx = (dx / length) * pixels, my = (dy / length) * pixels;
+      if (globeActive) globe.panBy(mx, my);
+      else map.panBy([mx, my], { animate: false });
+    }
+    requestAnimationFrame(step);
+  };
+
+  window.addEventListener("keydown", (event) => {
+    if (event.ctrlKey || event.metaKey || event.altKey || typingInABox(event.target)) return;
+    const key = event.key.toLowerCase();
+
+    if (key in DIRECTIONS) {
+      event.preventDefault();                       // arrow keys must not also scroll the page
+      HELD.set(key, true);
+      fast = event.shiftKey;
+      if (!running) {
+        running = true;
+        last = performance.now();
+        requestAnimationFrame(step);
+      }
+    } else if (["+", "=", "e"].includes(key) && !event.repeat) {
+      (globeActive ? globe : map).zoomIn();
+    } else if (["-", "_", "q"].includes(key) && !event.repeat) {
+      (globeActive ? globe : map).zoomOut();
+    }
+  });
+
+  window.addEventListener("keyup", (event) => {
+    HELD.delete(event.key.toLowerCase());
+    fast = event.shiftKey;
+  });
+  // A held key that never reports its release (focus moved away) would keep going.
+  window.addEventListener("blur", () => HELD.clear());
 }
 
 /**
@@ -1113,6 +2780,15 @@ function wireUpControls() {
  */
 function init() {
   initMap();
+  setupKeyboardMoves();
+  locateOnStart();
+  // Come back to the map style last used, and to a place if the page's link names one.
+  try {
+    const mode = localStorage.getItem(LAYER_KEY);
+    if (mode === "satellite" || mode === "terrain") setLayerMode(mode);
+    if (localStorage.getItem(GLOBE_KEY) === "off") { globeEnabled = false; el("layer-globe").checked = false; }
+  } catch (err) { /* storage blocked: the default map */ }
+  openFromHash();
   populateDistanceUnitSelect();
   populateSpeedUnitSelect();
   wireUpControls();
