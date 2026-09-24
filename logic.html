@@ -2501,6 +2501,7 @@ function deleteHandle() {
     let wx, wy;
     if (p.k === 'ext') { wx = p.x + EXT[p.type].w + 8; wy = p.y - 2; }
     else if (span) { wx = holeX(span[1]) + BB.P * 0.75; wy = holeY(chipRowHi(p)) - BB.P * 0.1; }
+    else if (p.k === 'npn' || p.k === 'pnp' || p.k === 'pot') { wx = holeX(p.c + 2) + BB.P * 0.75; wy = holeY(p.r) - BB.P * 1.6; }
     else if (p.b) { wx = (holeX(p.a.c) + holeX(p.b.c)) / 2; wy = (holeY(p.a.r) + holeY(p.b.r)) / 2 - BB.P * 0.8; }
     else { wx = holeX(p.a.c) + BB.P * 0.55; wy = holeY(p.a.r) - BB.P * 0.55; }
     const s = toScreen(wx, wy);
@@ -5510,7 +5511,7 @@ const chipRowLo = (p) => BB.row(partBoard(p), chipRow(p) + 1);
 /** Everything with two legs that goes in two holes you click, in order. */
 const TWO_LEG = {
   wire: 1, res: 1, led: 1, diode: 1, cap: 1, bat: 1,
-  fuse: 1, buzzer: 1, ldr: 1, laser: 1, motor: 1, tog: 1,
+  fuse: 1, buzzer: 1, ldr: 1, therm: 1, laser: 1, motor: 1, tog: 1,
 };
 
 /* Things that live beside the board, not in it. Every terminal is numbered from
@@ -5565,6 +5566,9 @@ function partHoles(p) {
     for (let i = 0; i < half; i++) out.push({ r: hi, c: p.col + half - 1 - i, pin: half + i + 1 });
   } else if (p.k === 'npn' || p.k === 'pnp') {
     // TO-92 package: three legs in a row, emitter · base · collector.
+    out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
+  } else if (p.k === 'pot') {
+    // Also three legs in a row: one end of the track, the wiper, the other end.
     out.push({ r: p.r, c: p.c, pin: 1 }, { r: p.r, c: p.c + 1, pin: 2 }, { r: p.r, c: p.c + 2, pin: 3 });
   } else if (p.k === 'btn') {
     out.push({ r: lo, c: p.col, pin: 1 }, { r: lo, c: p.col + 2, pin: 2 },
@@ -5704,7 +5708,7 @@ function compileBoard(b) {
 
   /* Resolve each part's pins to nets. */
   const supplies = [], resistors = [], diodes = [], leds = [], chips = [], displays = [], transistors = [];
-  const loads = [], lasers = [], fuses = [], relays = [], unos = [], ldrs = [], caps = [];
+  const loads = [], lasers = [], fuses = [], relays = [], unos = [], ldrs = [], caps = [], thermistors = [];
   for (const p of b.parts) {
     const holes = partHoles(p);
     p._nets = {};
@@ -5717,6 +5721,16 @@ function compileBoard(b) {
     else if (p.k === 'ext' && p.type === 'uno') unos.push({ p });
     else if (p.k === 'res') resistors.push({ p, a: p._nets[1], b: p._nets[2], ohms: p.ohms || 220 });
     else if (p.k === 'ldr') { const r = { p, a: p._nets[1], b: p._nets[2], ohms: 1e6, ldr: true }; resistors.push(r); ldrs.push(r); }
+    else if (p.k === 'therm') { const r = { p, a: p._nets[1], b: p._nets[2], ohms: 1e4, therm: true }; resistors.push(r); thermistors.push(r); }
+    else if (p.k === 'pot') {
+      /* Two resistors sharing one track: the wiper splits it wherever it sits,
+         so each side gets its own share of the total — exactly a voltage
+         divider you can turn, which is what a potentiometer is. */
+      const total = Math.max(1, p.ohms || 10000);
+      const pos = clamp(p.pos === undefined ? 0.5 : p.pos, 0, 1);
+      resistors.push({ p, a: p._nets[1], b: p._nets[2], ohms: Math.max(1, Math.round(total * pos)) });
+      resistors.push({ p, a: p._nets[2], b: p._nets[3], ohms: Math.max(1, Math.round(total * (1 - pos))) });
+    }
     else if (p.k === 'diode') diodes.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'led') leds.push({ p, a: p._nets[1], k: p._nets[2] });
     else if (p.k === 'buzzer' || p.k === 'motor') loads.push({ p, a: p._nets[1], k: p._nets[2] });
@@ -5839,7 +5853,7 @@ function compileBoard(b) {
 
   return {
     board: b, nets: count, used: used.size, holeNet, supplies, resistors, diodes, leds, chips, displays, transistors, errors,
-    loads, lasers, fuses, relays, unos, ldrs, conductors, caps,
+    loads, lasers, fuses, relays, unos, ldrs, conductors, caps, thermistors,
   };
 }
 
@@ -5850,6 +5864,14 @@ function compileBoard(b) {
 function ldrOhms(p) {
   const light = p._beam ? 1 : clamp(p.light === undefined ? 0.6 : p.light, 0, 1);
   return 200 * Math.pow(5000, 1 - light);
+}
+
+/** A thermistor's resistance for the heat on it, 0 (cold) to 1 (hot): a real
+    NTC type's value falls as it warms, from about 100 kΩ cold down to under
+    100 Ω hot — the opposite of what warms most other things up. */
+function thermOhms(p) {
+  const heat = clamp(p.heat === undefined ? 0.3 : p.heat, 0, 1);
+  return 100 * Math.pow(1000, 1 - heat);
 }
 
 class BoardSim {
@@ -6006,6 +6028,7 @@ class BoardSim {
       rst.was = en;
     }
     for (const r of this.c.ldrs) r.ohms = ldrOhms(r.p);
+    for (const r of this.c.thermistors) r.ohms = thermOhms(r.p);
 
     /* A transistor is a switch that another wire closes: put the right level on
        the base and the collector and emitter are joined. Which level depends on
@@ -6562,6 +6585,29 @@ function drawBoardPart(p) {
       }
       break;
     }
+    case 'therm': {
+      const mx = (A.x + B.x) / 2, my = (A.y + B.y) / 2;
+      const heat = clamp(p.heat === undefined ? 0.3 : p.heat, 0, 1);
+      const lerp = (x, y, t) => Math.round(x + (y - x) * t);
+      const cold = [0x3a, 0x6f, 0xd8], hot = [0xe0, 0x50, 0x3c];         // cool blue to hot red-orange
+      const col = '#' + cold.map((c, i) => lerp(c, hot[i], heat).toString(16).padStart(2, '0')).join('');
+      ctx.strokeStyle = '#b8b2a4'; ctx.lineWidth = 2.6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.lineTo(B.x, B.y); ctx.stroke();
+      // A small dipped bead, the shape a real NTC thermistor comes in.
+      ctx.beginPath(); ctx.arc(mx, my, 9.5, 0, 7);
+      ctx.fillStyle = col; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : shade(col, -0.4); ctx.lineWidth = sel ? 2.2 : 1.2; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      ctx.beginPath(); ctx.arc(mx - 3, my - 3, 2.4, 0, 7); ctx.fill();
+      if (heat > 0.55) {                                                  // heat shimmering off it, hotter = more
+        ctx.strokeStyle = `rgba(255,110,60,${(heat - 0.55) * 1.4})`; ctx.lineWidth = 1.5;
+        for (const dx of [-7, 0, 7]) {
+          ctx.beginPath(); ctx.moveTo(mx + dx, my - 14); ctx.quadraticCurveTo(mx + dx - 3, my - 22, mx + dx, my - 30);
+          ctx.stroke();
+        }
+      }
+      break;
+    }
     case 'laser': drawLaser(p, A, B, sel); break;
     case 'ext': drawExt(p, sel); break;
     case 'vcc': case 'gnd': {
@@ -6598,6 +6644,32 @@ function drawBoardPart(p) {
       ctx.fillText(p.k === 'npn' ? 'NPN' : 'PNP', cx, cy - R * 0.05);
       ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.34}px ${FONT}`;
       ['E', 'B', 'C'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
+      break;
+    }
+    case 'pot': {
+      const P = BB.P;
+      const y = holeY(p.r);
+      const cx = holeX(p.c + 1), cy = y - P * 0.85, w = P * 1.6, hgt = P * 1.15;
+      const pos = clamp(p.pos === undefined ? 0.5 : p.pos, 0, 1);
+      ctx.strokeStyle = '#9aa0a6'; ctx.lineWidth = 2.2; ctx.lineCap = 'round';
+      for (let i = 0; i < 3; i++) {
+        const x = holeX(p.c + i);
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, cy + hgt / 2 - 2); ctx.stroke();
+      }
+      roundRect(cx - w / 2, cy - hgt / 2, w, hgt, 3);
+      ctx.fillStyle = '#3a6b8f'; ctx.fill();
+      ctx.strokeStyle = sel ? C.sel : '#173347'; ctx.lineWidth = sel ? 2.4 : 1; ctx.stroke();
+      // the screw slot a trimmer is turned by, and the wiper's position along it
+      ctx.beginPath(); ctx.arc(cx, cy, hgt * 0.3, 0, 7);
+      ctx.fillStyle = '#d8dee4'; ctx.fill();
+      ctx.strokeStyle = '#173347'; ctx.lineWidth = 1;
+      const ang = (pos - 0.5) * Math.PI * 1.3 - Math.PI / 2;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(ang) * hgt * 0.26, cy + Math.sin(ang) * hgt * 0.26); ctx.stroke();
+      ctx.fillStyle = '#cfe0ec'; ctx.font = `700 ${P * 0.28}px ${FONT}`;
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(fmtOhms(p.ohms || 10000), cx, cy + hgt / 2 + 9);
+      ctx.fillStyle = '#8d8880'; ctx.font = `${P * 0.3}px ${FONT}`;
+      ['1', 'W', '2'].forEach((nm, i) => ctx.fillText(nm, holeX(p.c + i), y + P * 0.62));
       break;
     }
     case 'ic': case 'seg': case 'btn': case 'dip': case 'relay': drawModule(p, sel); break;
@@ -6764,6 +6836,14 @@ function resistorBands(ohms) {
   return [BAND[d1], BAND[d2], BAND[mult]];
 }
 
+/** "4.7 kΩ", not "4700" — how a resistor's value is actually said out loud. */
+function fmtOhms(ohms) {
+  const v = Math.max(1, Math.round(ohms || 0));
+  if (v >= 1e6) return (v / 1e6).toFixed(v % 1e6 ? 1 : 0) + ' MΩ';
+  if (v >= 1e3) return (v / 1e3).toFixed(v % 1e3 ? 1 : 0) + ' kΩ';
+  return v + ' Ω';
+}
+
 function drawModule(p, sel) {
   const P = BB.P;
   const span = partSpan(p);
@@ -6855,9 +6935,12 @@ function drawBoardGhost() {
   const a = S.armed;
   if (!a || (!S.bhoverHole && !EXT[a.type])) return;
   ctx.globalAlpha = 0.5;
-  if (a.type === 'npn' || a.type === 'pnp') {
+  if (a.type === 'npn' || a.type === 'pnp' || a.type === 'pot') {
     if (S.bhoverHole.r < 100) {
-      drawBoardPart({ k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, boardCols() - 3) });
+      drawBoardPart({
+        k: a.type, id: 'ghost', r: S.bhoverHole.r, c: clamp(S.bhoverHole.c, 0, boardCols() - 3),
+        ohms: 10000, pos: 0.5,
+      });
     }
   } else if (a.type === 'ic' || a.type === 'seg' || a.type === 'btn' || a.type === 'dip' || a.type === 'relay') {
     const col = ghostColumn(S.bhoverHole);
@@ -6925,6 +7008,12 @@ function hitBoardPart(w) {
     if (p.k === 'npn' || p.k === 'pnp') {
       const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 2) + P * 0.6;
       const y1 = holeY(p.r) + P * 0.4, y0 = y1 - P * 2.3;
+      if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
+      continue;
+    }
+    if (p.k === 'pot') {
+      const x0 = holeX(p.c) - P * 0.6, x1 = holeX(p.c + 2) + P * 0.6;
+      const y1 = holeY(p.r) + P * 0.3, y0 = y1 - P * 1.6;
       if (w.x >= x0 && w.x <= x1 && w.y >= y0 && w.y <= y1) return p;
       continue;
     }
@@ -7019,6 +7108,7 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'fuse') return { k: 'fuse', id, a: hole, b: second };
   if (a.type === 'buzzer') return { k: 'buzzer', id, a: hole, b: second };
   if (a.type === 'ldr') return { k: 'ldr', id, a: hole, b: second, light: 0.6 };
+  if (a.type === 'therm') return { k: 'therm', id, a: hole, b: second, heat: 0.3 };
   if (a.type === 'laser') return { k: 'laser', id, a: hole, b: second, nm: 650 };
   if (a.type === 'motor') return { k: 'motor', id, a: hole, b: second };
   if (a.type === 'tog') return { k: 'tog', id, a: hole, b: second, on: false };
@@ -7027,6 +7117,10 @@ function makeBoardPart(a, hole, second) {
   if (a.type === 'npn' || a.type === 'pnp') {
     if (BB.isRail(hole.r)) { toast('Transistors go in the main rows, not the power rails.', true); return null; }
     return { k: a.type, id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3) };
+  }
+  if (a.type === 'pot') {
+    if (BB.isRail(hole.r)) { toast('Potentiometers go in the main rows, not the power rails.', true); return null; }
+    return { k: 'pot', id, r: hole.r, c: clamp(hole.c, 0, boardCols() - 3), ohms: 10000, pos: 0.5 };
   }
   const col = ghostColumn(hole);
   const board = BB.boardOf(hole.r);
@@ -7316,7 +7410,15 @@ function renderBoardPalette(host, q) {
 
   add('Wiring', [
     { name: 'Jumper wire', color: '#e04b3c', desc: 'Click two holes.', arm: { type: 'wire', color: WIRE_COLORS[0] } },
-    { name: 'Resistor', color: '#d8c9a3', desc: 'Click two holes. 220 Ω by default.', arm: { type: 'res', ohms: 220 } },
+  ]);
+  add('Resistors', [
+    { name: 'Resistor', color: '#d8c9a3', desc: 'Click two holes. A fixed value, 220 Ω by default — set it in the inspector.', arm: { type: 'res', ohms: 220 } },
+    { name: 'Potentiometer', color: '#3a6b8f', sub: 'a resistor you turn',
+      desc: 'Click a hole. Three legs in a row: the two ends of the track and, in the middle, the wiper. Set the total resistance and drag the wiper in the inspector.', arm: { type: 'pot' } },
+    { name: 'Photoresistor', color: '#c9a25c', sub: 'a resistor that follows the light',
+      desc: 'Click two holes. Low resistance in light, very high in the dark. Set the light in the inspector.', arm: { type: 'ldr' } },
+    { name: 'Thermistor', color: '#3a6fd8', sub: 'a resistor that follows the heat',
+      desc: 'Click two holes. High resistance cold, low resistance hot — the opposite of most things. Set the heat in the inspector.', arm: { type: 'therm' } },
   ]);
   add('LEDs', [
     ['Red LED', '#ff5b4a'], ['Yellow LED', '#ffc247'], ['Green LED', '#4bd684'],
@@ -7335,7 +7437,6 @@ function renderBoardPalette(host, q) {
     { name: 'Toggle switch', color: '#2b2f36', desc: 'Click two holes. Click it to close or open the gap between them.', arm: { type: 'tog' } },
     { name: 'Buzzer', color: '#191b1f', desc: 'Click two holes. First is +. Sounds while it has 5 V across it.', arm: { type: 'buzzer' } },
     { name: 'DC motor', color: '#b9bcc2', desc: 'Click two holes. First is +. Spins while it has 5 V across it — wire it straight to a chip or Arduino pin rather than through a transistor and that pin fries.', arm: { type: 'motor' } },
-    { name: 'Photoresistor', color: '#c9a25c', desc: 'Click two holes. Low resistance in light, very high in the dark. Set the light in the inspector.', arm: { type: 'ldr' } },
     { name: 'Laser diode', color: '#ff2a2a', sub: 'the circuit decides what kind',
       desc: 'Click two holes. First is the anode (+). The resistor beside it sets its class; a steady or switching drive sets its beam.', arm: { type: 'laser' } },
   ]);
@@ -7477,6 +7578,8 @@ function renderBoardInspector(host) {
     buzzer: ['Buzzer', 'Makes a tone while it has 5 V across it — the first hole you clicked is +. The sound plays through your speakers, quietly, once you have clicked anywhere on the page; the Sound switch below mutes just this one.'],
     motor: ['DC motor', 'Spins while it has 5 V across it, the first hole being +. Real ones draw a lot more current than a chip pin or an Arduino pin can give — wired to one directly here, it is the pin that fries the moment the motor turns on, not the motor. The fix is a transistor as the switch, which you can build here.'],
     ldr: ['Photoresistor', 'A resistor whose value follows the light on it: a couple of hundred ohms in full light, up to a megohm in the dark. On its own it is a gap in the dark and a resistor in the light. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the light — a night-light, built out of two parts. A laser aimed at it counts as full light.'],
+    therm: ['Thermistor', "A resistor whose value follows the heat on it — the opposite way round from the photoresistor: a hot one lets current through easily, a cold one barely at all, which is what ‘NTC’ (negative temperature coefficient) means. On its own it is a resistor whose size you set with the Heat slider. Pair it with an ordinary resistor as a voltage divider and the point between them goes high or low with the temperature — a thermostat, built out of two parts."],
+    pot: ['Potentiometer', "A resistor with a sliding contact — the wiper, the middle leg — part way along its length, so it is really two resistors back to back that always add up to the total you set. Move the wiper and one side grows while the other shrinks, which is how a volume knob or a dimmer works: read the voltage at the wiper and it is a number you can turn by hand, from one end of the range to the other. Wire only two legs — an end and the wiper — and it works as a single adjustable resistor instead, called a rheostat."],
     laser: ['Laser diode', 'An LED that lases: past a threshold current its light stops being a dim glow and becomes a beam. The resistor beside it sets how hard it is driven, and that decides what kind of laser it is — read the panel below. With no resistor it dies the instant it is switched on.'],
     relay: ['Relay', "An electromagnet that works a switch. Put 5 V across the coil (C+ high, C− low) and the middle contact COM swings from NC over to NO; take it away and it springs back. It is how a small signal switches something big, and how the first computers did their logic — every one of them was a room of these. Take the 5 V away, though, and the coil fires a brief kickback the way current came from; wired straight to a chip, an Arduino pin, or a transistor with no diode across the coil to catch it, that is what fries — a real reason relay circuits always carry one."],
     battery: ['Battery pack', 'A 9 V battery, sitting beside the board. Its + and − terminals go nowhere until you run leads: click a terminal, then the terminal of another device. 9 V is more than a chip or an LED will take — connect + to the Arduino’s VIN (which has a regulator behind it) and − to its GND, and never to the breadboard itself. Anything on the board that + reaches, directly or through a resistor under 470 Ω, is fried.'],
@@ -7572,6 +7675,31 @@ function renderBoardInspector(host) {
         oninput: (e) => { part.light = parseFloat(e.target.value); scheduleSave(); },
       }))));
     s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' }, 'Left is dark, right is full light. A laser aimed at this overrides the slider.'));
+  }
+  if (part.k === 'therm') {
+    s2.append(h('div', { class: 'row' }, h('label', {}, 'Heat'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'range', min: '0', max: '1', step: '0.05', value: String(part.heat === undefined ? 0.3 : part.heat),
+        oninput: (e) => { part.heat = parseFloat(e.target.value); scheduleSave(); },
+      }))));
+    s2.append(h('div', { class: 'kv' }, h('span', {}, 'Right now'), h('span', {}, fmtOhms(thermOhms(part)))));
+    s2.append(h('p', { class: 'muted', style: 'margin:0 0 6px' }, 'Left is cold, right is hot.'));
+  }
+  if (part.k === 'pot') {
+    s2.append(h('div', { class: 'row' }, h('label', {}, 'Total'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'number', min: '1', value: String(part.ohms || 10000), step: '100',
+        onchange: (e) => { part.ohms = Math.max(1, parseInt(e.target.value, 10) || 10000); S.bdirty = true; scheduleSave(); renderInspector(); },
+      }))));
+    s2.append(h('div', { class: 'row' }, h('label', {}, 'Wiper'),
+      h('span', { class: 'ctl' }, h('input', {
+        type: 'range', min: '0', max: '1', step: '0.02', value: String(part.pos === undefined ? 0.5 : part.pos),
+        oninput: (e) => { part.pos = parseFloat(e.target.value); S.bdirty = true; scheduleSave(); },
+      }))));
+    const total = Math.max(1, part.ohms || 10000), pos = clamp(part.pos === undefined ? 0.5 : part.pos, 0, 1);
+    s2.append(h('div', { class: 'kv' }, h('span', {}, 'Leg 1 → wiper'), h('span', {}, fmtOhms(total * pos))));
+    s2.append(h('div', { class: 'kv' }, h('span', {}, 'Wiper → leg 2'), h('span', {}, fmtOhms(total * (1 - pos)))));
+    s2.append(h('p', { class: 'muted', style: 'margin:6px 0 0' }, 'Legs, left to right: one end of the track, the wiper, the other end.'));
   }
   if (part.k === 'laser') {
     const CLASS_TXT = {
@@ -8630,8 +8758,12 @@ select it and fit a new one.</p>
   <li><b>Fuse</b> — a wire that blows, permanently, if 5 V and ground ever meet through it.</li>
   <li><b>Relay</b> — a coil that works a switch: 5 V across the coil moves COM from NC to NO.</li>
   <li><b>Toggle switch</b>, <b>buzzer</b> (it really beeps, quietly), <b>DC motor</b>.</li>
-  <li><b>Photoresistor</b> — its resistance follows a Light slider. With one fixed resistor it
-      is a voltage divider, so the point between them goes high or low with the light.</li>
+  <li><b>Photoresistor</b> and <b>thermistor</b> — resistors that follow a Light or a Heat
+      slider instead of staying fixed. With one ordinary resistor either makes a voltage
+      divider, so the point between them goes high or low with the light or the temperature.</li>
+  <li><b>Potentiometer</b> — a resistor with a sliding third leg, the wiper, part way along it.
+      Drag the Wiper slider and one side grows while the other shrinks, always adding up to the
+      total — a volume knob, or (using only two legs) an adjustable resistor on its own.</li>
   <li><b>Laser diode</b> — what the circuit around it does decides what kind of laser it is.
       The resistor beside it sets the class (2.2 kΩ: too weak to lase; 470–1000 Ω: Class 2;
       100–470 Ω: Class 3R; under 100 Ω: Class 3B); a steady drive makes a continuous beam and
