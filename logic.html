@@ -215,6 +215,16 @@ button,input,select{font:inherit;color:inherit}
 .pal-item.named .top{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px}
 .pal-item.named .sub{color:var(--ink-faint);font-size:11px;padding-left:16px}
 .pal-item.armed.named .sub{color:var(--ink-soft)}
+.pal-item.named .top .lvl{margin-left:auto}
+.pal-item.named .sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.palcat{margin:4px 0}
+.palcat>summary{display:flex;align-items:center;gap:8px;padding:7px 4px;cursor:pointer;list-style:none;border-bottom:1px solid var(--line-soft);font-size:12.5px}
+.palcat>summary::-webkit-details-marker{display:none}
+.palcat>summary::before{content:"▸";color:var(--ink-faint);font-size:11px}
+.palcat[open]>summary::before{content:"▾"}
+.palcat>summary .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+.palcat>summary .meta{margin-left:auto;color:var(--ink-faint);font-size:11.5px;font-family:var(--mono)}
+.palcat>.pal-item{margin-top:4px}
 .pal-item .gear{margin-left:2px;color:var(--ink-faint);font-size:11px}
 .pal-empty{color:var(--ink-faint);font-size:12px;padding:6px 2px}
 
@@ -3833,26 +3843,13 @@ function renderPalette() {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push({ type, part, name: part.name, color: GATE_COLORS[part.cat] });
   }
-  const mine = [], shelves = new Map();
+  const mine = [];
   for (const d of Object.values(LIB).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (d.lib) continue;                               // library chips are listed in full further down
     if (q && !d.name.toLowerCase().includes(q)) continue;
-    if (d.lib) {
-      if (d.lib.dep) continue;                         // only there because another chip uses it
-      const e = libEntry(d.lib.key);
-      (shelves.get(d.lib.cat) || shelves.set(d.lib.cat, []).get(d.lib.cat))
-        .push({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: { tip: e ? e.desc : '' } });
-    } else mine.push({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: CHIP_PART });
+    mine.push({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: CHIP_PART });
   }
   if (mine.length) groups.set('My chips', mine);
-  for (const cat of LIB_CAT_ORDER) if (shelves.has(cat)) groups.set('Library · ' + cat, shelves.get(cat));
-  /* Searching also turns up library chips you have not added yet; pressing one
-     adds it and picks it up. */
-  if (q) {
-    const more = LIBRARY.filter((e) => !(LIB[libId(e.key)] && LIB[libId(e.key)].lib && !LIB[libId(e.key)].lib.dep)
-      && (e.name + ' ' + e.cat + ' ' + e.key).toLowerCase().includes(q))
-      .map((e) => ({ type: 'CHIP', lazy: e.key, name: e.name, color: LIB_CAT_COLOR[e.cat], part: { tip: e.desc } }));
-    if (more.length) groups.set('In the library — not added yet', more);
-  }
 
   for (const [name, items] of groups) {
     host.append(h('div', { class: 'pal-group' }, h('h3', {}, name), h('span', { class: 'rule' })));
@@ -3872,12 +3869,48 @@ function renderPalette() {
     }
     host.append(wrap);
   }
+  paintLibraryShelves(host, q);
   if (!host.children.length) host.append(h('p', { class: 'pal-empty' }, 'Nothing matches that.'));
   if (!q) {
-    host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Library'), h('span', { class: 'rule' })));
-    host.append(h('div', { class: 'stack' },
-      h('button', { class: 'btn primary', style: 'width:100%', onclick: openLibraryBrowser }, 'Browse the built-in library…'),
+    host.append(h('div', { class: 'stack', style: 'margin-top:12px' },
+      h('button', { class: 'btn', style: 'width:100%', onclick: openLibraryBrowser }, 'Bigger view of the chip library…'),
       h('button', { class: 'btn', style: 'width:100%', onclick: openLibrary }, 'Manage my chips…')));
+  }
+}
+
+/* The whole chip library, always on show: one fold-out list per kind of chip,
+   every chip in it ready to pick up. Pressing one adds it to your parts the
+   first time and then picks it up, so there is nothing to install first. */
+const palOpen = new Set();
+function paintLibraryShelves(host, q) {
+  const match = (e) => !q || (e.name + ' ' + e.cat + ' ' + e.key + ' ' + e.desc).toLowerCase().includes(q);
+  const total = LIBRARY.filter(match).length;
+  if (!total) return;
+  host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Chip library'), h('span', { class: 'rule' }),
+    h('span', { class: 'muted' }, String(total))));
+  if (!q) host.append(h('p', { class: 'pal-empty' }, 'Ready-made chips, from single gates to whole computers. Open a list and pick one.'));
+  for (const cat of LIB_CAT_ORDER) {
+    const items = LIBRARY.filter((e) => e.cat === cat && match(e));
+    if (!items.length) continue;
+    const box = h('details', { class: 'palcat' });
+    if (q || palOpen.has(cat)) box.open = true;
+    box.addEventListener('toggle', () => { if (q) return; if (box.open) palOpen.add(cat); else palOpen.delete(cat); });
+    box.append(h('summary', {},
+      h('span', { class: 'sw', style: 'background:' + LIB_CAT_COLOR[cat] }), h('b', {}, cat), h('span', { class: 'meta' }, String(items.length))));
+    for (const e of items) {
+      const id = libId(e.key);
+      box.append(h('button', {
+        class: 'pal-item named', type: 'button', title: e.desc, 'data-type': 'CHIP', 'data-chip': id,
+        onpointerdown: (ev) => {
+          ev.preventDefault();
+          if (LIB[id] && S.armed && S.armed.type === 'CHIP' && S.armed.chip === id) { armPart(null); return; }
+          installLib(e.key); scheduleSave(); renderPalette(); armPart({ type: 'CHIP', chip: id });
+        },
+      }, h('span', { class: 'top' }, h('span', { class: 'sw', style: 'background:' + LIB_CAT_COLOR[cat] }), e.name,
+        h('span', { class: 'lvl lvl-' + e.level }, e.level)),
+      h('span', { class: 'sub' }, e.desc)));
+    }
+    host.append(box);
   }
 }
 
@@ -4929,7 +4962,7 @@ function leaveChipEdit(saved) {
 function openLibrary() {
   const body = h('div', {});
   body.append(h('div', { class: 'stack', style: 'margin-bottom:12px' },
-    h('button', { class: 'btn primary', onclick: () => { closeModal(); openLibraryBrowser(); } }, 'Browse the built-in library…')));
+    h('button', { class: 'btn primary', onclick: () => { closeModal(); openLibraryBrowser(); } }, 'Bigger view of the chip library…')));
   const chips = Object.values(LIB).sort((a, b) => a.name.localeCompare(b.name));
   if (!chips.length) {
     body.append(h('p', { class: 'muted' },
@@ -4954,7 +4987,7 @@ function openLibrary() {
         },
       }, 'Delete')));
   }
-  openModal('Chip library', body, h('button', { class: 'btn', onclick: closeModal }, 'Done'), true);
+  openModal('My chips', body, h('button', { class: 'btn', onclick: closeModal }, 'Done'), true);
 }
 
 /** Which circuits contain this chip (so deleting cannot orphan anything). */
@@ -5095,7 +5128,7 @@ function openMoreMenu() {
   const themeName = document.documentElement.dataset.theme || 'system';
   const body = h('div', {}, h('div', { class: 'cards' },
     card('Examples', 'Load a ready-made circuit.', openExamples),
-    card('Chip library', 'Place, edit, rename or delete your chips.', openLibrary),
+    card('My chips', 'Place, edit, rename or delete your chips.', openLibrary),
     card('File', 'Export or import a .json file; start over.', openFileMenu),
     card('Help', 'How everything works, and the shortcuts.', openHelp),
     card('Redo', 'Put back the last undone change.', redo),
@@ -6679,7 +6712,7 @@ const LIB_TWIN = {
 function addLibChip(e, quiet) {
   installLib(e.key);
   scheduleSave(); renderPalette();
-  if (!quiet) toast(`“${e.name}” is in your parts list, under Library · ${e.cat}.`);
+  if (!quiet) toast(`“${e.name}” is in your parts list, under Chip library › ${e.cat}.`);
 }
 
 function openLibraryBrowser() {
@@ -6790,9 +6823,9 @@ EDITOR_EXAMPLES.push(
   { name: 'Computer: TINY-4 Fibonacci', desc: 'The same gate-built processor, running a program that uses its memory to compute Fibonacci numbers.', make: () => ({ work: exComputer('computer4-fib', 'TINY-4 Fibonacci', 4, { hz: 4 }) }) },
   { name: 'Computer: TINY-8 Fibonacci', desc: 'An 8-bit processor with four registers and an ALU, counting out the Fibonacci numbers up to 233.', make: () => ({ work: exComputer('computer8-fib', 'TINY-8 Fibonacci', 8, { hz: 2, hlt: 9 }) }) },
   { name: 'Computer: TINY-8 Hello, World!', desc: 'The 8-bit processor prints a message to a terminal. Press Operate (top bar) to read it full size.', make: () => ({ work: exComputer('computer8-hello', 'TINY-8 Hello, World!', 8, { hz: 4, terminal: true }) }) },
-  { name: 'Library: adder with number entry', desc: 'Type two numbers, read their sum. An 8-bit ripple-carry adder from the chip library — open it to see the full adders.', make: () => ({ work: exLibAdder() }) },
-  { name: 'Library: decimal counter', desc: 'A two-digit decimal counter from the library, counting 00 to 99 on two hex digits.', make: () => ({ work: exLibCounter() }) },
-  { name: 'Library: ALU on the board', desc: 'Two numbers and an operation code (0 add, 1 subtract, 2 AND, 3 OR, 4 XOR, 5 NOT, 6 shift left, 7 shift right) into a gate-built 8-bit ALU, with its flags on the lamps.', make: () => ({ work: exLibAlu() }) },
+  { name: 'Adder with number entry', desc: 'Type two numbers, read their sum. An 8-bit ripple-carry adder from the chip library — open it to see the full adders.', make: () => ({ work: exLibAdder() }) },
+  { name: 'Decimal counter', desc: 'A two-digit decimal counter from the library, counting 00 to 99 on two hex digits.', make: () => ({ work: exLibCounter() }) },
+  { name: 'ALU on the board', desc: 'Two numbers and an operation code (0 add, 1 subtract, 2 AND, 3 OR, 4 XOR, 5 NOT, 6 shift left, 7 shift right) into a gate-built 8-bit ALU, with its flags on the lamps.', make: () => ({ work: exLibAlu() }) },
 );
 
 /* @@LIB-END@@ */
@@ -6850,7 +6883,7 @@ chips that need real power, plus a bare design board — is a separate app:
 </ul>
 
 <h4>The chip library — gates to a working computer</h4>
-<p>Press <b>Browse the built-in library…</b> at the bottom of the parts list for a shelf of
+<p>The <b>Chip library</b> at the bottom of the parts list is a shelf of
 ready-made chips, grouped by what they do and tagged <b>raw</b> (nothing but NANDs or NORs),
 <b>simple</b>, <b>intermediate</b>, <b>advanced</b> or <b>computer</b>. Gates built out of NANDs;
 latches and flip-flops; adders, subtractors, multipliers, comparators, shifters and a gate-built

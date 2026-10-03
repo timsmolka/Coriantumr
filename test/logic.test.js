@@ -2723,7 +2723,11 @@ const TESTS = String.raw`
       chipWorks === '00>00 01>10 10>10 11>01', chipWorks);
 
     /* ---- the chip library: browse it, add a chip, find one by searching ---- */
-    await clickSel('#pal-scroll .btn.primary');                 // "Browse the built-in library…"
+    /* the whole library is already listed in the parts panel, every chip, no adding first */
+    const shelfCount = await ev(`document.querySelectorAll('#pal-scroll details.palcat').length + '|' + document.querySelectorAll('#pal-scroll details.palcat .pal-item').length + '|' + LogicLab.LIBRARY.length`);
+    const sc = shelfCount.split('|');
+    report('the parts panel lists the whole chip library, by kind', +sc[0] >= 10 && sc[1] === sc[2], shelfCount);
+    await clickSel('#pal-scroll .stack .btn');                 // "Bigger view of the chip library…"
     await wait(300);
     const libRows = await ev(`document.querySelectorAll('#modal .librow').length`);
     report('the library browser lists every chip', libRows > 100 && libRows === (await ev(`LogicLab.LIBRARY.length`)), libRows);
@@ -2732,8 +2736,8 @@ const TESTS = String.raw`
     await clickSel('#modal .librow .btn.primary');                // "Add to parts"
     await wait(250);
     const shelf = await ev(`(()=>{const L=LogicLab; return Object.values(L.lib).some(d=>d.lib&&d.lib.key==='full-adder'&&!d.lib.dep)
-      + '|' + [...document.querySelectorAll('#pal-scroll .pal-group h3')].map(e=>e.textContent).join(',').includes('Library');})()`);
-    report('adding a library chip puts it in the parts list', shelf === 'true|true', shelf);
+      + '|' + [...document.querySelectorAll('#pal-scroll .pal-group h3')].map(e=>e.textContent).join(',').includes('library');})()`);
+    report('adding a library chip from the browser records it as added', shelf === 'true|true', shelf);
     await clickSel('#modal footer .btn');
     await wait(200);
     await ev(`(()=>{const q=document.querySelector('#pal-q'); q.value='cpu'; q.dispatchEvent(new Event('input')); return 1;})()`);
