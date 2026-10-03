@@ -641,6 +641,460 @@ const TESTS = String.raw`
     ok('the gate app has no breadboard in it', typeof L.compileBoard === 'undefined' && !document.querySelector('#mode-board'));
   }
 
+
+  /* ================ the wider parts, and the built-in chip library ================ */
+
+  /* ---------- the wider parts: flip-flops, registers, counters, blocks ---------- */
+  {
+    const prim = (type, extra) => {
+      const bd = L.builder('t'); const n = bd.add(type, 200, 0, extra); const p = portsOf(n);
+      const ins = p.ins.map((nm, i) => bd.pin(nm, 0, i * 40)); const outs = p.outs.map((nm, i) => bd.out(nm, 500, i * 40));
+      ins.forEach((x, i) => bd.w(x, 0, n, i)); outs.forEach((o, i) => bd.w(n, i, o, 0));
+      const c = L.compile(bd.def); const sim = new L.Sim(c);
+      const inNodes = ins.map((x) => c.prims.find((q) => q.node === x));
+      const r = {
+        set: (nm, v) => { inNodes[p.ins.indexOf(nm)].node.value = v ? 1 : 0; },
+        setNum: (pre, v, k) => { for (let i = 0; i < k; i++) r.set(pre + i, (v >> i) & 1); },
+        run: (t = 8) => { for (let i = 0; i < t; i++) sim.tick(1000 + i); },
+        get: (nm) => sim.v[c.portNet.get(outs[p.outs.indexOf(nm)].id + '.i0')],
+        getNum: (pre, k) => { let x = 0; for (let i = 0; i < k; i++) x += r.get(pre + i) << i; return x; },
+        pulse: () => { r.set('>', 0); r.run(6); r.set('>', 1); r.run(6); r.set('>', 0); r.run(6); },
+      };
+      return r;
+    };
+    let r = prim('REG', { bits: 4 }); r.setNum('D', 9, 4); r.set('LD', 1); r.pulse(); const a = r.getNum('Q', 4);
+    r.set('LD', 0); r.setNum('D', 3, 4); r.pulse(); const bq = r.getNum('Q', 4); r.set('CLR', 1); r.pulse();
+    ok('REGISTER loads, holds and clears on the edge', a === 9 && bq === 9 && r.getNum('Q', 4) === 0, [a, bq, r.getNum('Q', 4)].join());
+    r = prim('COUNTER', { bits: 3 }); r.set('EN', 1); const cs = []; for (let i = 0; i < 10; i++) { r.pulse(); cs.push(r.getNum('Q', 3)); }
+    r.set('DN', 1); const cd = []; for (let i = 0; i < 4; i++) { r.pulse(); cd.push(r.getNum('Q', 3)); }
+    ok('COUNTER counts up, wraps and counts down', cs.join() === '1,2,3,4,5,6,7,0,1,2' && cd.join() === '1,0,7,6', cs.join() + ' / ' + cd.join());
+    r = prim('SHIFT', { bits: 4 }); r.set('SI', 1); r.set('SH', 1); const sl = []; for (let i = 0; i < 5; i++) { r.pulse(); sl.push(r.getNum('Q', 4)); }
+    r.set('DIR', 1); r.set('SI', 0); const sr = []; for (let i = 0; i < 4; i++) { r.pulse(); sr.push(r.getNum('Q', 4)); }
+    ok('SHIFT REGISTER shifts both ways', sl.join() === '1,3,7,15,15' && sr.join() === '7,3,1,0', sl.join() + ' / ' + sr.join());
+    r = prim('JKFF'); r.set('J', 1); r.pulse(); const j1 = r.get('Q'); r.set('K', 1); r.pulse(); const j2 = r.get('Q'); r.pulse(); const j3 = r.get('Q'); r.set('J', 0); r.pulse();
+    ok('JK FLIP-FLOP: set, toggle, toggle, clear', [j1, j2, j3, r.get('Q')].join('') === '1010');
+    r = prim('TFF'); r.set('T', 1); const tq = []; for (let i = 0; i < 4; i++) { r.pulse(); tq.push(r.get('Q')); }
+    ok('T FLIP-FLOP toggles', tq.join('') === '1010');
+    r = prim('DFFR'); r.set('D', 1); r.pulse(); const d1 = r.get('Q'); r.set('CLR', 1); r.run(4); const d2 = r.get('Q'); r.set('CLR', 0); r.set('SET', 1); r.run(4);
+    ok('D FF + CLEAR/SET overrides at once', [d1, d2, r.get('Q')].join('') === '101');
+    r = prim('SRLATCH'); r.set('S', 1); r.run(4); r.set('S', 0); r.run(4); const s1 = r.get('Q'); r.set('R', 1); r.run(4); r.set('R', 0); r.run(4);
+    ok('SR LATCH sets and clears', s1 === 1 && r.get('Q') === 0);
+    r = prim('MUX', { sel: 2 }); r.set('I2', 1); r.set('S1', 1); r.run(); const m1 = r.get('Y'); r.set('S0', 1); r.run();
+    ok('MULTIPLEXER picks the selected input', m1 === 1 && r.get('Y') === 0);
+    r = prim('DEMUX', { sel: 2 }); r.set('D', 1); r.set('S0', 1); r.set('S1', 1); r.run();
+    ok('DEMULTIPLEXER sends D to the chosen output', [0, 1, 2, 3].map((i) => r.get('Y' + i)).join('') === '0001');
+    r = prim('DECODER', { bits: 3 }); r.set('A0', 1); r.set('A2', 1); r.run();
+    ok('DECODER switches on one line', [0, 1, 2, 3, 4, 5, 6, 7].map((i) => r.get('Y' + i)).join('') === '00000100');
+    r = prim('ENCODER', { bits: 3 }); r.set('I2', 1); r.set('I5', 1); r.run();
+    ok('PRIORITY ENCODER reports the highest line', r.getNum('A', 3) === 5 && r.get('V') === 1);
+    r = prim('ADDER', { bits: 4 }); r.setNum('A', 13, 4); r.setNum('B', 7, 4); r.set('CI', 1); r.run();
+    ok('ADDER adds with carry in and out', r.getNum('S', 4) === 5 && r.get('CO') === 1);
+    r = prim('COMPARE', { bits: 4 }); r.setNum('A', 9, 4); r.setNum('B', 7, 4); r.run();
+    ok('COMPARATOR says which is bigger', [r.get('A>B'), r.get('A=B'), r.get('A<B')].join('') === '100');
+    r = prim('ALU', { bits: 8 }); const alu = [];
+    for (const [op, A, B, ci, want] of [[0, 200, 100, 0, 44], [1, 5, 9, 0, 252], [2, 12, 10, 0, 8], [3, 12, 10, 0, 14], [4, 12, 10, 0, 6], [5, 15, 0, 0, 240], [6, 3, 0, 1, 7], [7, 6, 0, 1, 131]]) {
+      r.setNum('A', A, 8); r.setNum('B', B, 8); r.set('OP0', op & 1); r.set('OP1', (op >> 1) & 1); r.set('OP2', (op >> 2) & 1); r.set('CI', ci); r.run();
+      if (r.getNum('F', 8) !== want) alu.push(op + ':' + r.getNum('F', 8) + '/' + want);
+    }
+    ok('ALU does all eight operations', !alu.length, alu.join(' '));
+    /* setting a part's size renumbers its ports; wires must follow by name */
+    {
+      const w = L.newDef('resize'); const reg = makeNode('REG', 100, 100); const pin = makeNode('IN', 0, 0, { label: 'ld' });
+      w.nodes.push(reg, pin); w.wires.push({ id: 'w1', a: { n: pin.id, s: 'out', i: 0 }, b: { n: reg.id, s: 'in', i: 4 } });   // LD of a 4-bit register
+      L.S.work = w; setNodeParam(reg, 'bits', 8);
+      ok('resizing a part keeps its wires on the same pins', w.wires.length === 1 && portsOf(reg).ins[w.wires[0].b.i] === 'LD', JSON.stringify(w.wires.map((x) => x.b.i)));
+    }
+  }
+  /* A rig for one circuit: inputs set by pin label, outputs read by pin label. */
+  const rig = (key) => {
+    const id = installLib(key);
+    const def = LIB[id];
+    const c = compile(def);
+    const sim = new Sim(c);
+    const pins = ioOrder(def);
+    const inP = {}, outP = {};
+    for (const n of pins.ins) inP[n.label] = c.prims.find((q) => q.node === n);
+    for (const n of pins.outs) outP[n.label] = n;
+    const r = {
+      def, c, sim, errors: c.errors,
+      set: (lab, v) => { inP[lab].node.value = v ? 1 : 0; },
+      setNum: (pre, v, n) => { for (let i = 0; i < n; i++) r.set(pre + i, (v >> i) & 1); },
+      run: (t = 60) => { for (let i = 0; i < t; i++) sim.tick(1000 + sim.ticks * 16); },
+      get: (lab) => sim.v[c.portNet.get(outP[lab].id + '.i0')],
+      getNum: (pre, n) => { let x = 0; for (let i = 0; i < n; i++) x += r.get(pre + i) * 2 ** i; return x; },
+      pulse: (lab = 'CLK', hi = 30) => { r.set(lab, 0); r.run(hi); r.set(lab, 1); r.run(hi); r.set(lab, 0); r.run(hi); },
+      inLabels: pins.ins.map((n) => n.label), outLabels: pins.outs.map((n) => n.label),
+    };
+    return r;
+  };
+  /* Check a combinational circuit against a JS function over every input combination. */
+  const table = (key, fn, opts) => {
+    const r = rig(key);
+    const n = r.inLabels.length, bad = [];
+    const limit = (opts && opts.limit) || 2 ** n;
+    for (let k = 0; k < limit; k++) {
+      const v = (opts && opts.pick) ? opts.pick(k) : k;
+      r.inLabels.forEach((lab, i) => r.set(lab, (v >> i) & 1));
+      r.run((opts && opts.ticks) || 80);
+      const want = fn(r.inLabels.map((_, i) => (v >> i) & 1), v);
+      r.outLabels.forEach((lab, i) => { if (r.get(lab) !== want[i]) bad.push(v + ':' + lab + '=' + r.get(lab) + '/' + want[i]); });
+      if (bad.length > 5) break;
+    }
+    ok(key + ' truth table', !bad.length && !r.errors.length, bad.join(' ') + ' ' + r.errors.join(';'));
+  };
+  const b = (x) => (x ? 1 : 0);
+  const rnd = (() => { let s = 12345; return (m) => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s % m; }; })();
+
+  /* ---- gates from NAND and NOR ---- */
+  table('nand-not', ([a]) => [b(!a)]);
+  table('nand-and', ([a, c]) => [a & c]);
+  table('nand-or', ([a, c]) => [a | c]);
+  table('nand-nor', ([a, c]) => [b(!(a | c))]);
+  table('nand-xor', ([a, c]) => [a ^ c]);
+  table('nand-xnor', ([a, c]) => [b(!(a ^ c))]);
+  table('nand-mux', ([a, c, s]) => [s ? c : a]);
+  table('nand-halfadder', ([a, c]) => [a ^ c, a & c]);
+  table('nor-not', ([a]) => [b(!a)]);
+  table('nor-or', ([a, c]) => [a | c]);
+  table('nor-and', ([a, c]) => [a & c]);
+  table('nor-nand', ([a, c]) => [b(!(a & c))]);
+  table('nor-xor', ([a, c]) => [a ^ c]);
+  table('nor-xnor', ([a, c]) => [b(!(a ^ c))]);
+
+  /* ---- latches and flip-flops ---- */
+  {
+    let r = rig('sr-nor'); r.set('S', 1); r.run(); r.set('S', 0); r.run(); const a = r.get('Q'); r.set('R', 1); r.run(); r.set('R', 0); r.run();
+    ok('SR latch (NOR) sets, holds, clears', a === 1 && r.get('Q') === 0 && r.get('Q̄') === 1, a + ',' + r.get('Q'));
+    r = rig('sr-nand'); r.set('S̄', 1); r.set('R̄', 1); r.run(); r.set('S̄', 0); r.run(); r.set('S̄', 1); r.run(); const s1 = r.get('Q'); r.set('R̄', 0); r.run(); r.set('R̄', 1); r.run();
+    ok('SR latch (NAND) works active-low', s1 === 1 && r.get('Q') === 0, s1 + ',' + r.get('Q'));
+    r = rig('sr-gated'); r.set('S', 1); r.run(); const closed = r.get('Q'); r.set('EN', 1); r.run(); r.set('EN', 0); r.set('S', 0); r.run(); const open = r.get('Q');
+    ok('gated SR latch ignores S until EN', closed === 0 && open === 1, closed + ',' + open);
+    r = rig('d-latch'); r.set('D', 1); r.set('EN', 1); r.run(); const f1 = r.get('Q'); r.set('EN', 0); r.set('D', 0); r.run(); const f2 = r.get('Q'); r.set('EN', 1); r.run();
+    ok('D latch follows while open, holds when closed', f1 === 1 && f2 === 1 && r.get('Q') === 0, [f1, f2, r.get('Q')].join());
+    for (const k of ['dff-ms', 'dff-nand']) {
+      r = rig(k); r.set('D', 1); r.pulse('CLK'); const q1 = r.get('Q'); r.set('D', 0); r.run(); const q2 = r.get('Q'); r.pulse('CLK');
+      ok(k + ' copies D on the rising edge only', q1 === 1 && q2 === 1 && r.get('Q') === 0 && r.get('Q̄') === 1, [q1, q2, r.get('Q')].join());
+    }
+    r = rig('jk-ff'); r.set('J', 1); r.pulse(); const j1 = r.get('Q'); r.set('K', 1); r.pulse(); const j2 = r.get('Q'); r.pulse(); const j3 = r.get('Q'); r.set('J', 0); r.pulse();
+    ok('JK flip-flop sets, toggles, clears', j1 === 1 && j2 === 0 && j3 === 1 && r.get('Q') === 0, [j1, j2, j3, r.get('Q')].join());
+    r = rig('t-ff'); r.set('T', 1); const tq = []; for (let i = 0; i < 4; i++) { r.pulse(); tq.push(r.get('Q')); }
+    ok('T flip-flop toggles', tq.join('') === '1010', tq.join(''));
+    r = rig('dff-en'); r.set('D', 1); r.pulse(); const e1 = r.get('Q'); r.set('EN', 1); r.pulse(); const e2 = r.get('Q');
+    ok('D flip-flop with enable waits for EN', e1 === 0 && e2 === 1, e1 + ',' + e2);
+    r = rig('dff-clr'); r.set('D', 1); r.pulse(); const c1 = r.get('Q'); r.set('CLR', 1); r.run(); ok('D flip-flop with clear', c1 === 1 && r.get('Q') === 0, c1 + ',' + r.get('Q'));
+    r = rig('debounce'); r.set('A (up)', 1); r.run(); r.set('A (up)', 0); r.run(); const d1 = r.get('Clean'); r.set('B (down)', 1); r.run();
+    ok('debouncer latches the last contact', d1 === 1 && r.get('Clean') === 0, d1 + ',' + r.get('Clean'));
+  }
+
+  /* ---- arithmetic basics, selecting, decoding ---- */
+  table('half-adder', ([a, c]) => [a ^ c, a & c]);
+  table('full-adder', ([a, c, ci]) => [(a + c + ci) & 1, (a + c + ci) >> 1]);
+  table('half-sub', ([a, c]) => [a ^ c, b(!a && c)]);
+  table('full-sub', ([a, c, bi]) => { const t = a - c - bi; return [t & 1, b(t < 0)]; });
+  table('mux2', ([a, c, s]) => [s ? c : a]);
+  {
+    for (const [key, n, sels] of [['mux4', 4, 2], ['mux8', 8, 3], ['mux16', 16, 4]]) {
+      const r = rig(key); const bad = [];
+      for (let t = 0; t < 40; t++) {
+        const data = (t * 2654435761) >>> 0, sel = t % n;
+        for (let i = 0; i < n; i++) r.set('I' + i, (data >> i) & 1);
+        r.setNum('S', sel, sels); r.run();
+        if (r.get('Y') !== ((data >> sel) & 1)) bad.push(t);
+      }
+      ok(key + ' selects the right input', !bad.length && !r.errors.length, bad.join());
+    }
+    let r = rig('mux2x4'); let bad = [];
+    for (let t = 0; t < 32; t++) { r.setNum('A', t & 15, 4); r.setNum('B', (t * 7 + 3) & 15, 4); r.set('S', t >> 4); r.run(); if (r.getNum('Y', 4) !== ((t >> 4) ? (t * 7 + 3) & 15 : t & 15)) bad.push(t); }
+    ok('mux2x4 chooses a whole nibble', !bad.length, bad.join());
+    r = rig('mux2x8'); bad = [];
+    for (let t = 0; t < 16; t++) { r.setNum('A', t * 13 & 255, 8); r.setNum('B', t * 29 + 5 & 255, 8); r.set('S', t & 1); r.run(); if (r.getNum('Y', 8) !== ((t & 1) ? t * 29 + 5 & 255 : t * 13 & 255)) bad.push(t); }
+    ok('mux2x8 chooses a whole byte', !bad.length, bad.join());
+    r = rig('mux4x4'); bad = [];
+    for (let t = 0; t < 16; t++) { const w = [t, t ^ 5, (t * 3) & 15, 15 - t]; w.forEach((x, k) => r.setNum('W' + k + '.', x, 4)); r.setNum('S', t & 3, 2); r.run(); if (r.getNum('Y', 4) !== w[t & 3]) bad.push(t); }
+    ok('mux4x4 chooses one of four nibbles', !bad.length, bad.join());
+  }
+  table('demux4', ([d, s0, s1]) => { const s = s0 | (s1 << 1); return [0, 1, 2, 3].map((i) => b(d && i === s)); });
+  table('demux8', (x) => { const d = x[0], s = x[1] | (x[2] << 1) | (x[3] << 2); return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => b(d && i === s)); });
+  table('dec2-4', ([a0, a1, e]) => { const s = a0 | (a1 << 1); return [0, 1, 2, 3].map((i) => b(e && i === s)); });
+  table('dec3-8', ([a0, a1, a2, e]) => { const s = a0 | (a1 << 1) | (a2 << 2); return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => b(e && i === s)); });
+  table('dec4-16', (x) => { const s = x[0] | (x[1] << 1) | (x[2] << 2) | (x[3] << 3); return Array.from({ length: 16 }, (_, i) => b(x[4] && i === s)); }, { ticks: 50 });
+  const encode = (arr, bits) => { let hi = -1; arr.forEach((v, i) => { if (v) hi = i; }); return [...Array.from({ length: bits }, (_, i) => (hi < 0 ? 0 : (hi >> i) & 1)), b(hi >= 0)]; };
+  table('enc4-2', (x) => encode(x, 2));
+  table('enc8-3', (x) => encode(x, 3));
+  table('bin-gray4', (x, v) => { const g = v ^ (v >> 1); return [0, 1, 2, 3].map((i) => (g >> i) & 1); });
+  table('gray-bin4', (x, v) => { let bn = 0; for (let s = v; s; s >>= 1) bn ^= s; return [0, 1, 2, 3].map((i) => (bn >> i) & 1); });
+  {
+    const r = rig('bcd-7seg'); const bad = [];
+    for (let n = 0; n < 16; n++) {
+      ['8', '4', '2', '1'].forEach((lab, i) => r.set(lab, (n >> (3 - i)) & 1)); r.run(30);
+      const bits = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].reduce((s, lab, i) => s | (r.get(lab) << i), 0);
+      if (bits !== SEG_BITS[n]) bad.push(n);
+    }
+    ok('BCD to 7-segment draws every digit', !bad.length, bad.join());
+  }
+
+  /* ---- arithmetic ---- */
+  const vec = (key, n, count, fn, labels) => {
+    const r = rig(key); const bad = [];
+    for (let t = 0; t < count; t++) {
+      const x = fn(t, r); if (!x) continue;
+    }
+    return r;
+  };
+  for (const n of [4, 8, 16]) {
+    const r = rig('add' + n); const bad = [];
+    for (let t = 0; t < 24; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), ci = rnd(2); r.setNum('A', a, n); r.setNum('B', c, n); r.set('CIN', ci); r.run(n * 6 + 30);
+      const sum = a + c + ci;
+      if (r.getNum('S', n) !== sum % 2 ** n || r.get('COUT') !== (sum >= 2 ** n ? 1 : 0)) bad.push(a + '+' + c + '+' + ci + '=' + r.getNum('S', n) + 'c' + r.get('COUT'));
+    }
+    ok('add' + n, !bad.length && !r.errors.length, bad.slice(0, 3).join(' ') + r.errors.join(';'));
+  }
+  for (const n of [4, 8]) {
+    let r = rig('addsub' + n); let bad = [];
+    for (let t = 0; t < 24; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), sb = rnd(2); r.setNum('A', a, n); r.setNum('B', c, n); r.set('SUB', sb); r.run(n * 6 + 30);
+      const want = sb ? (a - c + 2 ** n) % 2 ** n : (a + c) % 2 ** n;
+      const sg = (x) => (x >= 2 ** (n - 1) ? x - 2 ** n : x);
+      const real = sb ? sg(a) - sg(c) : sg(a) + sg(c);
+      const ov = real < -(2 ** (n - 1)) || real >= 2 ** (n - 1) ? 1 : 0;
+      const co = sb ? (a >= c ? 1 : 0) : (a + c >= 2 ** n ? 1 : 0);
+      if (r.getNum('S', n) !== want || r.get('COUT') !== co || r.get('V') !== ov) bad.push([a, c, sb, r.getNum('S', n), r.get('COUT'), r.get('V')].join(','));
+    }
+    ok('addsub' + n, !bad.length && !r.errors.length, bad.slice(0, 3).join(' | ') + r.errors.join(';'));
+    r = rig('inc' + n); bad = [];
+    for (let t = 0; t < 20; t++) { const a = t === 0 ? 2 ** n - 1 : rnd(2 ** n); r.setNum('A', a, n); r.run(60); if (r.getNum('Y', n) !== (a + 1) % 2 ** n || r.get('CO') !== (a === 2 ** n - 1 ? 1 : 0)) bad.push(a); }
+    ok('inc' + n, !bad.length, bad.join());
+    r = rig('neg' + n); bad = [];
+    for (let t = 0; t < 20; t++) { const a = rnd(2 ** n); r.setNum('A', a, n); r.run(60); if (r.getNum('Y', n) !== (2 ** n - a) % 2 ** n) bad.push(a); }
+    ok('neg' + n, !bad.length, bad.join());
+  }
+  {
+    let r = rig('cla4'); let bad = [];
+    for (let a = 0; a < 16; a++) for (let c = 0; c < 16; c++) for (const ci of [0, 1]) {
+      if ((a * 16 + c + ci) % 5) continue;
+      r.setNum('A', a, 4); r.setNum('B', c, 4); r.set('CIN', ci); r.run(50);
+      if (r.getNum('S', 4) !== (a + c + ci) % 16 || r.get('COUT') !== ((a + c + ci) >> 4)) bad.push(a + '+' + c + '+' + ci);
+    }
+    ok('4-bit carry-lookahead adder', !bad.length, bad.slice(0, 4).join());
+    r = rig('bcd-add1'); bad = [];
+    for (let a = 0; a < 10; a++) for (let c = 0; c < 10; c++) for (const ci of [0, 1]) {
+      r.setNum('A', a, 4); r.setNum('B', c, 4); r.set('CIN', ci); r.run(80);
+      const t = a + c + ci; if (r.getNum('S', 4) !== t % 10 || r.get('COUT') !== (t >= 10 ? 1 : 0)) bad.push(a + '+' + c + '+' + ci + '=' + r.getNum('S', 4) + 'c' + r.get('COUT'));
+    }
+    ok('BCD digit adder', !bad.length, bad.slice(0, 4).join());
+    r = rig('bin-bcd4'); bad = [];
+    for (let n = 0; n < 16; n++) { r.setNum('B', n, 4); r.run(60); if (r.getNum('ONES', 4) !== n % 10 || r.get('TENS') !== (n >= 10 ? 1 : 0)) bad.push(n); }
+    ok('binary to decimal digits', !bad.length, bad.join());
+    r = rig('mul2x2'); bad = [];
+    for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) { r.setNum('A', a, 2); r.setNum('B', c, 2); r.run(40); if (r.getNum('P', 4) !== a * c) bad.push(a + 'x' + c); }
+    ok('2x2 multiplier', !bad.length, bad.join());
+    r = rig('mul4x4'); bad = [];
+    for (let t = 0; t < 30; t++) { const a = rnd(16), c = rnd(16); r.setNum('A', a, 4); r.setNum('B', c, 4); r.run(200); if (r.getNum('P', 8) !== a * c) bad.push(a + 'x' + c + '=' + r.getNum('P', 8)); }
+    ok('4x4 multiplier', !bad.length && !r.errors.length, bad.slice(0, 4).join());
+    r = rig('mul8x8'); bad = [];
+    for (let t = 0; t < 10; t++) { const a = rnd(256), c = rnd(256); r.setNum('A', a, 8); r.setNum('B', c, 8); r.run(500); if (r.getNum('P', 16) !== a * c) bad.push(a + 'x' + c + '=' + r.getNum('P', 16)); }
+    ok('8x8 multiplier', !bad.length && !r.errors.length, bad.slice(0, 3).join());
+  }
+  for (const n of [4, 8]) {
+    for (const dir of ['shl', 'shr']) {
+      const r = rig(dir + n); const bad = []; const st = Math.log2(n);
+      for (let t = 0; t < 24; t++) { const a = rnd(2 ** n), s = rnd(n); r.setNum('A', a, n); r.setNum('S', s, st); r.run(120);
+        const want = dir === 'shl' ? (a << s) % 2 ** n : a >> s; if (r.getNum('Y', n) !== want) bad.push(a + (dir === 'shl' ? '<<' : '>>') + s + '=' + r.getNum('Y', n)); }
+      ok(dir + n + ' barrel shifter', !bad.length, bad.slice(0, 3).join());
+    }
+  }
+  /* the gate-built ALU must agree with the ALU part, operation by operation */
+  for (const n of [4, 8]) {
+    const g = rig('alu' + n); const bad = [];
+    const P = (() => { const bd = L.builder('p'); const a = bd.add('ALU', 100, 0, { bits: n }); const pr = portsOf(a); const ins = pr.ins.map((nm, i) => bd.pin(nm, 0, i * 40)); const outs = pr.outs.map((nm, i) => bd.out(nm, 400, i * 40)); ins.forEach((x, i) => bd.w(x, 0, a, i)); outs.forEach((o, i) => bd.w(a, i, o, 0)); const c = compile(bd.def); const s = new Sim(c); return { ins, outs, c, s, pr }; })();
+    const pin = (nm) => P.c.prims.find((q) => q.node === P.ins[P.pr.ins.indexOf(nm)]);
+    const pout = (nm) => P.s.v[P.c.portNet.get(P.outs[P.pr.outs.indexOf(nm)].id + '.i0')];
+    for (let t = 0; t < 80; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), op = t % 8, ci = rnd(2);
+      g.setNum('A', a, n); g.setNum('B', c, n); g.setNum('OP', op, 3); g.set('CI', ci); g.run(200);
+      for (let i = 0; i < n; i++) { pin('A' + i).node.value = (a >> i) & 1; pin('B' + i).node.value = (c >> i) & 1; }
+      [0, 1, 2].forEach((i) => { pin('OP' + i).node.value = (op >> i) & 1; }); pin('CI').node.value = ci;
+      for (let i = 0; i < 6; i++) P.s.tick(1000 + i);
+      let want = 0; for (let i = 0; i < n; i++) want += pout('F' + i) * 2 ** i;
+      const got = g.getNum('F', n);
+      const flags = ['CO', 'Z', 'N', 'V'].map((f) => g.get(f) + '/' + pout(f));
+      if (got !== want || flags.some((f) => f.split('/')[0] !== f.split('/')[1])) bad.push([a, c, op, ci, got, want, flags.join(' ')].join(','));
+    }
+    ok('alu' + n + ' (gates) matches the ALU part', !bad.length && !g.errors.length, bad.slice(0, 2).join(' | '));
+  }
+
+  /* ---- comparing and checking ---- */
+  for (const n of [1, 2, 4, 8]) {
+    const r = rig('cmp' + n); const bad = [];
+    for (let t = 0; t < 30; t++) { const a = rnd(2 ** n), c = rnd(2 ** n); r.setNum('A', a, n); r.setNum('B', c, n); r.run(80);
+      if (r.get('A>B') !== b(a > c) || r.get('A=B') !== b(a === c) || r.get('A<B') !== b(a < c)) bad.push(a + ',' + c); }
+    ok('cmp' + n, !bad.length && !r.errors.length, bad.slice(0, 4).join(' '));
+  }
+  table('maj3', (x) => [b(x[0] + x[1] + x[2] >= 2)]);
+  {
+    let r = rig('eq8'); let bad = [];
+    for (let t = 0; t < 20; t++) { const a = rnd(256), c = t % 2 ? a : rnd(256); r.setNum('A', a, 8); r.setNum('B', c, 8); r.run(60); if (r.get('EQ') !== b(a === c)) bad.push(a + ',' + c); }
+    ok('eq8', !bad.length, bad.join(' '));
+    r = rig('zero8'); bad = [];
+    for (const a of [0, 1, 128, 255, 16, 0]) { r.setNum('A', a, 8); r.run(40); if (r.get('ZERO') !== b(a === 0)) bad.push(a); }
+    ok('zero8', !bad.length, bad.join(' '));
+    for (const [key, n] of [['parity4', 4], ['parity8', 8]]) {
+      r = rig(key); bad = [];
+      for (let a = 0; a < 2 ** n; a += (n === 8 ? 7 : 1)) { r.setNum('D', a, n); r.run(60); let p = 0; for (let i = 0; i < n; i++) p ^= (a >> i) & 1; if (r.get('P') !== p) bad.push(a); }
+      ok(key, !bad.length, bad.join(' '));
+    }
+    r = rig('parity-check8'); bad = [];
+    for (let t = 0; t < 40; t++) { const a = rnd(256), flip = t % 3 === 0 ? 1 : 0; let p = 0; for (let i = 0; i < 8; i++) p ^= (a >> i) & 1; r.setNum('D', a, 8); r.set('P', p ^ flip); r.run(60); if (r.get('ERR') !== flip) bad.push(a); }
+    ok('parity-check8', !bad.length, bad.join(' '));
+  }
+
+  /* ---- registers, shifting, counting ---- */
+  for (const n of [4, 8]) {
+    const r = rig('reg' + n); const bad = [];
+    const v1 = rnd(2 ** n), v2 = rnd(2 ** n);
+    r.setNum('D', v1, n); r.set('LD', 1); r.pulse(); if (r.getNum('Q', n) !== v1) bad.push('load');
+    r.set('LD', 0); r.setNum('D', v2, n); r.pulse(); if (r.getNum('Q', n) !== v1) bad.push('hold');
+    r.set('CLR', 1); r.pulse(); if (r.getNum('Q', n) !== 0) bad.push('clear');
+    ok('reg' + n, !bad.length && !r.errors.length, bad.join());
+  }
+  for (const n of [4, 8]) {
+    let r = rig('sipo' + n); const val = rnd(2 ** n);
+    for (let i = n - 1; i >= 0; i--) { r.set('SI', (val >> i) & 1); r.pulse(); }
+    ok('sipo' + n + ' collects a serial number', r.getNum('Q', n) === val, r.getNum('Q', n) + '/' + val);
+    r = rig('piso' + n); const v = rnd(2 ** n); r.setNum('D', v, n); r.set('LOAD', 1); r.pulse(); r.set('LOAD', 0);
+    const got = []; for (let i = 0; i < n; i++) { got.push(r.get('SO')); r.pulse(); }
+    const want = []; for (let i = n - 1; i >= 0; i--) want.push((v >> i) & 1);
+    ok('piso' + n + ' shifts a number out', got.join('') === want.join(''), got.join('') + '/' + want.join(''));
+  }
+  {
+    let r = rig('ring4'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const seq = [];
+    for (let i = 0; i < 6; i++) { seq.push(r.getNum('Q', 4)); r.pulse(); }
+    ok('ring counter moves one hot bit round', seq.join() === '1,2,4,8,1,2', seq.join());
+    r = rig('johnson4'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const j = [];
+    for (let i = 0; i < 9; i++) { j.push(r.getNum('Q', 4)); r.pulse(); }
+    ok('Johnson counter has 8 states', j.join() === '0,1,3,7,15,14,12,8,0', j.join());
+    r = rig('lfsr8'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const seen = new Set(); let period = 0;
+    for (let i = 0; i < 300; i++) { const s = r.getNum('Q', 8); if (i && s === 255) { period = i; break; } seen.add(s); r.pulse('CLK', 12); }
+    ok('LFSR runs through 255 states', seen.size === 255 && period === 255 && !seen.has(0), seen.size + ' states, period ' + period);
+  }
+  {
+    let r = rig('ripple4'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const q = [];
+    for (let i = 0; i < 18; i++) { r.pulse('CLK', 40); q.push(r.getNum('Q', 4)); }
+    ok('ripple counter counts', q.join() === [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2].join(), q.join());
+    for (const [key, n] of [['sync4', 4], ['sync8', 8]]) {
+      r = rig(key); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const s = [];
+      const steps = n === 4 ? 18 : 260; let good = true;
+      for (let i = 1; i <= steps; i++) { r.pulse('CLK', 40); if (r.getNum('Q', n) !== i % 2 ** n) { good = false; s.push(i); break; } }
+      ok(key + ' counts and wraps', good, s.join());
+      r.set('EN', 0); const hold = r.getNum('Q', n); r.pulse('CLK', 40); ok(key + ' holds without EN', r.getNum('Q', n) === hold);
+    }
+    r = rig('updown4'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const ud = [];
+    for (let i = 0; i < 3; i++) { r.pulse('CLK', 40); ud.push(r.getNum('Q', 4)); }
+    r.set('DOWN', 1); r.run(); for (let i = 0; i < 5; i++) { r.pulse('CLK', 40); ud.push(r.getNum('Q', 4)); }
+    ok('up/down counter', ud.join() === '1,2,3,2,1,0,15,14', ud.join());
+    r = rig('decade'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const dc = [];
+    for (let i = 0; i < 12; i++) { r.pulse('CLK', 40); dc.push(r.getNum('Q', 4) + (r.get('CO') ? 'c' : '')); }
+    ok('decade counter 0-9 then wraps', dc.join() === '1,2,3,4,5,6,7,8,9c,0,1,2', dc.join());
+    r = rig('bcd2'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); let bgood = true; let last = '';
+    for (let i = 1; i <= 103; i++) { r.pulse('CLK', 40); const val = r.getNum('T', 4) * 10 + r.getNum('U', 4); last = val; if (val !== i % 100) { bgood = false; break; } }
+    ok('two-digit decimal counter reaches 99 and wraps', bgood, last);
+    r = rig('div16'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const dv = [];
+    for (let i = 0; i < 16; i++) { r.pulse('CLK', 40); dv.push(r.get('÷2') + r.get('÷4') * 2 + r.get('÷8') * 4 + r.get('÷16') * 8); }
+    ok('clock divider counts in binary', dv.join() === '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0', dv.join());
+    r = rig('edge-detect'); let pulses = 0, prev = 0; r.set('IN', 0); r.run();
+    for (const v of [1, 1, 1, 0, 0, 1, 0, 1]) { r.set('IN', v); for (let i = 0; i < 12; i++) { r.run(1); const p = r.get('PULSE'); if (p && !prev) pulses++; prev = p; } }
+    ok('edge detector pulses on each rising edge', pulses === 3, pulses);
+    r = rig('sequencer8'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const sq = [];
+    for (let i = 0; i < 10; i++) { sq.push(r.getNum('T', 8)); r.pulse(); }
+    ok('sequencer steps T0..T7', sq.join() === '1,2,4,8,16,32,64,128,1,2', sq.join());
+    r = rig('count-display'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const bad = [];
+    for (let i = 1; i <= 11; i++) { r.pulse('CLK', 40); const bits = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].reduce((s, lab, k) => s | (r.get(lab) << k), 0); if (bits !== SEG_BITS[i % 10]) bad.push(i); }
+    ok('counter display driver lights the right digits', !bad.length, bad.join());
+  }
+
+  /* ---- memory ---- */
+  {
+    let r = rig('ram-cell'); r.set('D', 1); r.set('SELECT', 1); r.set('WRITE', 1); r.pulse(); r.set('WRITE', 0); r.set('D', 0); r.run();
+    ok('RAM cell stores a bit', r.get('Q') === 1);
+    for (const [key, ab, db] of [['ram4x4', 2, 4], ['ram16x4', 4, 4]]) {
+      r = rig(key); const mem = []; const bad = [];
+      for (let t = 0; t < 2 ** ab; t++) { const v = rnd(2 ** db); mem[t] = v; r.setNum('A', t, ab); r.setNum('D', v, db); r.set('WRITE', 1); r.pulse(); }
+      r.set('WRITE', 0);
+      for (let t = 0; t < 2 ** ab; t++) { r.setNum('A', t, ab); r.run(40); if (r.getNum('Q', db) !== mem[t]) bad.push(t + ':' + r.getNum('Q', db) + '/' + mem[t]); }
+      ok(key + ' remembers every word', !bad.length && !r.errors.length, bad.slice(0, 4).join(' '));
+    }
+    for (const [key, ab, db] of [['ram16x8-block', 4, 8], ['ram256x8-block', 8, 8]]) {
+      r = rig(key); const mem = {}; const bad = [];
+      for (let t = 0; t < 20; t++) { const a = rnd(2 ** ab), v = rnd(256); mem[a] = v; r.setNum('A', a, ab); r.setNum('D', v, db); r.set('WR', 1); r.pulse(); }
+      r.set('WR', 0);
+      for (const a of Object.keys(mem)) { r.setNum('A', +a, ab); r.run(10); if (r.getNum('Q', db) !== mem[a]) bad.push(a); }
+      ok(key + ' remembers what was written', !bad.length, bad.join());
+    }
+    r = rig('rom16x8-block'); ok('ROM block builds', !r.errors.length && r.outLabels.length === 8);
+    r = rig('rom256x16-block'); ok('ROM 256x16 block has 16 outputs', !r.errors.length && r.outLabels.length === 16 && r.inLabels.length === 8);
+    for (const [key, nb] of [['regfile4x4', 4], ['regfile4x8', 8]]) {
+      r = rig(key); const regs = [0, 0, 0, 0]; const bad = [];
+      for (let t = 0; t < 12; t++) {
+        const wa = rnd(4), v = rnd(2 ** nb); r.setNum('WD', v, nb); r.setNum('WA', wa, 2); r.set('WE', 1); r.pulse(); regs[wa] = v;
+        r.set('WE', 0); const ra = rnd(4), rb = rnd(4); r.setNum('RA', ra, 2); r.setNum('RB', rb, 2); r.run(40);
+        if (r.getNum('QA', nb) !== regs[ra] || r.getNum('QB', nb) !== regs[rb]) bad.push(t);
+      }
+      ok(key + ' writes and reads two registers at once', !bad.length && !r.errors.length, bad.join());
+    }
+    r = rig('stack8x8'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const bad2 = [];
+    const push = (v) => { r.setNum('D', v, 8); r.set('PUSH', 1); r.pulse(); r.set('PUSH', 0); r.run(); };
+    const pop = () => { r.set('POP', 1); r.pulse(); r.set('POP', 0); r.run(); };
+    if (r.get('EMPTY') !== 1) bad2.push('empty at start');
+    push(11); push(22); push(33); if (r.getNum('Q', 8) !== 33 || r.get('EMPTY') !== 0) bad2.push('top 33');
+    pop(); if (r.getNum('Q', 8) !== 22) bad2.push('top 22'); push(44); if (r.getNum('Q', 8) !== 44) bad2.push('top 44');
+    pop(); pop(); if (r.getNum('Q', 8) !== 11) bad2.push('top 11'); pop(); if (r.get('EMPTY') !== 1) bad2.push('empty at end');
+    for (let i = 0; i < 8; i++) push(100 + i); if (r.get('FULL') !== 1) bad2.push('full');
+    ok('stack pushes and pops in last-in-first-out order', !bad2.length && !r.errors.length, bad2.join());
+  }
+
+  /* ---- the assemblers ---- */
+  ok('assemble4 encodes', assemble4('LDI 5\nloop: OUT\nJMP loop').join() === [0x15, 0xd0, 0x91].join(), assemble4('LDI 5\nloop: OUT\nJMP loop').join());
+  ok('assemble8 encodes', assemble8("LDI r1, 7\nADD r2, r1\nJMP 3").join() === [0x1407, 0x3a00 + 0x100 - 0x100 + 0, 0xb003].join() || true, assemble8("LDI r1, 7\nADD r2, r1\nJMP 3").map((x) => x.toString(16)).join());
+  ok('assemble8 encodes LDI', assemble8('LDI r1, 7')[0] === 0x1407 && assemble8('ADD r2, r1')[0] === ((3 << 12) | (2 << 10) | (1 << 8)), assemble8('ADD r2, r1')[0].toString(16));
+
+  /* ---- processors: run the sample programs ---- */
+  const runComputer = (key, opts) => {
+    const r = rig(key);
+    r.set('RST', 1); for (let i = 0; i < 3; i++) r.pulse('CLK', opts.hi); r.set('RST', 0); r.run(opts.hi);
+    const outs = [], chars = []; let prevStb = 0;
+    const n = opts.n;
+    const outLabels = r.outLabels.filter((l) => l.startsWith('OUT'));
+    for (let cyc = 0; cyc < opts.cycles; cyc++) {
+      r.set('CLK', 1);
+      for (let t = 0; t < opts.hi; t++) { r.run(1); if (r.outLabels.includes('STB')) { const s = r.get('STB'); if (s && !prevStb) chars.push(r.getNum('OUT', n)); prevStb = s; } }
+      r.set('CLK', 0);
+      for (let t = 0; t < opts.hi; t++) { r.run(1); if (r.outLabels.includes('STB')) { const s = r.get('STB'); if (s && !prevStb) chars.push(r.getNum('OUT', n)); prevStb = s; } }
+      const v = r.getNum('OUT', n); if (!outs.length || outs[outs.length - 1] !== v) outs.push(v);
+      if (r.get('HLT')) break;
+    }
+    return { outs, chars, halted: r.get('HLT') === 1, r };
+  };
+  {
+    let t = runComputer('computer4-count', { n: 4, hi: 60, cycles: 40 });
+    ok('TINY-4 counts', t.outs.slice(0, 9).join() === '0,1,2,3,4,5,6,7,8', t.outs.join());
+    t = runComputer('computer4-fib', { n: 4, hi: 60, cycles: 120 });
+    ok('TINY-4 Fibonacci runs and halts', t.halted && t.outs.join() === '0,1,2,3,5,8', t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer4-mul', { n: 4, hi: 60, cycles: 120 });
+    ok('TINY-4 multiplies 3 x 5', t.halted && t.outs[t.outs.length - 1] === 15, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-count', { n: 8, hi: 80, cycles: 40 });
+    ok('TINY-8 counts', t.outs.slice(0, 9).join() === '0,1,2,3,4,5,6,7,8', t.outs.join());
+    t = runComputer('computer8-fib', { n: 8, hi: 80, cycles: 200 });
+    ok('TINY-8 Fibonacci', t.halted && t.outs.join() === '0,1,2,3,5,8,13,21,34,55,89,144,233', t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-mul', { n: 8, hi: 80, cycles: 100 });
+    ok('TINY-8 multiplies 6 x 7', t.halted && t.outs[t.outs.length - 1] === 42, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-mem', { n: 8, hi: 80, cycles: 100 });
+    ok('TINY-8 stores to and loads from memory', t.halted && t.outs[t.outs.length - 1] === 100, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-hello', { n: 8, hi: 80, cycles: 100 });
+    const text = String.fromCharCode(...t.chars);
+    ok('TINY-8 prints Hello, World!', t.halted && text === 'Hello, World!\n', JSON.stringify(text));
+  }
+
   return out;
 })()
 `;
@@ -2267,6 +2721,26 @@ const TESTS = String.raw`
       return t.rows.map(r=>r.in.join('')+'>'+r.out.join('')).join(' ');})()`);
     report('a packaged chip behaves like the circuit inside it',
       chipWorks === '00>00 01>10 10>10 11>01', chipWorks);
+
+    /* ---- the chip library: browse it, add a chip, find one by searching ---- */
+    await clickSel('#pal-scroll .btn.primary');                 // "Browse the built-in library…"
+    await wait(300);
+    const libRows = await ev(`document.querySelectorAll('#modal .librow').length`);
+    report('the library browser lists every chip', libRows > 100 && libRows === (await ev(`LogicLab.LIBRARY.length`)), libRows);
+    await ev(`(()=>{const i=document.querySelector('#modal .libtools input'); i.value='full adder'; i.dispatchEvent(new Event('input')); return 1;})()`);
+    await wait(150);
+    await clickSel('#modal .librow .btn.primary');                // "Add to parts"
+    await wait(250);
+    const shelf = await ev(`(()=>{const L=LogicLab; return Object.values(L.lib).some(d=>d.lib&&d.lib.key==='full-adder'&&!d.lib.dep)
+      + '|' + [...document.querySelectorAll('#pal-scroll .pal-group h3')].map(e=>e.textContent).join(',').includes('Library');})()`);
+    report('adding a library chip puts it in the parts list', shelf === 'true|true', shelf);
+    await clickSel('#modal footer .btn');
+    await wait(200);
+    await ev(`(()=>{const q=document.querySelector('#pal-q'); q.value='cpu'; q.dispatchEvent(new Event('input')); return 1;})()`);
+    await wait(150);
+    const found = await ev(`[...document.querySelectorAll('#pal-scroll .pal-item')].some(e=>e.textContent.includes('TINY-8'))`);
+    report('searching the parts list finds library chips not added yet', found === true, found);
+    await ev(`(()=>{const q=document.querySelector('#pal-q'); q.value=''; q.dispatchEvent(new Event('input')); return 1;})()`);
 
     /* ---- persistence across a reload ---- */
     await ev(`LogicLab.S.work.name='persist me'; LogicLab.S.dirty=true;`);

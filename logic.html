@@ -422,6 +422,22 @@ canvas.preview.big{height:min(48vh,430px);cursor:grab;touch-action:none}
 .card:hover{border-color:var(--select)}
 .card b{display:block;margin-bottom:3px}
 .card span{color:var(--ink-faint);font-size:12px;line-height:1.35;display:block}
+.libtools{display:flex;gap:8px;align-items:center;margin:0 0 6px;flex-wrap:wrap}
+.libtools input{flex:1 1 200px;min-width:0}
+.libcat{display:flex;align-items:center;gap:8px;margin:18px 0 4px;padding-bottom:5px;border-bottom:1px solid var(--line)}
+.libcat .sw{width:12px;height:12px;border-radius:3px;flex:0 0 auto}
+.libcat .meta{color:var(--ink-faint);font-size:11.5px;font-family:var(--mono)}
+.librow{padding:9px 0;border-bottom:1px solid var(--line-soft)}
+.librow .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.librow .nm{font-weight:600}
+.librow p{margin:4px 0 7px;color:var(--ink-faint);font-size:12.5px;line-height:1.4}
+.librow .acts{display:flex;gap:6px;flex-wrap:wrap}
+.lvl{font-size:10px;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--ink-soft);text-transform:uppercase;letter-spacing:.05em}
+.lvl-raw{color:#c9a25c;border-color:#7a5c1f}
+.lvl-simple{color:#4bd684;border-color:#2c6b46}
+.lvl-intermediate{color:#5cc8ff;border-color:#2b6a8c}
+.lvl-advanced{color:#c77dff;border-color:#6b4a8c}
+.lvl-computer{color:#ff8a7a;border-color:#8c3f35}
 .help h4{margin:16px 0 6px;font-size:13px}
 .help p,.help li{color:var(--ink-soft);font-size:13px}
 .help ul{margin:6px 0;padding-left:18px}
@@ -633,6 +649,7 @@ class DSU {
 
 const GATE_COLORS = {
   io: '#3f7d55', src: '#7a5aa8', gate: '#2f4257', seq: '#7d5233',
+  blk: '#6b5a2e',
   disp: '#365f7d', plumb: '#4a4f58',
 };
 
@@ -643,6 +660,11 @@ const GRID = 10;         // editor snap grid, in world units
 const andOf = (a) => a.every(Boolean) ? 1 : 0;
 const orOf = (a) => a.some(Boolean) ? 1 : 0;
 const xorOf = (a) => a.reduce((s, v) => s ^ (v ? 1 : 0), 0);
+
+/** Helpers for the wide parts: a row of ports read or written as one number. */
+const namesOf = (prefix, n) => Array.from({ length: n }, (_, i) => prefix + i);
+const readNum = (p, v, from, n) => { let x = 0; for (let i = 0; i < n; i++) if (v[p.ins[from + i]]) x += 2 ** i; return x; };
+const putNum = (p, put, from, n, x) => { for (let i = 0; i < n; i++) put(p.outs[from + i], Math.floor(x / 2 ** i) % 2); };
 
 const PARTS = {
   /* ---- chip boundary ------------------------------------------------- */
@@ -729,6 +751,206 @@ const PARTS = {
       put(p.outs[0], p.st.q | 0); put(p.outs[1], (p.st.q | 0) ^ 1);
     },
   },
+  SRLATCH: {
+    name: 'SR LATCH', cat: 'seq', nick: "set it, reset it", plain: "Two inputs and one remembered bit. A 1 on S sets the bit; a 1 on R clears it; with both low it holds what it had. Both high at once is the forbidden state — a real NOR latch drives both outputs low, and so does this one, until you let go.", group: 'Memory', w: 76,
+    ins: () => ['S', 'R'], outs: () => ['Q', 'Q̄'],
+    tip: 'S sets it, R clears it, neither holds. Both at once is forbidden.',
+    sim: (p, v, put) => {
+      const s = v[p.ins[0]], r = v[p.ins[1]];
+      if (s && r) { put(p.outs[0], 0); put(p.outs[1], 0); return; }
+      if (s) p.st.q = 1; else if (r) p.st.q = 0;
+      put(p.outs[0], p.st.q | 0); put(p.outs[1], (p.st.q | 0) ^ 1);
+    },
+  },
+  JKFF: {
+    name: 'JK FLIP-FLOP', cat: 'seq', sync: true, nick: "set, clear, hold or flip", plain: "A D flip-flop with more to say. On each rising clock edge: J and K both 0 holds the bit, J alone sets it, K alone clears it, and both together flip it over. The flip is what makes it the heart of every counter.", group: 'Memory', w: 90,
+    ins: () => ['J', 'K', '>'], outs: () => ['Q', 'Q̄'],
+    tip: 'On the clock edge: 00 hold, 10 set, 01 clear, 11 toggle.',
+    sim: (p, v, put) => {
+      const j = v[p.ins[0]], k = v[p.ins[1]], c = v[p.ins[2]];
+      if (c && !p.st.pc) { if (j && k) p.st.q = (p.st.q | 0) ^ 1; else if (j) p.st.q = 1; else if (k) p.st.q = 0; }
+      p.st.pc = c;
+      put(p.outs[0], p.st.q | 0); put(p.outs[1], (p.st.q | 0) ^ 1);
+    },
+  },
+  TFF: {
+    name: 'T FLIP-FLOP', cat: 'seq', sync: true, nick: "flips on every tick", plain: "Each rising clock edge, if T is 1, the stored bit flips over; if T is 0 it holds. Feed T a constant 1 and the output is the clock cut in half — chain a few and you are counting in binary.", group: 'Memory', w: 90,
+    ins: () => ['T', '>'], outs: () => ['Q', 'Q̄'],
+    tip: 'Toggles on each clock edge while T is 1.',
+    sim: (p, v, put) => {
+      const t = v[p.ins[0]], c = v[p.ins[1]];
+      if (c && !p.st.pc && t) p.st.q = (p.st.q | 0) ^ 1;
+      p.st.pc = c;
+      put(p.outs[0], p.st.q | 0); put(p.outs[1], (p.st.q | 0) ^ 1);
+    },
+  },
+  DFFR: {
+    name: 'D FF + CLEAR/SET', cat: 'seq', sync: true, nick: "a flip-flop you can reset", plain: "The ordinary D flip-flop, plus two override inputs that act at once, without waiting for a clock: CLR forces the bit to 0 and SET forces it to 1. This is how a machine gets back to a known state when it starts up.", group: 'Memory', w: 96,
+    ins: () => ['D', '>', 'CLR', 'SET'], outs: () => ['Q', 'Q̄'],
+    tip: 'D flip-flop with immediate clear and set inputs.',
+    sim: (p, v, put) => {
+      const d = v[p.ins[0]], c = v[p.ins[1]], clr = v[p.ins[2]], set = v[p.ins[3]];
+      if (clr) p.st.q = 0; else if (set) p.st.q = 1; else if (c && !p.st.pc) p.st.q = d;
+      p.st.pc = c;
+      put(p.outs[0], p.st.q | 0); put(p.outs[1], (p.st.q | 0) ^ 1);
+    },
+  },
+  REG: {
+    name: 'REGISTER', cat: 'seq', sync: true, group: 'Memory', nick: 'a whole word of memory',
+    plain: 'Holds a number of any width you choose. On each rising clock edge: if CLR is 1 it goes back to zero; otherwise, if LD is 1, it takes whatever is on the D inputs. With neither it simply keeps what it had. A register is just a row of flip-flops sharing one clock.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }], make: () => ({ bits: 4 }),
+    ins: (n) => namesOf('D', n.bits || 4).concat(['LD', 'CLR', '>']), outs: (n) => namesOf('Q', n.bits || 4),
+    tip: 'Loads D on the clock edge when LD is 1; clears when CLR is 1.',
+    sim: (p, v, put) => {
+      const nb = p.outs.length, ld = v[p.ins[nb]], clr = v[p.ins[nb + 1]], c = v[p.ins[nb + 2]];
+      if (c && !p.st.pc) { if (clr) p.st.q = 0; else if (ld) p.st.q = readNum(p, v, 0, nb); }
+      p.st.pc = c;
+      putNum(p, put, 0, nb, p.st.q | 0);
+    },
+  },
+  COUNTER: {
+    name: 'COUNTER', cat: 'seq', sync: true, group: 'Memory', nick: 'counts clock ticks',
+    plain: 'A register that can add one to itself. On each rising clock edge: CLR sends it to zero; otherwise LD loads the D inputs; otherwise, while EN is 1, it counts up — or down, if DN is 1 — and wraps round at either end. CO goes high when it is about to wrap, so counters can be chained.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }], make: () => ({ bits: 4 }),
+    ins: (n) => namesOf('D', n.bits || 4).concat(['LD', 'EN', 'DN', 'CLR', '>']), outs: (n) => namesOf('Q', n.bits || 4).concat(['CO']),
+    tip: 'Counts up (or down) on each clock edge while EN is 1. Loads D when LD is 1.',
+    sim: (p, v, put) => {
+      const nb = p.outs.length - 1, mask = 2 ** nb - 1;
+      const ld = v[p.ins[nb]], en = v[p.ins[nb + 1]], dn = v[p.ins[nb + 2]], clr = v[p.ins[nb + 3]], c = v[p.ins[nb + 4]];
+      if (c && !p.st.pc) {
+        if (clr) p.st.q = 0;
+        else if (ld) p.st.q = readNum(p, v, 0, nb);
+        else if (en) p.st.q = dn ? ((p.st.q | 0) - 1 + mask + 1) % (mask + 1) : ((p.st.q | 0) + 1) % (mask + 1);
+      }
+      p.st.pc = c;
+      const q = p.st.q | 0;
+      putNum(p, put, 0, nb, q);
+      put(p.outs[nb], en && (dn ? q === 0 : q === mask) ? 1 : 0);
+    },
+  },
+  SHIFT: {
+    name: 'SHIFT REGISTER', cat: 'seq', sync: true, group: 'Memory', nick: 'bits marching along',
+    plain: 'A register that can slide its contents one place along. On each rising edge: CLR zeroes it; otherwise LD loads the D inputs; otherwise, while SH is 1, everything moves one place — towards the top bit if DIR is 0, towards Q0 if DIR is 1 — and SI is the bit that comes in at the empty end. SO is the bit about to fall off the other end.',
+    params: [{ key: 'bits', label: 'How many bits', min: 2, max: 16 }], make: () => ({ bits: 8 }),
+    ins: (n) => namesOf('D', n.bits || 8).concat(['SI', 'LD', 'SH', 'DIR', 'CLR', '>']), outs: (n) => namesOf('Q', n.bits || 8).concat(['SO']),
+    tip: 'Shifts one place on each clock edge while SH is 1; loads D when LD is 1.',
+    sim: (p, v, put) => {
+      const nb = p.outs.length - 1, mask = 2 ** nb - 1;
+      const si = v[p.ins[nb]], ld = v[p.ins[nb + 1]], sh = v[p.ins[nb + 2]], dir = v[p.ins[nb + 3]], clr = v[p.ins[nb + 4]], c = v[p.ins[nb + 5]];
+      if (c && !p.st.pc) {
+        let q = p.st.q | 0;
+        if (clr) q = 0;
+        else if (ld) q = readNum(p, v, 0, nb);
+        else if (sh) q = dir ? (Math.floor(q / 2) + (si ? 2 ** (nb - 1) : 0)) : (((q * 2) % (mask + 1)) + (si ? 1 : 0));
+        p.st.q = q;
+      }
+      p.st.pc = c;
+      const q = p.st.q | 0;
+      putNum(p, put, 0, nb, q);
+      put(p.outs[nb], dir ? q & 1 : Math.floor(q / 2 ** (nb - 1)) & 1);
+    },
+  },
+
+  /* ---- blocks: whole circuits that are normally built out of gates -----
+     Each of these has a gate-built twin in the chip library, so you can open
+     one up and see what it is made of. */
+  MUX: {
+    name: 'MULTIPLEXER', cat: 'blk', group: 'Blocks', nick: 'pick one of several',
+    plain: 'Several inputs go in and a number on the select lines chooses which one comes out. With one select bit it is a switch between two signals; with two it chooses between four, and so on. It is how a processor picks which register to read.',
+    params: [{ key: 'sel', label: 'Select bits', min: 1, max: 4 }], make: () => ({ sel: 2 }),
+    ins: (n) => namesOf('I', 2 ** (n.sel || 2)).concat(namesOf('S', n.sel || 2)), outs: () => ['Y'],
+    tip: 'The select lines choose which input comes out.',
+    sim: (p, v, put) => {
+      const k = p.node.sel || 2, ni = 2 ** k;
+      put(p.outs[0], v[p.ins[readNum(p, v, ni, k)]]);
+    },
+  },
+  DEMUX: {
+    name: 'DEMULTIPLEXER', cat: 'blk', group: 'Blocks', nick: 'send to one of several',
+    plain: 'The opposite of a multiplexer: one input D goes in, and the number on the select lines decides which of the outputs it appears on. Every other output stays 0. Hold D at 1 and it is a decoder: exactly one output on, the one the number names.',
+    params: [{ key: 'sel', label: 'Select bits', min: 1, max: 4 }], make: () => ({ sel: 2 }),
+    ins: (n) => ['D'].concat(namesOf('S', n.sel || 2)), outs: (n) => namesOf('Y', 2 ** (n.sel || 2)),
+    tip: 'Sends D to the output the select lines name; the rest are 0.',
+    sim: (p, v, put) => {
+      const k = p.ins.length - 1, d = v[p.ins[0]], s = readNum(p, v, 1, k);
+      for (let i = 0; i < p.outs.length; i++) put(p.outs[i], d && i === s ? 1 : 0);
+    },
+  },
+  DECODER: {
+    name: 'DECODER', cat: 'blk', group: 'Blocks', nick: 'a number becomes one wire',
+    plain: 'Reads its inputs as a number and switches on exactly the one output with that number, leaving the rest off. Memory uses one to turn an address into a single word line; a processor uses one to turn an instruction into a single action.',
+    params: [{ key: 'bits', label: 'Input bits', min: 1, max: 4 }], make: () => ({ bits: 3 }),
+    ins: (n) => namesOf('A', n.bits || 3), outs: (n) => namesOf('Y', 2 ** (n.bits || 3)),
+    tip: 'Turns a binary number into one active line.',
+    sim: (p, v, put) => {
+      const s = readNum(p, v, 0, p.ins.length);
+      for (let i = 0; i < p.outs.length; i++) put(p.outs[i], i === s ? 1 : 0);
+    },
+  },
+  ENCODER: {
+    name: 'PRIORITY ENCODER', cat: 'blk', group: 'Blocks', nick: 'which wire is on?',
+    plain: 'The opposite of a decoder: several lines in, and it reports the number of the highest one that is on. V says whether any line was on at all — without it there is no telling "line 0" from "nothing".',
+    params: [{ key: 'bits', label: 'Output bits', min: 1, max: 4 }], make: () => ({ bits: 3 }),
+    ins: (n) => namesOf('I', 2 ** (n.bits || 3)), outs: (n) => namesOf('A', n.bits || 3).concat(['V']),
+    tip: 'Reports which input is on (the highest one, if several are).',
+    sim: (p, v, put) => {
+      let hi = -1;
+      for (let i = p.ins.length - 1; i >= 0; i--) if (v[p.ins[i]]) { hi = i; break; }
+      const nb = p.outs.length - 1;
+      for (let i = 0; i < nb; i++) put(p.outs[i], hi >= 0 ? (hi >> i) & 1 : 0);
+      put(p.outs[nb], hi >= 0 ? 1 : 0);
+    },
+  },
+  ADDER: {
+    name: 'ADDER', cat: 'blk', group: 'Blocks', nick: 'adds two numbers',
+    plain: 'Adds A and B (and a carry in, CI) and gives the total in S, with CO set when the answer ran off the top. Inside is a chain of full adders, each passing its carry to the next — the gate-built version is in the chip library.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }], make: () => ({ bits: 4 }),
+    ins: (n) => namesOf('A', n.bits || 4).concat(namesOf('B', n.bits || 4), ['CI']), outs: (n) => namesOf('S', n.bits || 4).concat(['CO']),
+    tip: 'A + B + carry-in, with carry-out.',
+    sim: (p, v, put) => {
+      const nb = p.outs.length - 1, t = readNum(p, v, 0, nb) + readNum(p, v, nb, nb) + (v[p.ins[2 * nb]] ? 1 : 0);
+      putNum(p, put, 0, nb, t % 2 ** nb);
+      put(p.outs[nb], t >= 2 ** nb ? 1 : 0);
+    },
+  },
+  COMPARE: {
+    name: 'COMPARATOR', cat: 'blk', group: 'Blocks', nick: 'which is bigger?',
+    plain: 'Reads A and B as numbers and tells you whether A is bigger, the same, or smaller. Exactly one of the three outputs is on.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }], make: () => ({ bits: 4 }),
+    ins: (n) => namesOf('A', n.bits || 4).concat(namesOf('B', n.bits || 4)), outs: () => ['A>B', 'A=B', 'A<B'],
+    tip: 'Compares two numbers.',
+    sim: (p, v, put) => {
+      const nb = p.ins.length / 2, a = readNum(p, v, 0, nb), b = readNum(p, v, nb, nb);
+      put(p.outs[0], a > b ? 1 : 0); put(p.outs[1], a === b ? 1 : 0); put(p.outs[2], a < b ? 1 : 0);
+    },
+  },
+  ALU: {
+    name: 'ALU', cat: 'blk', group: 'Blocks', nick: 'the part that does the sums',
+    plain: 'An arithmetic logic unit: two numbers in, one operation chosen by OP0–OP2, one answer out. The operations: 0 add, 1 subtract, 2 AND, 3 OR, 4 XOR, 5 NOT A, 6 shift A left, 7 shift A right. CI is the carry (or borrow) coming in; CO the one going out. It also reports whether the answer is zero (Z), negative (N) and whether signed arithmetic overflowed (V). Every processor has one at its centre.',
+    params: [{ key: 'bits', label: 'How many bits', min: 2, max: 16 }], make: () => ({ bits: 8 }),
+    ins: (n) => namesOf('A', n.bits || 8).concat(namesOf('B', n.bits || 8), ['OP0', 'OP1', 'OP2', 'CI']),
+    outs: (n) => namesOf('F', n.bits || 8).concat(['CO', 'Z', 'N', 'V']),
+    tip: 'Add, subtract, AND, OR, XOR, NOT, shift — chosen by OP0–OP2.',
+    sim: (p, v, put) => {
+      const nb = (p.ins.length - 4) / 2, M = 2 ** nb, a = readNum(p, v, 0, nb), b = readNum(p, v, nb, nb);
+      const op = readNum(p, v, 2 * nb, 3), ci = v[p.ins[2 * nb + 3]] ? 1 : 0;
+      let f = 0, co = 0, ov = 0;
+      const sgn = (x) => x >= M / 2 ? x - M : x;
+      switch (op) {
+        case 0: { const t = a + b + ci; f = t % M; co = t >= M ? 1 : 0; ov = (sgn(a) + sgn(b) + ci) !== sgn(f) ? 1 : 0; break; }
+        case 1: { const t = a - b - ci; f = ((t % M) + M) % M; co = t < 0 ? 1 : 0; ov = (sgn(a) - sgn(b) - ci) !== sgn(f) ? 1 : 0; break; }
+        case 2: f = a & b; break;
+        case 3: f = a | b; break;
+        case 4: f = a ^ b; break;
+        case 5: f = M - 1 - a; break;
+        case 6: f = (a * 2) % M + ci; co = a >= M / 2 ? 1 : 0; break;
+        default: f = Math.floor(a / 2) + (ci ? M / 2 : 0); co = a & 1;
+      }
+      putNum(p, put, 0, nb, f);
+      put(p.outs[nb], co); put(p.outs[nb + 1], f === 0 ? 1 : 0);
+      put(p.outs[nb + 2], f >= M / 2 ? 1 : 0); put(p.outs[nb + 3], ov);
+    },
+  },
 
   /* ---- displays -------------------------------------------------------- */
   LED: {
@@ -771,7 +993,7 @@ const PARTS = {
     },
   },
   RAM: {
-    name: 'RAM', cat: 'seq', group: 'Memory', nick: 'memory the circuit writes',
+    name: 'RAM', cat: 'seq', group: 'Memory', sync: true, nick: 'memory the circuit writes',
     plain: 'Like the ROM, but the circuit can store into it as well as read: hold WRITE high and it takes what is on the D inputs at the next clock edge. This is where a program keeps its workings — and it forgets everything when you clear it.',
     ins: (n) => Array.from({ length: n.abits || 4 }, (_, i) => 'A' + i)
       .concat(Array.from({ length: n.dbits || 8 }, (_, i) => 'D' + i))
@@ -802,6 +1024,7 @@ const PARTS = {
   NUMIN: {
     name: 'NUMBER IN', cat: 'src', group: 'Signals', shape: 'num', nick: 'type a number',
     plain: 'Type a number here and it comes out as bits — the small end first. Saves lining up eight input pins by hand.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }],
     ins: () => [], outs: (n) => Array.from({ length: n.bits || 8 }, (_, i) => String(i)),
     make: () => ({ bits: 8, value: 0 }), w: 92,
     tip: 'A number, broken into bits for you.',
@@ -813,6 +1036,7 @@ const PARTS = {
   NUM: {
     name: 'NUMBER OUT', cat: 'disp', group: 'Displays', shape: 'num', nick: 'read a number',
     plain: 'Reads its inputs as one number and shows it, so you do not have to add up a row of lamps in your head.',
+    params: [{ key: 'bits', label: 'How many bits', min: 1, max: 16 }],
     ins: (n) => Array.from({ length: n.bits || 8 }, (_, i) => String(i)), outs: () => [],
     make: () => ({ bits: 8 }), w: 92,
     tip: 'Shows its inputs as a single number.',
@@ -1188,7 +1412,10 @@ class Sim {
       const st = carry ? carry.get(p.path + '/' + p.node.id) : null;
       p.st = st || {};
       const d = DELAY_PLAN[i % DELAY_PLAN.length];
-      p.per = d[0]; p.ph = d[1];
+      /* Edge-triggered parts all act on the same tick. Staggering them like the
+         gates would let one flip-flop catch another's NEW output on the very
+         edge they share, and a shift register would then run through itself. */
+      if (PARTS[p.type] && PARTS[p.type].sync) { p.per = 1; p.ph = 0; } else { p.per = d[0]; p.ph = d[1]; }
     });
   }
   states() {
@@ -3606,11 +3833,26 @@ function renderPalette() {
     if (!groups.has(g)) groups.set(g, []);
     groups.get(g).push({ type, part, name: part.name, color: GATE_COLORS[part.cat] });
   }
-  const chips = Object.values(LIB)
-    .filter((d) => !q || d.name.toLowerCase().includes(q))
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((d) => ({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: CHIP_PART }));
-  if (chips.length) groups.set('My chips', chips);
+  const mine = [], shelves = new Map();
+  for (const d of Object.values(LIB).sort((a, b) => a.name.localeCompare(b.name))) {
+    if (q && !d.name.toLowerCase().includes(q)) continue;
+    if (d.lib) {
+      if (d.lib.dep) continue;                         // only there because another chip uses it
+      const e = libEntry(d.lib.key);
+      (shelves.get(d.lib.cat) || shelves.set(d.lib.cat, []).get(d.lib.cat))
+        .push({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: { tip: e ? e.desc : '' } });
+    } else mine.push({ type: 'CHIP', chip: d.id, name: d.name, color: d.color, part: CHIP_PART });
+  }
+  if (mine.length) groups.set('My chips', mine);
+  for (const cat of LIB_CAT_ORDER) if (shelves.has(cat)) groups.set('Library · ' + cat, shelves.get(cat));
+  /* Searching also turns up library chips you have not added yet; pressing one
+     adds it and picks it up. */
+  if (q) {
+    const more = LIBRARY.filter((e) => !(LIB[libId(e.key)] && LIB[libId(e.key)].lib && !LIB[libId(e.key)].lib.dep)
+      && (e.name + ' ' + e.cat + ' ' + e.key).toLowerCase().includes(q))
+      .map((e) => ({ type: 'CHIP', lazy: e.key, name: e.name, color: LIB_CAT_COLOR[e.cat], part: { tip: e.desc } }));
+    if (more.length) groups.set('In the library — not added yet', more);
+  }
 
   for (const [name, items] of groups) {
     host.append(h('div', { class: 'pal-group' }, h('h3', {}, name), h('span', { class: 'rule' })));
@@ -3621,6 +3863,7 @@ function renderPalette() {
         'data-type': it.type, 'data-chip': it.chip || '',
         onpointerdown: (ev) => {
           ev.preventDefault();
+          if (it.lazy) { const id = installLib(it.lazy); scheduleSave(); renderPalette(); armPart({ type: 'CHIP', chip: id }); return; }
           const same = S.armed && S.armed.type === it.type && S.armed.chip === it.chip;
           armPart(same ? null : { type: it.type, chip: it.chip });
         },
@@ -3632,8 +3875,9 @@ function renderPalette() {
   if (!host.children.length) host.append(h('p', { class: 'pal-empty' }, 'Nothing matches that.'));
   if (!q) {
     host.append(h('div', { class: 'pal-group' }, h('h3', {}, 'Library'), h('span', { class: 'rule' })));
-    host.append(h('div', { class: 'pal-items' },
-      h('button', { class: 'btn', style: 'width:100%', onclick: openLibrary }, 'Manage chips…')));
+    host.append(h('div', { class: 'stack' },
+      h('button', { class: 'btn primary', style: 'width:100%', onclick: openLibraryBrowser }, 'Browse the built-in library…'),
+      h('button', { class: 'btn', style: 'width:100%', onclick: openLibrary }, 'Manage my chips…')));
   }
 }
 
@@ -3702,6 +3946,23 @@ function renderInspector() {
   }
 
   if (S.ttable) host.append(truthTableSection());
+}
+
+/** Change a part's size (bit width, select lines…). Its ports are renumbered by
+    that, so every wire is re-pointed at the port it was on by NAME, and any
+    wire whose port no longer exists is let go rather than left dangling. */
+function setNodeParam(node, key, val) {
+  if (node[key] === val) return;
+  pushUndo();
+  const before = portsOf(node);
+  node[key] = val;
+  const after = portsOf(node);
+  S.work.wires = S.work.wires.filter((w) => {
+    if (w.b.n === node.id) { const j = after.ins.indexOf(before.ins[w.b.i]); if (j < 0) return false; w.b.i = j; }
+    if (w.a.n === node.id) { const j = after.outs.indexOf(before.outs[w.a.i]); if (j < 0) return false; w.a.i = j; }
+    return true;
+  });
+  markDirty(); renderInspector();
 }
 
 function nodeInspector(node) {
@@ -3773,17 +4034,12 @@ function nodeInspector(node) {
         },
       }))));
   }
-  if (node.type === 'NUMIN' || node.type === 'NUM') {
+  for (const prm of (PARTS[node.type] && PARTS[node.type].params) || []) {
     sec.append(h('div', { class: 'row' },
-      h('label', {}, 'How many bits'),
+      h('label', {}, prm.label),
       h('span', { class: 'ctl' }, h('input', {
-        type: 'number', min: '1', max: '16', value: String(node.bits || 8),
-        onchange: (e) => {
-          pushUndo();
-          node.bits = clamp(parseInt(e.target.value, 10) || 8, 1, 16);
-          S.work.wires = S.work.wires.filter((w) => !(w.b.n === node.id && w.b.i >= (node.bits)));
-          markDirty(); renderInspector();
-        },
+        type: 'number', min: String(prm.min), max: String(prm.max), value: String(node[prm.key]),
+        onchange: (e) => { setNodeParam(node, prm.key, clamp(parseInt(e.target.value, 10) || prm.min, prm.min, prm.max)); },
       }))));
   }
   if (node.type === 'NUMIN') {
@@ -3832,6 +4088,13 @@ function nodeInspector(node) {
 
   const rec = RECIPES[node.type];
   if (rec) sec.append(madeOfBlock(rec.text, rec.make, 'Build it on the board', null, node.type));
+  /* The bigger parts have a twin in the chip library, built from plain gates. */
+  const twin = LIB_TWIN[node.type] && !rec ? libEntry(LIB_TWIN[node.type]) : null;
+  if (twin) {
+    sec.append(madeOfBlock(
+      `This part does in one step what a circuit of gates does in many. Here is such a circuit — the library’s “${twin.name}”: ${twin.desc}`,
+      () => clone(LIB[installLib(twin.key, true)]), 'Build it on the board', 'Built from gates instead'));
+  }
 
   /* The diagram above is a small one so it can be read. This builds the array
      at the size this part is actually set to, which is the honest answer to
@@ -4423,6 +4686,40 @@ function memoryEditor(node) {
         pushUndo(); node.data = []; markDirty(); renderInspector();
       },
     }, 'Wipe it')));
+
+  /* A ROM is where a program lives, so it can be written in assembly as well
+     as in hex: this turns text into the words the two processors in the chip
+     library read. */
+  if (node.type === 'ROM') {
+    const isa = h('select', {}, h('option', { value: '4' }, 'TINY-4 (8-bit words)'), h('option', { value: '8' }, 'TINY-8 (16-bit words)'));
+    const src = h('textarea', { class: 'memtext', spellcheck: 'false', rows: '8', placeholder: 'LDI 0\nloop: OUT\n      ADDI 1\n      JMP loop' });
+    const sample = h('select', {
+      onchange: (e) => {
+        const p = PROGRAMS[e.target.value];
+        if (p) { src.value = p[1].trim(); isa.value = /8$/.test(e.target.value) ? '8' : '4'; }
+        e.target.value = '';
+      },
+    }, h('option', { value: '' }, 'Load a sample program…'), ...Object.keys(PROGRAMS).map((k) => h('option', { value: k }, PROGRAMS[k][0])));
+    sec.append(h('h4', { style: 'margin-top:14px' }, 'Or write a program'));
+    sec.append(h('p', { class: 'muted', style: 'margin:0 0 6px;font-size:12px' },
+      'For the TINY processors in the chip library. TINY-4: LDI LDA STA ADD SUB AND OR XOR JMP JZ JNZ ADDI OUT JC HLT, each with one number or label. TINY-8: LDI r,n · MOV r,r · ADD SUB AND OR XOR CMP r,r · ADDI r,n · LD r,[a] · ST r,[a] · JMP JZ JNZ label · OUT r · HLT, with registers r0–r3. Labels end in a colon; ; starts a comment.'));
+    sec.append(h('div', { class: 'row' }, h('label', {}, 'Processor'), h('span', { class: 'ctl' }, isa)));
+    sec.append(h('div', { class: 'row' }, h('label', {}, 'Examples'), h('span', { class: 'ctl' }, sample)));
+    sec.append(src);
+    sec.append(h('div', { class: 'stack', style: 'margin-top:6px' }, h('button', {
+      class: 'btn primary', onclick: () => {
+        try {
+          const words = (isa.value === '8' ? assemble8 : assemble4)(src.value);
+          if (words.length > size) throw new Error(`That is ${words.length} instructions and this ROM holds ${size}. Give it more address bits.`);
+          pushUndo();
+          node.dbits = isa.value === '8' ? 16 : 8;
+          node.data = words;
+          markDirty(); renderInspector();
+          toast(`Assembled ${words.length} instructions into the ROM.`);
+        } catch (err) { toast(err.message, true); }
+      },
+    }, 'Assemble into this ROM')));
+  }
   return sec;
 }
 
@@ -4631,6 +4928,8 @@ function leaveChipEdit(saved) {
 
 function openLibrary() {
   const body = h('div', {});
+  body.append(h('div', { class: 'stack', style: 'margin-bottom:12px' },
+    h('button', { class: 'btn primary', onclick: () => { closeModal(); openLibraryBrowser(); } }, 'Browse the built-in library…')));
   const chips = Object.values(LIB).sort((a, b) => a.name.localeCompare(b.name));
   if (!chips.length) {
     body.append(h('p', { class: 'muted' },
@@ -4642,7 +4941,7 @@ function openLibrary() {
     body.append(h('div', { class: 'chiprow' },
       h('span', { class: 'sw', style: `background:${d.color}` }),
       h('span', { class: 'nm' }, d.name),
-      h('span', { class: 'meta' }, `${io.ins.length}→${io.outs.length}${used.length ? ' · used ×' + used.length : ''}`),
+      h('span', { class: 'meta' }, `${d.lib ? d.lib.cat + ' · ' : ''}${io.ins.length}→${io.outs.length}${used.length ? ' · used ×' + used.length : ''}`),
       h('button', { class: 'btn', onclick: () => { closeModal(); armPart({ type: 'CHIP', chip: d.id }); } }, 'Place'),
       h('button', { class: 'btn', onclick: () => openChip(d.id) }, 'Edit'),
       h('button', {
@@ -5392,6 +5691,1113 @@ async function loadExample(ex) {
 }
 
 /* ==========================================================================
+   15b · THE BUILT-IN CHIP LIBRARY
+
+   A shelf of ready-made circuits, from a NOT gate made out of one NAND up to
+   whole working computers. Every one of them is an ordinary chip — the same
+   kind you package yourself — built out of this simulator's own parts, so any
+   of them can be opened and taken apart to the gates.
+
+   They are written as netlists ("this gate's inputs come from those"), and
+   laid out automatically: signals flow left to right, and each part sits in
+   a column one step further along than everything feeding it.
+   ========================================================================== */
+
+/** A netlist-style circuit builder. Signals are {n, i} — output i of node n. */
+function NB(name, color) {
+  const d = newDef(name);
+  d.color = color || CHIP_COLORS[0];
+  const nodes = [], pending = [];
+  let k1 = null, k0 = null;
+  const add = (type, extra) => { const n = makeNode(type, 0, 0, extra); d.nodes.push(n); nodes.push(n); return n; };
+  /* Wire a signal into input `i` of node `n`. A placeholder (see ph) is not
+     wired yet: the wire is remembered and made when it is bound. */
+  const link = (s, n, i) => {
+    if (!s) return;
+    if (s.ph) {
+      if (s.bound) s = s.bound;                             // already bound: wire it for real
+      else { s.ph.push({ n, i }); return; }
+    }
+    d.wires.push({ id: uid(), a: { n: s.n.id, s: 'out', i: s.i }, b: { n: n.id, s: 'in', i } });
+  };
+  const outsOf = (n) => { const o = portsOf(n).outs; return o.map((_, i) => ({ n, i })); };
+  const api = {
+    def: d,
+    in: (label) => ({ n: add('IN', { label }), i: 0 }),
+    ins: (prefix, count) => Array.from({ length: count }, (_, i) => api.in(prefix + i)),
+    out: (label, s) => { const n = add('OUT', { label }); link(s, n, 0); return n; },
+    outs: (prefix, list) => list.forEach((s, i) => api.out(prefix + i, s)),
+    one: () => k1 || (k1 = { n: add('CONST', { value: 1 }), i: 0 }),
+    zero: () => k0 || (k0 = { n: add('CONST', { value: 0 }), i: 0 }),
+    /** One gate (or NOT / BUFFER). Returns its single output. */
+    gate: (type, ...ins) => {
+      const vin = PARTS[type] && PARTS[type].vin;
+      const n = add(type, vin ? { n: Math.max(2, ins.length) } : null);
+      ins.forEach((s, i) => link(s, n, i));
+      return { n, i: 0 };
+    },
+    /** Any part, given its settings; returns ALL of its outputs. */
+    part: (type, extra, ...ins) => {
+      const n = add(type, extra);
+      ins.forEach((s, i) => link(s, n, i));
+      return outsOf(n);
+    },
+    /** A library chip, installed on first use; returns all its outputs. */
+    chip: (key, ...ins) => {
+      const id = installLib(key, true);
+      const n = add('CHIP', { chip: id });
+      ins.forEach((s, i) => link(s, n, i));
+      return outsOf(n);
+    },
+    /** A placeholder for a signal that is not made yet — how feedback is written. */
+    ph: () => ({ ph: [] }),
+    bind: (p, s) => { p.bound = s; for (const t of p.ph) link(s, t.n, t.i); p.ph.length = 0; },
+    /** Print a name above a part, so a big circuit can be read. */
+    tag: (s, text) => { if (s && s.n) s.n.tag = text; return s; },
+    finish: () => { layoutDef(d); return d; },
+  };
+  return api;
+}
+
+/** Lay a circuit out left to right. A part's column is one more than the
+    deepest thing feeding it (feedback wires are ignored for this), pins are
+    kept in the order they were made, and inside a column parts line up with
+    the middle of what feeds them. */
+function layoutDef(d) {
+  const nodes = d.nodes, byId = new Map(nodes.map((n) => [n.id, n]));
+  const srcs = new Map(nodes.map((n) => [n.id, []]));
+  for (const w of d.wires) srcs.get(w.b.n).push(w.a.n);
+  const level = new Map(), state = new Map();
+  const lv = (n) => {
+    if (state.get(n.id) === 2) return level.get(n.id);
+    if (state.get(n.id) === 1) return -1;                 // a feedback wire: ignore it
+    state.set(n.id, 1);
+    let m = 0;
+    for (const sid of srcs.get(n.id)) m = Math.max(m, lv(byId.get(sid)) + 1);
+    state.set(n.id, 2); level.set(n.id, m);
+    return m;
+  };
+  nodes.forEach(lv);
+  const pins = nodes.filter((n) => n.type === 'IN');
+  const consts = nodes.filter((n) => n.type === 'CONST');
+  const outs = nodes.filter((n) => n.type === 'OUT');
+  let top = 0;
+  for (const n of nodes) if (n.type !== 'OUT' && n.type !== 'IN' && n.type !== 'CONST') top = Math.max(top, level.get(n.id));
+  for (const n of pins.concat(consts)) level.set(n.id, 0);
+  for (const n of nodes) if (n.type !== 'OUT' && n.type !== 'IN' && n.type !== 'CONST' && level.get(n.id) < 1) level.set(n.id, 1);
+  for (const n of outs) level.set(n.id, top + 1);
+
+  const cols = [];
+  for (const n of nodes) (cols[level.get(n.id)] || (cols[level.get(n.id)] = [])).push(n);
+  const GAPX = 110, GAPY = 30;
+  let x = 40;
+  const mid = new Map();                                   // node id -> centre y
+  cols.forEach((col, L) => {
+    if (!col) return;
+    let wmax = 0;
+    for (const n of col) wmax = Math.max(wmax, gm(n).w);
+    let ordered = col;
+    if (L === 0) {
+      ordered = pins.concat(consts);
+      let y = 0;
+      for (const n of ordered) {
+        const g = gm(n); n.x = snap(x); n.y = snap(y); y += g.h + (n.type === 'IN' ? 30 : 20);
+        mid.set(n.id, n.y + g.h / 2);
+      }
+    } else {
+      const want = (n) => {
+        const ys = srcs.get(n.id).map((s) => mid.get(s)).filter((v) => v !== undefined);
+        return ys.length ? ys.reduce((a, b) => a + b, 0) / ys.length : 1e9;
+      };
+      if (outs.includes(col[0])) ordered = col;            // pins keep the order they were made in
+      else ordered = col.slice().sort((a, b) => want(a) - want(b));
+      let bottom = -1e9;
+      for (const n of ordered) {
+        const g = gm(n), w = want(n);
+        const y = Math.max(bottom + GAPY, snap((w > 1e8 ? bottom + GAPY : w) - g.h / 2));
+        n.x = snap(x); n.y = snap(y); bottom = n.y + g.h;
+        mid.set(n.id, n.y + g.h / 2);
+      }
+    }
+    x += wmax + GAPX;
+  });
+  let lo = Infinity;
+  for (const n of nodes) lo = Math.min(lo, n.y);
+  if (lo !== 0 && isFinite(lo)) for (const n of nodes) n.y = snap(n.y - lo);
+}
+
+/* ---- the registry ------------------------------------------------------- */
+
+const LIBRARY = [];
+const LIB_LEVELS = [
+  ['raw', 'Raw', 'built from nothing but NAND or NOR gates'],
+  ['simple', 'Simple', 'a handful of gates'],
+  ['intermediate', 'Intermediate', 'several chips working together'],
+  ['advanced', 'Advanced', 'a real processor-sized building block'],
+  ['computer', 'Computer', 'a machine that runs a program'],
+];
+const LIB_CAT_ORDER = [
+  'Gates from NAND', 'Gates from NOR', 'Latches & flip-flops', 'Selecting & decoding', 'Arithmetic',
+  'Comparing & checking', 'Registers & shifting', 'Counters & timing', 'Memory', 'Processors', 'Computers',
+];
+const LIB_CAT_COLOR = {
+  'Gates from NAND': '#2f4257', 'Gates from NOR': '#365f7d', 'Latches & flip-flops': '#7d5233', 'Selecting & decoding': '#4a7d7a',
+  'Arithmetic': '#3f7d55', 'Comparing & checking': '#6d7d33', 'Registers & shifting': '#7a5aa8', 'Counters & timing': '#a8445a',
+  'Memory': '#5a4a7d', 'Processors': '#8a5a2e', 'Computers': '#b0453a',
+};
+
+/** Register a chip. `build(c)` gets a builder and wires it up; or `def` can
+    hand back a finished circuit made some other way. */
+function lib(key, name, cat, level, desc, build, opt) {
+  LIBRARY.push(Object.assign({ key, name, cat, level, desc, build }, opt || {}));
+}
+const libEntry = (key) => LIBRARY.find((e) => e.key === key);
+const libId = (key) => 'lib:' + key;
+
+/** Put a library chip (and everything it is built from) in the chip library.
+    `asNeeded` marks one that is only there because something else uses it:
+    those stay out of the parts list until you ask for them by name. */
+function installLib(key, asNeeded) {
+  const id = libId(key);
+  if (LIB[id]) { if (!asNeeded && LIB[id].lib) LIB[id].lib.dep = false; return id; }
+  const e = libEntry(key);
+  if (!e) throw new Error('no library chip called ' + key);
+  let d;
+  if (e.def) d = e.def();
+  else { const c = NB(e.name, LIB_CAT_COLOR[e.cat]); e.build(c); d = c.finish(); }
+  d.id = id; d.name = e.name; d.color = LIB_CAT_COLOR[e.cat] || d.color;
+  d.lib = { key, cat: e.cat, level: e.level, dep: !!asNeeded };
+  LIB[id] = d;
+  return id;
+}
+
+/* ---- gates built from NAND alone, and from NOR alone -------------------- */
+
+lib('nand-not', 'NOT from a NAND', 'Gates from NAND', 'raw',
+  'Tie a NAND’s two inputs together and it can only be 0,0 or 1,1 — so it just flips. The first step in showing a NAND is enough.', (c) => {
+    const a = c.in('A'); c.out('Y', c.gate('NAND', a, a));
+  });
+lib('nand-and', 'AND from NANDs', 'Gates from NAND', 'raw', 'A NAND, then a NAND acting as a NOT to flip its answer back.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n = c.gate('NAND', a, b); c.out('Y', c.gate('NAND', n, n));
+});
+lib('nand-or', 'OR from NANDs', 'Gates from NAND', 'raw', 'Flip both inputs first, then NAND them: if neither input is off, at least one must be on.', (c) => {
+  const a = c.in('A'), b = c.in('B'); c.out('Y', c.gate('NAND', c.gate('NAND', a, a), c.gate('NAND', b, b)));
+});
+lib('nand-nor', 'NOR from NANDs', 'Gates from NAND', 'raw', 'An OR built from NANDs, then flipped.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const o = c.gate('NAND', c.gate('NAND', a, a), c.gate('NAND', b, b)); c.out('Y', c.gate('NAND', o, o));
+});
+lib('nand-xor', 'XOR from four NANDs', 'Gates from NAND', 'raw', 'The classic four-NAND exclusive-or: the middle NAND is shared by both sides.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n = c.gate('NAND', a, b);
+  c.out('Y', c.gate('NAND', c.gate('NAND', a, n), c.gate('NAND', b, n)));
+});
+lib('nand-xnor', 'XNOR from NANDs', 'Gates from NAND', 'raw', 'The four-NAND XOR, flipped by a fifth.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n = c.gate('NAND', a, b);
+  const x = c.gate('NAND', c.gate('NAND', a, n), c.gate('NAND', b, n)); c.out('Y', c.gate('NAND', x, x));
+});
+lib('nand-mux', '2:1 multiplexer from NANDs', 'Gates from NAND', 'raw', 'Y is A when S is 0 and B when S is 1: two NANDs each let one input through, and a third joins them.', (c) => {
+  const a = c.in('A'), b = c.in('B'), s = c.in('S'); const ns = c.gate('NAND', s, s);
+  c.out('Y', c.gate('NAND', c.gate('NAND', a, ns), c.gate('NAND', b, s)));
+});
+lib('nand-halfadder', 'Half adder from NANDs', 'Gates from NAND', 'raw', 'Five NANDs add two bits: the shared NAND of A and B is half the answer for both outputs.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n = c.gate('NAND', a, b);
+  c.out('SUM', c.gate('NAND', c.gate('NAND', a, n), c.gate('NAND', b, n))); c.out('CARRY', c.gate('NAND', n, n));
+});
+lib('nor-not', 'NOT from a NOR', 'Gates from NOR', 'raw', 'Tie a NOR’s inputs together and it flips — the NOR is enough on its own, just as the NAND is.', (c) => {
+  const a = c.in('A'); c.out('Y', c.gate('NOR', a, a));
+});
+lib('nor-or', 'OR from NORs', 'Gates from NOR', 'raw', 'A NOR, then a NOR acting as a NOT.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n = c.gate('NOR', a, b); c.out('Y', c.gate('NOR', n, n));
+});
+lib('nor-and', 'AND from NORs', 'Gates from NOR', 'raw', 'Flip both inputs, then NOR them: the answer is 1 only if neither was off.', (c) => {
+  const a = c.in('A'), b = c.in('B'); c.out('Y', c.gate('NOR', c.gate('NOR', a, a), c.gate('NOR', b, b)));
+});
+lib('nor-nand', 'NAND from NORs', 'Gates from NOR', 'raw', 'An AND built from NORs, then flipped.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const x = c.gate('NOR', c.gate('NOR', a, a), c.gate('NOR', b, b)); c.out('Y', c.gate('NOR', x, x));
+});
+lib('nor-xor', 'XOR from NORs', 'Gates from NOR', 'raw', 'Five NORs. The first NOR is on only when both inputs are off; two more pick out "only A" and "only B"; the fourth makes XNOR and the fifth flips it.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n1 = c.gate('NOR', a, b);
+  const x = c.gate('NOR', c.gate('NOR', a, n1), c.gate('NOR', b, n1)); c.out('Y', c.gate('NOR', x, x));
+});
+lib('nor-xnor', 'XNOR from NORs', 'Gates from NOR', 'raw', 'Four NORs: on when the inputs match.', (c) => {
+  const a = c.in('A'), b = c.in('B'); const n1 = c.gate('NOR', a, b);
+  c.out('Y', c.gate('NOR', c.gate('NOR', a, n1), c.gate('NOR', b, n1)));
+});
+
+/* ---- latches and flip-flops, from gates ---------------------------------- */
+
+lib('sr-nor', 'SR latch (NOR)', 'Latches & flip-flops', 'raw', 'Two NORs, each feeding the other. S sets, R clears, neither holds: the loop IS the memory.', (c) => {
+  const S = c.in('S'), R = c.in('R'); const q = c.ph(), qb = c.ph();
+  const Q = c.gate('NOR', R, qb), QB = c.gate('NOR', S, q); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('sr-nand', 'SR latch (NAND, active low)', 'Latches & flip-flops', 'raw', 'The same loop made of NANDs, so its inputs work upside down: pull S̄ low to set, R̄ low to clear. Both low is the forbidden state.', (c) => {
+  const S = c.in('S̄'), R = c.in('R̄'); const q = c.ph(), qb = c.ph();
+  const Q = c.gate('NAND', S, qb), QB = c.gate('NAND', R, q); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('sr-gated', 'Gated SR latch', 'Latches & flip-flops', 'raw', 'An SR latch with a door in front: S and R only get through while EN is high.', (c) => {
+  const S = c.in('S'), R = c.in('R'), E = c.in('EN'); const q = c.ph(), qb = c.ph();
+  const n1 = c.gate('NAND', S, E), n2 = c.gate('NAND', R, E);
+  const Q = c.gate('NAND', n1, qb), QB = c.gate('NAND', n2, q); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('d-latch', 'D latch', 'Latches & flip-flops', 'raw', 'A gated SR latch where R is always the opposite of S, so there is no forbidden input: while EN is high Q follows D, then it holds.', (c) => {
+  const D = c.in('D'), E = c.in('EN'); const q = c.ph(), qb = c.ph();
+  const n1 = c.gate('NAND', D, E), n2 = c.gate('NAND', n1, E);
+  const Q = c.gate('NAND', n1, qb), QB = c.gate('NAND', n2, q); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('dff-ms', 'D flip-flop (master–slave)', 'Latches & flip-flops', 'simple', 'Two D latches back to back, open on opposite halves of the clock. The first listens while CLK is low, the second repeats it while CLK is high — so the output changes only as the clock rises.', (c) => {
+  const D = c.in('D'), K = c.in('CLK'); const nk = c.gate('NOT', K);
+  const m = c.chip('d-latch', D, nk); const s = c.chip('d-latch', m[0], K);
+  c.out('Q', s[0]); c.out('Q̄', s[1]);
+});
+lib('dff-nand', 'D flip-flop (six NANDs)', 'Latches & flip-flops', 'raw', 'The textbook edge-triggered flip-flop from six NANDs: four watch for the clock rising, two hold the answer.', null, { def: () => exNandDFF() });
+lib('jk-ff', 'JK flip-flop (from gates)', 'Latches & flip-flops', 'simple', 'A D flip-flop with logic in front of it: D = J·Q̄ + K̄·Q. 00 holds, 10 sets, 01 clears, 11 flips.', (c) => {
+  const J = c.in('J'), K = c.in('K'), CK = c.in('CLK'); const q = c.ph(), qb = c.ph();
+  const d = c.gate('OR', c.gate('AND', J, qb), c.gate('AND', c.gate('NOT', K), q));
+  const [Q, QB] = c.part('DFF', null, d, CK); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('t-ff', 'T flip-flop (from gates)', 'Latches & flip-flops', 'simple', 'A D flip-flop that feeds back its own opposite when T is 1: D = T XOR Q. The output toggles on every clock edge while T is high.', (c) => {
+  const T = c.in('T'), CK = c.in('CLK'); const q = c.ph();
+  const [Q, QB] = c.part('DFF', null, c.gate('XOR', T, q), CK); c.bind(q, Q);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('dff-en', 'D flip-flop with enable', 'Latches & flip-flops', 'simple', 'Only takes a new value when EN is high; otherwise it feeds its own output back round and keeps what it has.', (c) => {
+  const D = c.in('D'), E = c.in('EN'), CK = c.in('CLK'); const q = c.ph();
+  const d = c.gate('OR', c.gate('AND', E, D), c.gate('AND', c.gate('NOT', E), q));
+  const [Q, QB] = c.part('DFF', null, d, CK); c.bind(q, Q);
+  c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('dff-clr', 'D flip-flop with clear', 'Latches & flip-flops', 'simple', 'A D flip-flop plus an immediate clear: CLR forces Q to 0 whatever the clock is doing.', (c) => {
+  const D = c.in('D'), CK = c.in('CLK'), CL = c.in('CLR');
+  const [Q, QB] = c.part('DFFR', null, D, CK, CL, c.zero()); c.out('Q', Q); c.out('Q̄', QB);
+});
+lib('debounce', 'Switch debouncer', 'Latches & flip-flops', 'simple', 'A real switch bounces — it chatters between on and off for a moment. An SR latch with a two-way switch wired to it gives one clean change. Wire the switch’s two contacts to S and R.', (c) => {
+  const S = c.in('A (up)'), R = c.in('B (down)'); const q = c.ph(), qb = c.ph();
+  const Q = c.gate('NOR', R, qb), QB = c.gate('NOR', S, q); c.bind(q, Q); c.bind(qb, QB);
+  c.out('Clean', Q); c.out('Clean̄', QB);
+});
+
+/* ---- choosing, spreading and spotting ------------------------------------- */
+
+/** All the AND-of-literals lines of a decoder: one per number. */
+function decodeLines(c, A, en) {
+  const inv = A.map((a) => c.gate('NOT', a));
+  const lines = [];
+  for (let n = 0; n < 2 ** A.length; n++) {
+    const lits = A.map((_, i) => ((n >> i) & 1 ? A[i] : inv[i]));
+    if (en) lits.push(en);
+    lines.push(lits.length === 1 ? lits[0] : c.gate('AND', ...lits));
+  }
+  return lines;
+}
+/** A multiplexer tree out of 2:1 chips: select[0] picks within pairs. */
+function muxTree(c, ins, sel) {
+  let level = ins;
+  for (const s of sel) {
+    const next = [];
+    for (let i = 0; i < level.length; i += 2) next.push(c.chip('mux2', level[i], level[i + 1], s)[0]);
+    level = next;
+  }
+  return level[0];
+}
+const bitsFn = (n, f) => Array.from({ length: n }, (_, i) => f(i));
+
+lib('half-adder', 'Half adder', 'Arithmetic', 'simple', 'XOR gives the sum bit, AND gives the carry. Two bits in, two out — the smallest adder.', (c) => {
+  const a = c.in('A'), b = c.in('B'); c.out('SUM', c.gate('XOR', a, b)); c.out('CARRY', c.gate('AND', a, b));
+});
+lib('full-adder', 'Full adder', 'Arithmetic', 'simple', 'Adds A, B and a carry in. Two half-adders and an OR — chain them and you can add numbers of any size.', (c) => {
+  const a = c.in('A'), b = c.in('B'), ci = c.in('CIN');
+  const x = c.gate('XOR', a, b);
+  c.out('SUM', c.gate('XOR', x, ci)); c.out('COUT', c.gate('OR', c.gate('AND', a, b), c.gate('AND', x, ci)));
+});
+lib('half-sub', 'Half subtractor', 'Arithmetic', 'simple', 'A minus B for one bit: the difference is an XOR, and a borrow is needed when A is 0 and B is 1.', (c) => {
+  const a = c.in('A'), b = c.in('B'); c.out('DIFF', c.gate('XOR', a, b)); c.out('BORROW', c.gate('AND', c.gate('NOT', a), b));
+});
+lib('full-sub', 'Full subtractor', 'Arithmetic', 'simple', 'A − B − borrow-in for one bit, with a borrow out, so they chain like full adders.', (c) => {
+  const a = c.in('A'), b = c.in('B'), bi = c.in('BIN');
+  const x = c.gate('XOR', a, b);
+  c.out('DIFF', c.gate('XOR', x, bi));
+  c.out('BOUT', c.gate('OR', c.gate('AND', c.gate('NOT', a), b), c.gate('AND', c.gate('NOT', x), bi)));
+});
+lib('mux2', '2:1 multiplexer', 'Selecting & decoding', 'simple', 'Y is A while S is 0 and B while S is 1.', (c) => {
+  const a = c.in('A'), b = c.in('B'), s = c.in('S');
+  c.out('Y', c.gate('OR', c.gate('AND', a, c.gate('NOT', s)), c.gate('AND', b, s)));
+});
+lib('mux4', '4:1 multiplexer', 'Selecting & decoding', 'simple', 'Three 2:1 multiplexers in a tree: S0 chooses within each pair, S1 chooses between the pairs.', (c) => {
+  const I = c.ins('I', 4), S = c.ins('S', 2); c.out('Y', muxTree(c, I, S));
+});
+lib('mux8', '8:1 multiplexer', 'Selecting & decoding', 'intermediate', 'Seven 2:1 multiplexers in a tree, three select lines.', (c) => {
+  const I = c.ins('I', 8), S = c.ins('S', 3); c.out('Y', muxTree(c, I, S));
+});
+lib('mux16', '16:1 multiplexer', 'Selecting & decoding', 'intermediate', 'Fifteen 2:1 multiplexers in a tree, four select lines.', (c) => {
+  const I = c.ins('I', 16), S = c.ins('S', 4); c.out('Y', muxTree(c, I, S));
+});
+lib('mux2x4', '2:1 multiplexer, 4 bits wide', 'Selecting & decoding', 'simple', 'Four multiplexers sharing one select line: chooses between two whole 4-bit numbers.', (c) => {
+  const A = c.ins('A', 4), B = c.ins('B', 4), S = c.in('S');
+  c.outs('Y', A.map((a, i) => c.chip('mux2', a, B[i], S)[0]));
+});
+lib('mux2x8', '2:1 multiplexer, 8 bits wide', 'Selecting & decoding', 'simple', 'Eight multiplexers sharing one select line: chooses between two whole bytes.', (c) => {
+  const A = c.ins('A', 8), B = c.ins('B', 8), S = c.in('S');
+  c.outs('Y', A.map((a, i) => c.chip('mux2', a, B[i], S)[0]));
+});
+lib('mux4x4', '4:1 multiplexer, 4 bits wide', 'Selecting & decoding', 'intermediate', 'Chooses one of four 4-bit numbers — the read port of a four-register file.', (c) => {
+  const W = [0, 1, 2, 3].map((k) => c.ins('W' + k + '.', 4)), S = c.ins('S', 2);
+  c.outs('Y', bitsFn(4, (i) => muxTree(c, W.map((w) => w[i]), S)));
+});
+lib('demux4', '1:4 demultiplexer', 'Selecting & decoding', 'simple', 'Sends D to whichever of four outputs S names; the others stay 0.', (c) => {
+  const D = c.in('D'), S = c.ins('S', 2); c.outs('Y', decodeLines(c, S, D));
+});
+lib('demux8', '1:8 demultiplexer', 'Selecting & decoding', 'simple', 'Sends D to whichever of eight outputs S names.', (c) => {
+  const D = c.in('D'), S = c.ins('S', 3); c.outs('Y', decodeLines(c, S, D));
+});
+lib('dec2-4', '2-to-4 decoder', 'Selecting & decoding', 'simple', 'Reads two bits as a number and switches on exactly that one of four lines. EN off turns them all off.', (c) => {
+  const A = c.ins('A', 2), E = c.in('EN'); c.outs('Y', decodeLines(c, A, E));
+});
+lib('dec3-8', '3-to-8 decoder', 'Selecting & decoding', 'simple', 'Three bits in, one of eight lines out. EN off turns them all off.', (c) => {
+  const A = c.ins('A', 3), E = c.in('EN'); c.outs('Y', decodeLines(c, A, E));
+});
+lib('dec4-16', '4-to-16 decoder', 'Selecting & decoding', 'intermediate', 'Four bits in, one of sixteen lines out. The heart of every memory address decoder.', (c) => {
+  const A = c.ins('A', 4), E = c.in('EN'); c.outs('Y', decodeLines(c, A, E));
+});
+lib('enc4-2', '4-to-2 priority encoder', 'Selecting & decoding', 'simple', 'Reports the number of the highest line that is on. V says whether any were.', (c) => {
+  const I = c.ins('I', 4);
+  c.out('A0', c.gate('OR', I[3], c.gate('AND', I[1], c.gate('NOT', I[2]))));
+  c.out('A1', c.gate('OR', I[2], I[3]));
+  c.out('V', c.gate('OR', ...I));
+});
+lib('enc8-3', '8-to-3 priority encoder', 'Selecting & decoding', 'simple', 'Reports the number of the highest of eight lines that is on. V says whether any were.', (c) => {
+  const I = c.ins('I', 8); const n = (i) => c.gate('NOT', I[i]);
+  c.out('A0', c.gate('OR', I[7], c.gate('AND', n(6), I[5]), c.gate('AND', n(6), n(4), I[3]), c.gate('AND', n(6), n(4), n(2), I[1])));
+  c.out('A1', c.gate('OR', I[7], I[6], c.gate('AND', n(5), n(4), I[3]), c.gate('AND', n(5), n(4), I[2])));
+  c.out('A2', c.gate('OR', I[4], I[5], I[6], I[7]));
+  c.out('V', c.gate('OR', ...I));
+});
+lib('bin-gray4', 'Binary to Gray code (4 bit)', 'Selecting & decoding', 'simple', 'Gray code changes only one bit at a time between neighbours. Each bit is the XOR of a binary bit and the one above it.', (c) => {
+  const B = c.ins('B', 4);
+  c.outs('G', bitsFn(4, (i) => (i === 3 ? B[3] : c.gate('XOR', B[i], B[i + 1]))));
+});
+lib('gray-bin4', 'Gray code to binary (4 bit)', 'Selecting & decoding', 'simple', 'Undoes the Gray code: each binary bit is the XOR of the Gray bit with the binary bit above it.', (c) => {
+  const G = c.ins('G', 4); const B = [];
+  for (let i = 3; i >= 0; i--) B[i] = i === 3 ? G[3] : c.gate('XOR', G[i], B[i + 1]);
+  c.outs('B', B);
+});
+lib('bcd-7seg', 'BCD to 7-segment decoder', 'Selecting & decoding', 'intermediate', 'Four bits in (8-4-2-1), seven segment lines out (a to g). Sixteen ANDs pick the number, then each segment is an OR of the numbers it lights for.', null, {
+  def: () => recSevenSeg(),
+});
+
+
+/* ---- arithmetic: adders, subtractors, shifters, multipliers, an ALU ----- */
+
+/** A ripple-carry adder out of full-adder chips. Returns the sum bits, the
+    carry out, and the carry going INTO each bit (needed for overflow). */
+function rippleAdd(c, A, B, cin) {
+  const S = [], into = [];
+  let carry = cin;
+  for (let i = 0; i < A.length; i++) {
+    into.push(carry);
+    const [s, co] = c.chip('full-adder', A[i], B[i], carry);
+    S.push(s); carry = co;
+  }
+  return { S, co: carry, into };
+}
+const adderKey = (n) => 'add' + n;
+
+for (const n of [4, 8, 16]) {
+  lib('add' + n, n + '-bit adder', 'Arithmetic', n === 4 ? 'intermediate' : 'intermediate',
+    `${n} full adders in a row, each handing its carry to the next. Slow for big numbers — every carry has to ripple all the way along — but easy to read.`, (c) => {
+      const A = c.ins('A', n), B = c.ins('B', n), ci = c.in('CIN');
+      const r = rippleAdd(c, A, B, ci); c.outs('S', r.S); c.out('COUT', r.co);
+    });
+}
+for (const n of [4, 8]) {
+  lib('addsub' + n, n + '-bit adder / subtractor', 'Arithmetic', 'intermediate',
+    'One adder that can also subtract. Flip every bit of B and add one (that is two’s complement) by setting SUB: the XORs do the flipping and SUB doubles as the carry in. COUT is 1 when A was at least B; V flags signed overflow.', (c) => {
+      const A = c.ins('A', n), B = c.ins('B', n), sub = c.in('SUB');
+      const r = rippleAdd(c, A, B.map((b) => c.gate('XOR', b, sub)), sub);
+      c.outs('S', r.S); c.out('COUT', r.co); c.out('V', c.gate('XOR', r.into[n - 1], r.co));
+    });
+  lib('inc' + n, n + '-bit incrementer', 'Arithmetic', 'simple',
+    'Adds one: a chain of half adders, the carry starting at 1. The next number in a count.', (c) => {
+      const A = c.ins('A', n); let carry = c.one(); const Y = [];
+      for (const a of A) { const [s, co] = c.chip('half-adder', a, carry); Y.push(s); carry = co; }
+      c.outs('Y', Y); c.out('CO', carry);
+    });
+  lib('neg' + n, n + '-bit negate', 'Arithmetic', 'simple',
+    'Two’s complement: flip every bit, then add one. The result of "0 minus A".', (c) => {
+      const A = c.ins('A', n); const Y = c.chip('inc' + n, ...A.map((a) => c.gate('NOT', a)));
+      c.outs('Y', Y.slice(0, n));
+    });
+}
+lib('cla4', '4-bit carry-lookahead adder', 'Arithmetic', 'advanced',
+  'Instead of waiting for carries to ripple, work out each carry straight from the inputs: a bit "generates" a carry if A and B are both 1, and "propagates" one if exactly one is. Faster in real hardware, at the cost of more gates.', (c) => {
+    const A = c.ins('A', 4), B = c.ins('B', 4), ci = c.in('CIN');
+    const g = A.map((a, i) => c.gate('AND', a, B[i])), p = A.map((a, i) => c.gate('XOR', a, B[i]));
+    const carry = [ci];
+    for (let i = 1; i <= 4; i++) {
+      const terms = [g[i - 1]];
+      for (let j = i - 2; j >= -1; j--) {
+        const lits = [j >= 0 ? g[j] : ci];
+        for (let k = j + 1; k <= i - 1; k++) lits.push(p[k]);
+        terms.push(lits.length > 1 ? c.gate('AND', ...lits) : lits[0]);
+      }
+      carry.push(c.gate('OR', ...terms));
+    }
+    c.outs('S', p.map((x, i) => c.gate('XOR', x, carry[i]))); c.out('COUT', carry[4]);
+  });
+lib('bcd-add1', 'BCD digit adder', 'Arithmetic', 'advanced',
+  'Adds two decimal digits (each stored as four bits). If the binary answer is more than 9 it is wrong as a decimal digit, so 6 is added to skip the unused codes and carry into the next digit.', (c) => {
+    const A = c.ins('A', 4), B = c.ins('B', 4), ci = c.in('CIN');
+    const r = c.chip('add4', ...A, ...B, ci);                    // S0..S3, COUT
+    const fix = c.gate('OR', r[4], c.gate('AND', r[3], c.gate('OR', r[2], r[1])));
+    const z = c.zero();
+    const t = c.chip('add4', r[0], r[1], r[2], r[3], z, fix, fix, z, z);
+    c.outs('S', t.slice(0, 4)); c.out('COUT', fix);
+  });
+lib('bin-bcd4', 'Binary to decimal digits (4 bit)', 'Arithmetic', 'advanced',
+  'Turns 0–15 into two decimal digits: if the number is 10 or more, add 6 and the carry is the tens digit. 13 becomes 1 and 3.', (c) => {
+    const B = c.ins('B', 4);
+    const ge10 = c.gate('OR', c.gate('AND', B[3], B[2]), c.gate('AND', B[3], B[1]));
+    const z = c.zero();
+    const t = c.chip('add4', ...B, z, ge10, ge10, z, z);
+    c.outs('ONES', t.slice(0, 4)); c.out('TENS', ge10);
+  });
+lib('mul2x2', '2 × 2 multiplier', 'Arithmetic', 'simple',
+  'Each bit of one number is ANDed with each bit of the other, and the four little products are added up with the right carries — which is exactly long multiplication, in binary.', (c) => {
+    const A = c.ins('A', 2), B = c.ins('B', 2);
+    const p00 = c.gate('AND', A[0], B[0]), p10 = c.gate('AND', A[1], B[0]), p01 = c.gate('AND', A[0], B[1]), p11 = c.gate('AND', A[1], B[1]);
+    const [s1, c1] = c.chip('half-adder', p10, p01);
+    const [s2, c2] = c.chip('half-adder', p11, c1);
+    c.out('P0', p00); c.out('P1', s1); c.out('P2', s2); c.out('P3', c2);
+  });
+for (const n of [4, 8]) {
+  lib('mul' + n + 'x' + n, `${n} × ${n} multiplier`, 'Arithmetic', 'advanced',
+    `Long multiplication in hardware: for each bit of B, a row of ANDs makes A (or zero), shifted into place, and a ${2 * n}-bit adder adds it to the running total. The answer is ${2 * n} bits wide.`, (c) => {
+      const A = c.ins('A', n), B = c.ins('B', n), z = c.zero();
+      const row = (i) => bitsFn(2 * n, (k) => (k >= i && k < i + n ? c.gate('AND', A[k - i], B[i]) : z));
+      let acc = row(0);
+      for (let i = 1; i < n; i++) acc = c.chip('add' + 2 * n, ...acc, ...row(i), z).slice(0, 2 * n);
+      c.outs('P', acc);
+    });
+}
+for (const n of [4, 8]) {
+  const stages = Math.log2(n);
+  lib('shl' + n, n + '-bit barrel shifter (left)', 'Arithmetic', 'intermediate',
+    'Shifts a number left by any amount in one go — log₂(n) layers of multiplexers, the first moving things 1 place or not, the next 2, the next 4. Shifting left by one doubles a number.', (c) => {
+      const A = c.ins('A', n), S = c.ins('S', stages), z = c.zero(); let x = A;
+      for (let k = 0; k < stages; k++) x = x.map((v, i) => c.chip('mux2', v, i - 2 ** k >= 0 ? x[i - 2 ** k] : z, S[k])[0]);
+      c.outs('Y', x);
+    });
+  lib('shr' + n, n + '-bit barrel shifter (right)', 'Arithmetic', 'intermediate',
+    'Shifts a number right by any amount, filling with zeros. Shifting right by one halves it.', (c) => {
+      const A = c.ins('A', n), S = c.ins('S', stages), z = c.zero(); let x = A;
+      for (let k = 0; k < stages; k++) x = x.map((v, i) => c.chip('mux2', v, i + 2 ** k < n ? x[i + 2 ** k] : z, S[k])[0]);
+      c.outs('Y', x);
+    });
+}
+
+/** A small arithmetic logic unit from gates, with the same operations as the ALU part. */
+function buildAlu(c, n) {
+  const A = c.ins('A', n), B = c.ins('B', n), OP = c.ins('OP', 3), CI = c.in('CI');
+  const L = decodeLines(c, OP);
+  const sub = L[1];
+  const r = rippleAdd(c, A, B.map((b) => c.gate('XOR', b, sub)), c.gate('XOR', CI, sub));
+  const F = bitsFn(n, (i) => muxTree(c, [
+    r.S[i], r.S[i],
+    c.gate('AND', A[i], B[i]), c.gate('OR', A[i], B[i]), c.gate('XOR', A[i], B[i]), c.gate('NOT', A[i]),
+    i > 0 ? A[i - 1] : CI, i < n - 1 ? A[i + 1] : CI,
+  ], OP));
+  const arith = c.gate('OR', L[0], L[1]);
+  c.outs('F', F);
+  c.out('CO', c.gate('OR', c.gate('AND', arith, c.gate('XOR', r.co, sub)), c.gate('AND', L[6], A[n - 1]), c.gate('AND', L[7], A[0])));
+  c.out('Z', c.gate('NOR', ...F)); c.out('N', F[n - 1]);
+  c.out('V', c.gate('AND', arith, c.gate('XOR', r.into[n - 1], r.co)));
+}
+for (const n of [4, 8]) {
+  lib('alu' + n, n + '-bit ALU (from gates)', 'Arithmetic', 'advanced',
+    'The calculating heart of a processor, built from gates. OP0–OP2 choose: 0 add, 1 subtract, 2 AND, 3 OR, 4 XOR, 5 NOT A, 6 shift A left, 7 shift A right. CO is the carry or borrow out, Z says the answer is zero, N that its top bit is set, V that signed arithmetic overflowed.', (c) => buildAlu(c, n));
+}
+
+/* ---- comparing and checking -------------------------------------------- */
+
+function buildCompare(c, n) {
+  const A = c.ins('A', n), B = c.ins('B', n);
+  const eq = A.map((a, i) => c.gate('XNOR', a, B[i]));
+  const gt = [], lt = [];
+  let pe = null;                                              // "every bit above this one matches"
+  for (let i = n - 1; i >= 0; i--) {
+    const g = [A[i], c.gate('NOT', B[i])], l = [c.gate('NOT', A[i]), B[i]];
+    if (pe) { g.push(pe); l.push(pe); }
+    gt.push(c.gate('AND', ...g)); lt.push(c.gate('AND', ...l));
+    pe = pe ? c.gate('AND', pe, eq[i]) : eq[i];
+  }
+  c.out('A>B', n > 1 ? c.gate('OR', ...gt) : gt[0]); c.out('A=B', pe); c.out('A<B', n > 1 ? c.gate('OR', ...lt) : lt[0]);
+}
+lib('cmp1', '1-bit comparator', 'Comparing & checking', 'simple', 'A is bigger only when A is 1 and B is 0; they are equal when an XNOR says so.', (c) => buildCompare(c, 1));
+lib('cmp2', '2-bit comparator', 'Comparing & checking', 'simple', 'Looks at the top bits first: if they differ, that decides it; if they match, the lower bits decide.', (c) => buildCompare(c, 2));
+lib('cmp4', '4-bit comparator', 'Comparing & checking', 'intermediate', 'Compares two 4-bit numbers from the top bit down. Exactly one of the three outputs is on.', (c) => buildCompare(c, 4));
+lib('cmp8', '8-bit comparator', 'Comparing & checking', 'intermediate', 'Compares two bytes from the top bit down. Exactly one of the three outputs is on.', (c) => buildCompare(c, 8));
+lib('eq8', '8-bit equality', 'Comparing & checking', 'simple', 'Eight XNORs and an AND: on only when every bit matches.', (c) => {
+  const A = c.ins('A', 8), B = c.ins('B', 8); c.out('EQ', c.gate('AND', ...A.map((a, i) => c.gate('XNOR', a, B[i]))));
+});
+lib('zero8', '8-bit zero detector', 'Comparing & checking', 'simple', 'On when every one of its eight inputs is off — an 8-input NOR.', (c) => {
+  c.out('ZERO', c.gate('NOR', ...c.ins('A', 8)));
+});
+lib('maj3', 'Majority of three', 'Comparing & checking', 'simple', 'On when at least two of its three inputs are on. The carry of a full adder.', (c) => {
+  const [a, b, d] = c.ins('I', 3); c.out('Y', c.gate('OR', c.gate('AND', a, b), c.gate('AND', a, d), c.gate('AND', b, d)));
+});
+const xorTree = (c, list) => { let l = list; while (l.length > 1) { const nx = []; for (let i = 0; i < l.length; i += 2) nx.push(i + 1 < l.length ? c.gate('XOR', l[i], l[i + 1]) : l[i]); l = nx; } return l[0]; };
+lib('parity4', '4-bit parity generator', 'Comparing & checking', 'simple', 'XORs all four bits together: 1 when an odd number of them are on. Send it along with the data and the receiver can tell if a bit got flipped.', (c) => {
+  c.out('P', xorTree(c, c.ins('D', 4)));
+});
+lib('parity8', '8-bit parity generator', 'Comparing & checking', 'simple', 'XORs eight bits together in a tree: 1 when an odd number are on (the even-parity bit).', (c) => {
+  c.out('P', xorTree(c, c.ins('D', 8)));
+});
+lib('parity-check8', '8-bit parity checker', 'Comparing & checking', 'simple', 'Give it eight data bits and the parity bit that came with them. ERR goes high if the total number of ones is odd — a bit was damaged on the way.', (c) => {
+  c.out('ERR', xorTree(c, c.ins('D', 8).concat([c.in('P')])));
+});
+
+
+/* ---- registers and shifting ---------------------------------------------- */
+
+for (const n of [4, 8]) {
+  lib('reg' + n, n + '-bit register (from flip-flops)', 'Registers & shifting', 'intermediate',
+    `${n} flip-flops with a clock in common. LD lets a new value in on the clock edge; without it each bit feeds its own output back round and holds. CLR (also on the edge) empties it.`, (c) => {
+      const D = c.ins('D', n), LD = c.in('LD'), CL = c.in('CLR'), CK = c.in('CLK');
+      const nl = c.gate('NOT', LD), nc = c.gate('NOT', CL);
+      const Q = D.map((d) => {
+        const q = c.ph();
+        const next = c.gate('AND', nc, c.gate('OR', c.gate('AND', LD, d), c.gate('AND', nl, q)));
+        const [o] = c.part('DFF', null, next, CK); c.bind(q, o); return o;
+      });
+      c.outs('Q', Q);
+    });
+  lib('sipo' + n, n + '-bit shift register (serial in, parallel out)', 'Registers & shifting', 'simple',
+    `A line of ${n} flip-flops, each reading the one before it. On every clock edge the whole row moves along one place and SI is the new bit at the front: feed in a bit at a time and after ${n} clocks you have a ${n}-bit number on the outputs.`, (c) => {
+      const SI = c.in('SI'), CK = c.in('CLK'); let prev = SI; const Q = [];
+      for (let i = 0; i < n; i++) { const [o] = c.part('DFF', null, prev, CK); Q.push(o); prev = o; }
+      c.outs('Q', Q);
+    });
+  lib('piso' + n, n + '-bit shift register (parallel load)', 'Registers & shifting', 'intermediate',
+    `Load all ${n} bits at once with LOAD, then clock them out one at a time from SO. This is how a byte becomes a stream of bits on a single wire.`, (c) => {
+      const D = c.ins('D', n), LOAD = c.in('LOAD'), SI = c.in('SI'), CK = c.in('CLK'), nl = c.gate('NOT', LOAD);
+      const Q = [], q = D.map(() => c.ph());
+      D.forEach((d, i) => {
+        const from = i === 0 ? SI : q[i - 1];
+        const [o] = c.part('DFF', null, c.gate('OR', c.gate('AND', LOAD, d), c.gate('AND', nl, from)), CK);
+        Q.push(o); c.bind(q[i], o);
+      });
+      c.outs('Q', Q); c.out('SO', Q[n - 1]);
+    });
+}
+lib('ring4', 'Ring counter (4)', 'Registers & shifting', 'simple', 'A single 1 chases itself round a loop of four flip-flops. RST puts the 1 back in the first place.', (c) => {
+  const CK = c.in('CLK'), R = c.in('RST'); const q = c.ph(); let prev = q; const Q = [];
+  for (let i = 0; i < 4; i++) { const [o] = c.part('DFFR', null, prev, CK, i ? R : c.zero(), i ? c.zero() : R); Q.push(o); prev = o; }
+  c.bind(q, Q[3]); c.outs('Q', Q);
+});
+lib('johnson4', 'Johnson (twisted-ring) counter', 'Registers & shifting', 'simple', 'A shift register whose last output is fed back, flipped, to the first. It fills with 1s a step at a time, then empties again: eight states from four flip-flops, only one bit changing each time.', (c) => {
+  const CK = c.in('CLK'), R = c.in('RST'); const q = c.ph(); let prev = c.gate('NOT', q); const Q = [];
+  for (let i = 0; i < 4; i++) { const [o] = c.part('DFFR', null, prev, CK, R, c.zero()); Q.push(o); prev = o; }
+  c.bind(q, Q[3]); c.outs('Q', Q);
+});
+lib('lfsr8', '8-bit pseudo-random generator (LFSR)', 'Registers & shifting', 'intermediate', 'A shift register whose new bit is the XOR of four of its own bits. It steps through 255 different values in a scrambled-looking order before repeating — a cheap source of random-looking numbers. RST loads all ones (it must never be all zeros).', (c) => {
+  const CK = c.in('CLK'), R = c.in('RST'); const q = bitsFn(8, () => c.ph()); const Q = [];
+  const fb = c.gate('XOR', q[7], q[5], q[4], q[3]);
+  for (let i = 0; i < 8; i++) { const [o] = c.part('DFFR', null, i ? Q[i - 1] : fb, CK, c.zero(), R); Q.push(o); c.bind(q[i], o); }
+  c.outs('Q', Q);
+});
+
+/* ---- counters and timing --------------------------------------------------- */
+
+lib('ripple4', '4-bit ripple counter', 'Counters & timing', 'simple', 'Four flip-flops that each flip when the one before falls: the clock only goes to the first, and the change ripples along. Simple, but the later bits lag behind the earlier ones.', (c) => {
+  const CK = c.in('CLK'), CL = c.in('CLR'); let clk = CK; const Q = [];
+  for (let i = 0; i < 4; i++) {
+    const nq = c.ph(); const [o, ob] = c.part('DFFR', null, nq, clk, CL, c.zero()); c.bind(nq, ob); Q.push(o); clk = ob;
+  }
+  c.outs('Q', Q);
+});
+/** A synchronous counter: every flip-flop sees the clock, and a bit toggles
+    only when all the bits below it are 1 (or, counting down, all 0). */
+function buildCounter(c, n, opt) {
+  const EN = c.in('EN'), DN = opt.updown ? c.in('DOWN') : null, CK = c.in('CLK'), CL = c.in('CLR');
+  const q = bitsFn(n, () => c.ph()); let t = EN; const Q = [];
+  const u = (i) => (DN ? c.gate('XOR', q[i], DN) : q[i]);
+  const stop = opt.decade ? c.gate('AND', EN, q[3], q[0]) : null;       // 9 + EN: back to zero
+  for (let i = 0; i < n; i++) {
+    let d = c.gate('XOR', q[i], t);
+    if (stop) d = c.gate('AND', c.gate('NOT', stop), d);
+    const [o] = c.part('DFFR', null, d, CK, CL, c.zero()); Q.push(o); c.bind(q[i], o);
+    t = c.gate('AND', t, u(i));
+  }
+  c.outs('Q', Q);
+  c.out('CO', opt.decade ? stop : t);
+}
+lib('sync4', '4-bit synchronous counter', 'Counters & timing', 'intermediate', 'Counts up on every clock edge while EN is high. Unlike the ripple counter, every flip-flop sees the clock at once, so all the bits change together. CO goes high on the last count, for chaining.', (c) => buildCounter(c, 4, {}));
+lib('sync8', '8-bit synchronous counter', 'Counters & timing', 'intermediate', 'The same, eight bits wide: counts 0 to 255 and wraps.', (c) => buildCounter(c, 8, {}));
+lib('updown4', '4-bit up/down counter', 'Counters & timing', 'intermediate', 'Counts up while DOWN is 0 and down while it is 1. A bit toggles when every bit below it is 1 (going up) or 0 (going down).', (c) => buildCounter(c, 4, { updown: true }));
+lib('decade', 'Decade (BCD) counter', 'Counters & timing', 'intermediate', 'Counts 0 to 9 and then goes back to 0, carrying into the next digit — one decimal digit. CO pulses on the 9.', (c) => buildCounter(c, 4, { decade: true }));
+lib('bcd2', 'Two-digit decimal counter (00–99)', 'Counters & timing', 'advanced', 'Two decade counters, the units digit’s carry enabling the tens digit. Counts 00 to 99 and wraps, in a form a display decoder can read directly.', (c) => {
+  const EN = c.in('EN'), CK = c.in('CLK'), CL = c.in('CLR');
+  const u = c.chip('decade', EN, CK, CL); const t = c.chip('decade', u[4], CK, CL);
+  c.outs('U', u.slice(0, 4)); c.outs('T', t.slice(0, 4)); c.out('CO', t[4]);
+});
+lib('div16', 'Clock divider (÷2 ÷4 ÷8 ÷16)', 'Counters & timing', 'simple', 'A chain of flip-flops, each flipping when the last one falls: each output is the one before it at half the speed. Slow a fast clock down to something you can watch.', (c) => {
+  const CK = c.in('CLK'), CL = c.in('CLR'); let clk = CK;
+  for (let i = 0; i < 4; i++) {
+    const nq = c.ph(); const [o, ob] = c.part('DFFR', null, nq, clk, CL, c.zero()); c.bind(nq, ob); c.out('÷' + 2 ** (i + 1), o); clk = ob;
+  }
+});
+lib('edge-detect', 'Rising-edge detector', 'Counters & timing', 'simple', 'A signal ANDed with a slightly delayed copy of its own opposite: for a moment after the input rises both are 1, then the delay catches up and it stops. A short pulse, once, each time the input goes high.', (c) => {
+  const A = c.in('IN'); let d = A; for (let i = 0; i < 3; i++) d = c.gate('BUF', d);
+  c.out('PULSE', c.gate('AND', A, c.gate('NOT', d)));
+});
+lib('sequencer8', 'Sequencer (8 steps)', 'Counters & timing', 'intermediate', 'A ring of eight flip-flops holding a single 1 that moves on one step each clock: T0, T1, T2 ... T7 in turn. This is how a control unit takes a processor through the stages of an instruction.', (c) => {
+  const CK = c.in('CLK'), R = c.in('RST'); const q = c.ph(); let prev = q; const Q = [];
+  for (let i = 0; i < 8; i++) { const [o] = c.part('DFFR', null, prev, CK, i ? R : c.zero(), i ? c.zero() : R); Q.push(o); prev = o; }
+  c.bind(q, Q[7]); c.outs('T', Q);
+});
+lib('count-display', 'Decimal counter with display driver', 'Counters & timing', 'intermediate', 'A decade counter feeding a 7-segment decoder: the seven outputs light a digit that counts 0 to 9. Wire them to a 7-SEGMENT part.', (c) => {
+  const CK = c.in('CLK'), CL = c.in('CLR');
+  const d = c.chip('decade', c.one(), CK, CL);
+  const s = c.chip('bcd-7seg', d[3], d[2], d[1], d[0]);          // the decoder wants 8-4-2-1
+  ['a', 'b', 'c', 'd', 'e', 'f', 'g'].forEach((nm, i) => c.out(nm, s[i]));
+});
+
+/* ---- memory ---------------------------------------------------------------- */
+
+lib('ram-cell', 'One bit of RAM', 'Memory', 'simple', 'A flip-flop that only listens when it has been chosen: SELECT and WRITE together let the clock edge through, and SELECT alone lets the stored bit out.', null, { def: () => recRAMCell() });
+lib('ram4x4', 'RAM 4 × 4 (from flip-flops)', 'Memory', 'intermediate', 'Four words of four bits, built out of 16 flip-flops, an address decoder and read gates. Every memory chip is these three things, only bigger.', null, { def: () => ramArray(2, 4, 'RAM 4 × 4') });
+lib('ram16x4', 'RAM 16 × 4 (from flip-flops)', 'Memory', 'advanced', 'Sixteen words of four bits: 64 flip-flops and the logic around them, every one of them visible if you open it.', null, { def: () => ramArray(4, 4, 'RAM 16 × 4') });
+lib('ram16x8', 'RAM 16 × 8 (from flip-flops)', 'Memory', 'advanced', 'Sixteen bytes — 128 flip-flops, all drawn out. Big, but it is the real thing.', null, { def: () => ramArray(4, 8, 'RAM 16 × 8') });
+function memChip(c, abits, dbits, rom, data) {
+  const A = c.ins('A', abits);
+  if (rom) { c.outs('D', c.part('ROM', { abits, dbits, data: data ? data.slice() : [] }, ...A)); return; }
+  const D = c.ins('D', dbits), WR = c.in('WR'), CK = c.in('CLK');
+  c.outs('Q', c.part('RAM', { abits, dbits, data: [] }, ...A, ...D, WR, CK));
+}
+lib('ram16x8-block', 'RAM 16 × 8 (memory part)', 'Memory', 'simple', 'The fast, compact memory part, wrapped as a chip with named pins: 4 address bits, 8 data bits, WR and a clock. Stores on the clock edge when WR is high.', (c) => memChip(c, 4, 8, false));
+lib('ram256x8-block', 'RAM 256 × 8 (memory part)', 'Memory', 'simple', 'A 256-byte memory: 8 address bits, 8 data bits, WR and a clock.', (c) => memChip(c, 8, 8, false));
+lib('rom16x8-block', 'ROM 16 × 8 (memory part)', 'Memory', 'simple', 'Sixteen bytes you fill in by hand, read-only. Open the chip, select the ROM and type the contents in.', (c) => memChip(c, 4, 8, true));
+lib('rom256x8-block', 'ROM 256 × 8 (memory part)', 'Memory', 'simple', '256 bytes of read-only memory.', (c) => memChip(c, 8, 8, true));
+lib('rom256x16-block', 'ROM 256 × 16 (program memory)', 'Memory', 'simple', '256 words of 16 bits: the size of program memory the 8-bit processor in this library uses.', (c) => memChip(c, 8, 16, true));
+lib('regfile4x4', 'Register file 4 × 4 (from gates)', 'Memory', 'advanced', 'Four 4-bit registers with one write port and two read ports — the processor’s fast scratch space. WA picks which register WD is written to (when WE is 1, on the clock edge); RA and RB each pick a register to read, all at once.', (c) => {
+  const WD = c.ins('WD', 4), WA = c.ins('WA', 2), WE = c.in('WE'), RA = c.ins('RA', 2), RB = c.ins('RB', 2), CK = c.in('CLK');
+  const ld = decodeLines(c, WA, WE); const R = ld.map((l) => c.chip('reg4', ...WD, l, c.zero(), CK));
+  const read = (S) => c.chip('mux4x4', ...[0, 1, 2, 3].flatMap((k) => R[k].slice(0, 4)), ...S);
+  c.outs('QA', read(RA)); c.outs('QB', read(RB));
+});
+lib('regfile4x8', 'Register file 4 × 8', 'Memory', 'intermediate', 'Four 8-bit registers, one write port and two read ports, built from register parts and multiplexers. WA chooses the register written (on the clock edge, when WE is 1); RA and RB choose the two read out.', (c) => {
+  const WD = c.ins('WD', 8), WA = c.ins('WA', 2), WE = c.in('WE'), RA = c.ins('RA', 2), RB = c.ins('RB', 2), CK = c.in('CLK');
+  const ld = decodeLines(c, WA, WE);
+  const R = ld.map((l) => c.part('REG', { bits: 8 }, ...WD, l, c.zero(), CK));
+  const read = (S) => bitsFn(8, (i) => c.part('MUX', { sel: 2 }, R[0][i], R[1][i], R[2][i], R[3][i], ...S)[0]);
+  c.outs('QA', read(RA)); c.outs('QB', read(RB));
+});
+lib('stack8x8', 'Stack (8 deep × 8 bits)', 'Memory', 'advanced', 'Last in, first out. PUSH puts D on top (on the clock edge); POP takes the top off. Q always shows the top item. A counter holds how many items there are and a memory holds them — the same arrangement as a real processor’s stack.', (c) => {
+  const D = c.ins('D', 8), PUSH = c.in('PUSH'), POP = c.in('POP'), CK = c.in('CLK'), CL = c.in('CLR');
+  const sp = c.part('COUNTER', { bits: 4 }, ...bitsFn(4, () => c.zero()), c.zero(), c.gate('XOR', PUSH, POP), POP, CL, CK);   // Q0..3, CO
+  const spm1 = c.chip('add4', sp[0], sp[1], sp[2], sp[3], c.one(), c.one(), c.one(), c.one(), c.zero());   // sp − 1
+  const addr = [0, 1, 2].map((i) => c.chip('mux2', spm1[i], sp[i], PUSH)[0]);          // writing goes at sp, reading at sp − 1
+  const q = c.part('RAM', { abits: 3, dbits: 8, data: [] }, ...addr, ...D, PUSH, CK);
+  c.outs('Q', q);
+  c.out('EMPTY', c.gate('NOR', sp[0], sp[1], sp[2], sp[3])); c.out('FULL', sp[3]);
+});
+
+
+/* ---- two tiny assemblers, so the sample programs are readable ------------- */
+
+/** Split assembly text into {label, op, args} lines. ';' starts a comment. */
+function asmLines(text) {
+  const lines = [];
+  for (let raw of text.split('\n')) {
+    raw = raw.replace(/;.*$/, '').trim();
+    if (!raw) continue;
+    let label = null;
+    const m = raw.match(/^([A-Za-z_]\w*):\s*(.*)$/);
+    if (m) { label = m[1]; raw = m[2]; }
+    if (!raw) { lines.push({ label }); continue; }
+    const parts = raw.split(/\s+/);
+    const op = parts.shift().toUpperCase();
+    lines.push({ label, op, args: parts.join(' ').split(',').map((s) => s.trim()).filter(Boolean) });
+  }
+  return lines;
+}
+function asmValue(s, labels) {
+  s = s.replace(/^\[|\]$/g, '').trim();
+  if (/^'.'$/.test(s)) return s.charCodeAt(1);
+  if (/^0x[0-9a-f]+$/i.test(s)) return parseInt(s, 16);
+  if (/^-?\d+$/.test(s)) return parseInt(s, 10);
+  if (s in labels) return labels[s];
+  throw new Error('unknown value "' + s + '"');
+}
+function asmPass(text, encode) {
+  const lines = asmLines(text), labels = {};
+  let at = 0;
+  for (const l of lines) { if (l.label) labels[l.label] = at; if (l.op) at++; }
+  const words = [];
+  for (const l of lines) if (l.op) words.push(encode(l.op, l.args, labels));
+  return words;
+}
+const ASM4_OPS = { NOP: 0, LDI: 1, LDA: 2, STA: 3, ADD: 4, SUB: 5, AND: 6, OR: 7, XOR: 8, JMP: 9, JZ: 10, JNZ: 11, ADDI: 12, OUT: 13, JC: 14, HLT: 15 };
+/** TINY-4: one byte per instruction, the operation in the top four bits. */
+function assemble4(text) {
+  return asmPass(text, (op, args, labels) => {
+    if (!(op in ASM4_OPS)) throw new Error('TINY-4 has no instruction "' + op + '"');
+    return (ASM4_OPS[op] << 4) | ((args.length ? asmValue(args[0], labels) : 0) & 15);
+  });
+}
+const ASM8_OPS = { HLT: 0, LDI: 1, MOV: 2, ADD: 3, SUB: 4, AND: 5, OR: 6, XOR: 7, ADDI: 8, LD: 9, ST: 10, JMP: 11, JZ: 12, JNZ: 13, OUT: 14, CMP: 15 };
+/** TINY-8: one 16-bit word per instruction: op(4) rd(2) rs(2) imm(8). */
+function assemble8(text) {
+  const reg = (s) => { const m = /^r([0-3])$/i.exec(s.trim()); if (!m) throw new Error('"' + s + '" is not a register (r0 to r3)'); return +m[1]; };
+  return asmPass(text, (op, args, labels) => {
+    if (!(op in ASM8_OPS)) throw new Error('TINY-8 has no instruction "' + op + '"');
+    let rd = 0, rs = 0, imm = 0;
+    if (['MOV', 'ADD', 'SUB', 'AND', 'OR', 'XOR', 'CMP'].includes(op)) { rd = reg(args[0]); rs = reg(args[1]); }
+    else if (['LDI', 'ADDI', 'LD', 'ST'].includes(op)) { rd = reg(args[0]); imm = asmValue(args[1], labels) & 255; }
+    else if (['JMP', 'JZ', 'JNZ'].includes(op)) imm = asmValue(args[0], labels) & 255;
+    else if (op === 'OUT') rd = reg(args[0]);
+    return (ASM8_OPS[op] << 12) | (rd << 10) | (rs << 8) | imm;
+  });
+}
+
+const PROGRAMS = {
+  count4: ['Counts 0, 1, 2, 3 … on the output, forever.', `
+        LDI 0
+loop:   OUT
+        ADDI 1
+        JMP loop`],
+  fib4: ['Fibonacci numbers until the next one would not fit in four bits.', `
+        LDI 0
+        STA 0         ; a = 0
+        LDI 1
+        STA 1         ; b = 1
+loop:   LDA 0
+        OUT           ; show a
+        ADD 1         ; a + b
+        JC done       ; too big for four bits
+        STA 2         ; t = a + b
+        LDA 1
+        STA 0         ; a = b
+        LDA 2
+        STA 1         ; b = t
+        JMP loop
+done:   HLT`],
+  mul4: ['Multiplies 3 by 5 by adding 3 five times, then shows 15 and stops.', `
+        LDI 0
+        STA 1         ; total = 0
+        LDI 5
+        STA 0         ; counter = 5
+loop:   LDA 1
+        ADDI 3
+        STA 1         ; total += 3
+        LDA 0
+        ADDI 15       ; counter - 1 (15 is -1 in four bits)
+        STA 0
+        JNZ loop
+        LDA 1
+        OUT
+        HLT`],
+  count8: ['Counts 0 to 255 and round again.', `
+        LDI r0, 0
+loop:   OUT r0
+        ADDI r0, 1
+        JMP loop`],
+  fib8: ['Fibonacci numbers up to 233, the last one that fits in a byte.', `
+        LDI r0, 0     ; a
+        LDI r1, 1     ; b
+        LDI r3, 233
+loop:   OUT r0
+        MOV r2, r0
+        SUB r2, r3    ; zero when a is 233
+        JZ done
+        MOV r2, r0
+        ADD r2, r1    ; a + b
+        MOV r0, r1
+        MOV r1, r2
+        JMP loop
+done:   HLT`],
+  mul8: ['Multiplies 6 by 7 by repeated addition, shows 42 and stops.', `
+        LDI r0, 6     ; counter
+        LDI r1, 7
+        LDI r2, 0     ; total
+loop:   ADD r2, r1
+        ADDI r0, 255  ; counter - 1
+        JNZ loop
+        OUT r2
+        HLT`],
+  mem8: ['Stores 10, 20, 30 and 40 in memory, reads them back and adds them up: 100.', `
+        LDI r0, 10
+        ST r0, [0]
+        LDI r0, 20
+        ST r0, [1]
+        LDI r0, 30
+        ST r0, [2]
+        LDI r0, 40
+        ST r0, [3]
+        LDI r2, 0
+        LD r1, [0]
+        ADD r2, r1
+        LD r1, [1]
+        ADD r2, r1
+        LD r1, [2]
+        ADD r2, r1
+        LD r1, [3]
+        ADD r2, r1
+        OUT r2
+        HLT`],
+  hello8: ['Prints "Hello, World!" to a terminal, one character per OUT.',
+    [...'Hello, World!'].map((ch) => `        LDI r0, ${ch.charCodeAt(0)}      ; ${ch}\n        OUT r0`).join('\n')
+    + '\n        LDI r0, 10      ; new line\n        OUT r0\n        HLT'],
+};
+
+/* ---- the processors ----------------------------------------------------- */
+
+const orOf1 = (c, ...x) => (x.length === 1 ? x[0] : x.length <= 8 ? c.gate('OR', ...x) : c.gate('OR', c.gate('OR', ...x.slice(0, 8)), orOf1(c, ...x.slice(8))));
+
+lib('cpu4', 'TINY-4 processor (from gates)', 'Processors', 'advanced',
+  'A complete little processor (a CPU) made of gates and flip-flops, with a 4-bit accumulator. Each clock it fetches an instruction (op in I4–I7, operand in I0–I3), does it, and moves on. Operations: 0 NOP · 1 LDI n (load) · 2 LDA a (load from memory) · 3 STA a (store) · 4 ADD a · 5 SUB a · 6 AND a · 7 OR a · 8 XOR a · 9 JMP · A JZ · B JNZ · C ADDI n · D OUT · E JC · F HLT. Z and C are the zero and carry flags. Memory (a ROM for the program, a RAM for data) lives outside: PC is the address of the next instruction, A the memory address, M the memory’s answer. RST sends it back to the start.', (c) => {
+    const CK = c.in('CLK'), R = c.in('RST'), I = c.ins('I', 8), M = c.ins('M', 4);
+    const imm = I.slice(0, 4), L = decodeLines(c, I.slice(4, 8));
+    const and = (...x) => c.gate('AND', ...x), or = (...x) => orOf1(c, ...x), not = (x) => c.gate('NOT', x);
+    const accQ = bitsFn(4, () => c.ph()), pcQ = bitsFn(4, () => c.ph()), outQ = bitsFn(4, () => c.ph()), zQ = c.ph(), cQ = c.ph();
+    const ff = (d, bound) => { const [o] = c.part('DFFR', null, d, CK, R, c.zero()); c.bind(bound, o); return o; };
+
+    const B = c.chip('mux2x4', ...M, ...imm, or(L[1], L[12]));                  // the second number: memory, or the operand itself
+    const sum = c.chip('addsub4', ...accQ, ...B.slice(0, 4), L[5]);              // S0..3, COUT, V
+    const selAdd = or(L[4], L[5], L[12]), selPass = or(L[1], L[2]);
+    const res = bitsFn(4, (i) => or(
+      and(selPass, B[i]), and(selAdd, sum[i]),
+      and(L[6], and(accQ[i], B[i])), and(L[7], or(accQ[i], B[i])), and(L[8], c.gate('XOR', accQ[i], B[i]))));
+    const writeAcc = or(L[1], L[2], L[4], L[5], L[6], L[7], L[8], L[12]);
+    const accD = c.chip('mux2x4', ...accQ, ...res, writeAcc);
+    accQ.forEach((p, i) => ff(accD[i], p));
+
+    /* the flags change only when an operation that produces a result runs */
+    const cEn = or(L[4], L[5], L[12]);
+    ff(or(and(writeAcc, c.gate('NOR', ...res)), and(not(writeAcc), zQ)), zQ);
+    ff(or(and(cEn, sum[4]), and(not(cEn), cQ)), cQ);
+
+    /* the program counter: next instruction, a jump, or stay put on HLT */
+    const inc = c.chip('inc4', ...pcQ);
+    const jump = or(L[9], and(L[10], zQ), and(L[11], not(zQ)), and(L[14], cQ));
+    const nxt = c.chip('mux2x4', ...inc.slice(0, 4), ...imm, jump);
+    const pcD = c.chip('mux2x4', ...nxt, ...pcQ, L[15]);
+    pcQ.forEach((p, i) => ff(pcD[i], p));
+
+    const outD = c.chip('mux2x4', ...outQ, ...accQ, L[13]);
+    outQ.forEach((p, i) => ff(outD[i], p));
+
+    c.outs('PC', pcQ); c.outs('A', imm); c.out('WR', L[3]); c.outs('ACC', accQ); c.outs('OUT', outQ);
+    c.out('HLT', L[15]); c.out('Z', zQ); c.out('C', cQ);
+  });
+
+lib('cpu8', 'TINY-8 processor', 'Processors', 'advanced',
+  'An 8-bit processor (CPU) with four registers (r0–r3), an ALU, flags and a program counter, built from the parts in the Blocks and Memory groups. Instructions are 16 bits: operation (I12–I15), destination register (I10–I11), source register (I8–I9), and an 8-bit number or address (I0–I7). Operations: 0 HLT · 1 LDI rd,n · 2 MOV rd,rs · 3 ADD · 4 SUB · 5 AND · 6 OR · 7 XOR · 8 ADDI rd,n · 9 LD rd,[a] · A ST rd,[a] · B JMP · C JZ · D JNZ · E OUT rd · F CMP rd,rs. Program memory and data memory sit outside: PC addresses the program, A addresses data, M is what data memory answers. OUT latches a byte and gives STB a pulse for each one, to drive a terminal.', (c) => {
+    const CK = c.in('CLK'), R = c.in('RST'), I = c.ins('I', 16), M = c.ins('M', 8);
+    const imm = I.slice(0, 8), rs = I.slice(8, 10), rd = I.slice(10, 12), op = I.slice(12, 16);
+    const and = (...x) => c.gate('AND', ...x), or = (...x) => orOf1(c, ...x), not = (x) => c.gate('NOT', x);
+    const Y = c.part('DECODER', { bits: 4 }, ...op), rdSel = c.part('DECODER', { bits: 2 }, ...rd);
+    const zQ = c.ph(), cQ = c.ph(), nQ = c.ph(), wb = bitsFn(8, () => c.ph());
+
+    const passB = or(Y[1], Y[2]), useImm = or(Y[1], Y[8]);
+    const regWrite = or(Y[1], Y[2], Y[3], Y[4], Y[5], Y[6], Y[7], Y[8], Y[9]);
+    const regs = rdSel.map((sel) => c.part('REG', { bits: 8 }, ...wb, and(regWrite, sel), R, CK));
+    const read = (S) => bitsFn(8, (i) => c.part('MUX', { sel: 2 }, regs[0][i], regs[1][i], regs[2][i], regs[3][i], ...S)[0]);
+    const ra = read(rd), rb = read(rs);
+
+    const np = not(passB);
+    const aIn = ra.map((a) => and(a, np));
+    const bIn = bitsFn(8, (i) => c.part('MUX', { sel: 1 }, rb[i], imm[i], useImm)[0]);
+    const alu = c.part('ALU', { bits: 8 }, ...aIn, ...bIn, or(Y[4], Y[6], Y[15]), or(Y[5], Y[6]), Y[7], c.zero());   // F0..7 CO Z N V
+    bitsFn(8, (i) => c.bind(wb[i], c.part('MUX', { sel: 1 }, alu[i], M[i], Y[9])[0]));
+
+    const flagEn = or(Y[3], Y[4], Y[5], Y[6], Y[7], Y[8], Y[15]), nf = not(flagEn);
+    const flag = (q, now) => { const [o] = c.part('DFFR', null, or(and(flagEn, now), and(nf, q)), CK, R, c.zero()); c.bind(q, o); };
+    flag(zQ, alu[9]); flag(cQ, alu[8]); flag(nQ, alu[10]);
+
+    const jump = or(Y[11], and(Y[12], zQ), and(Y[13], not(zQ)));
+    const pc = c.part('COUNTER', { bits: 8 }, ...imm, jump, not(Y[0]), c.zero(), R, CK);        // Q0..7, CO
+
+    const outReg = c.part('REG', { bits: 8 }, ...ra, Y[14], R, CK);
+    let [outv] = c.part('DFFR', null, Y[14], CK, R, c.zero());
+    /* The strobe is "an OUT just ran" AND "the clock is low". The flag is held
+       back by a few buffers so that, at the clock edge, the inverted clock has
+       always fallen before the flag can change — otherwise the strobe would
+       spit a spurious pulse there. */
+    for (let i = 0; i < 3; i++) outv = c.gate('BUF', outv);
+    c.outs('PC', pc.slice(0, 8)); c.outs('A', imm); c.out('WR', Y[10]); c.outs('DO', ra); c.outs('OUT', outReg);
+    c.out('STB', and(not(CK), outv)); c.out('HLT', Y[0]); c.out('Z', zQ); c.out('C', cQ); c.out('N', nQ);
+  });
+
+/* ---- whole computers: a processor, a program and a memory in one chip ------ */
+
+function computer4(prog) {
+  return (c) => {
+    const CK = c.in('CLK'), R = c.in('RST');
+    const I = bitsFn(8, () => c.ph()), M = bitsFn(4, () => c.ph());
+    const cpu = c.chip('cpu4', CK, R, ...I, ...M);              // PC0-3 A0-3 WR ACC0-3 OUT0-3 HLT Z C
+    const rom = c.part('ROM', { abits: 4, dbits: 8, data: assemble4(prog) }, ...cpu.slice(0, 4));
+    const ram = c.part('RAM', { abits: 4, dbits: 4, data: [] }, ...cpu.slice(4, 8), ...cpu.slice(9, 13), cpu[8], CK);
+    rom.forEach((s, i) => c.bind(I[i], s)); ram.forEach((s, i) => c.bind(M[i], s));
+    c.outs('OUT', cpu.slice(13, 17)); c.out('HLT', cpu[17]);
+  };
+}
+function computer8(prog) {
+  return (c) => {
+    const CK = c.in('CLK'), R = c.in('RST');
+    const I = bitsFn(16, () => c.ph()), M = bitsFn(8, () => c.ph());
+    const cpu = c.chip('cpu8', CK, R, ...I, ...M);              // PC0-7 A0-7 WR DO0-7 OUT0-7 STB HLT Z C N
+    const rom = c.part('ROM', { abits: 8, dbits: 16, data: assemble8(prog) }, ...cpu.slice(0, 8));
+    const ram = c.part('RAM', { abits: 8, dbits: 8, data: [] }, ...cpu.slice(8, 16), ...cpu.slice(17, 25), cpu[16], CK);
+    rom.forEach((s, i) => c.bind(I[i], s)); ram.forEach((s, i) => c.bind(M[i], s));
+    c.outs('OUT', cpu.slice(25, 33)); c.out('STB', cpu[33]); c.out('HLT', cpu[34]);
+  };
+}
+lib('computer4-count', 'Computer: TINY-4 counting', 'Computers', 'computer', PROGRAMS.count4[0] + ' A processor, a program ROM and a RAM in one chip: give it a clock and a reset and watch OUT. Open it and select the ROM to read — or change — the program.', computer4(PROGRAMS.count4[1]));
+lib('computer4-fib', 'Computer: TINY-4 Fibonacci', 'Computers', 'computer', PROGRAMS.fib4[0] + ' Uses the RAM for its variables.', computer4(PROGRAMS.fib4[1]));
+lib('computer4-mul', 'Computer: TINY-4 multiplier', 'Computers', 'computer', PROGRAMS.mul4[0], computer4(PROGRAMS.mul4[1]));
+lib('computer8-count', 'Computer: TINY-8 counting', 'Computers', 'computer', PROGRAMS.count8[0] + ' An 8-bit processor, a program ROM and a RAM in one chip.', computer8(PROGRAMS.count8[1]));
+lib('computer8-fib', 'Computer: TINY-8 Fibonacci', 'Computers', 'computer', PROGRAMS.fib8[0], computer8(PROGRAMS.fib8[1]));
+lib('computer8-mul', 'Computer: TINY-8 multiplier', 'Computers', 'computer', PROGRAMS.mul8[0], computer8(PROGRAMS.mul8[1]));
+lib('computer8-mem', 'Computer: TINY-8 memory test', 'Computers', 'computer', PROGRAMS.mem8[0], computer8(PROGRAMS.mem8[1]));
+lib('computer8-hello', 'Computer: TINY-8 "Hello, World!"', 'Computers', 'computer', PROGRAMS.hello8[0] + ' Wire OUT to the data pins of a TERMINAL and STB to its WR pin, then open Operate.', computer8(PROGRAMS.hello8[1]));
+
+
+/* ---- finding your way around the library -------------------------------- */
+
+/** The gate-built circuit that does what each of the bigger parts does. */
+const LIB_TWIN = {
+  ADDER: 'add4', ALU: 'alu8', COMPARE: 'cmp4', MUX: 'mux4', DECODER: 'dec3-8', ENCODER: 'enc8-3',
+  REG: 'reg4', COUNTER: 'sync4', SHIFT: 'sipo8', JKFF: 'jk-ff', TFF: 't-ff', DFFR: 'dff-clr', SRLATCH: 'sr-nor',
+  DEMUX: 'demux4',
+};
+
+/** Add a library chip to the parts list (and say so). */
+function addLibChip(e, quiet) {
+  installLib(e.key);
+  scheduleSave(); renderPalette();
+  if (!quiet) toast(`“${e.name}” is in your parts list, under Library · ${e.cat}.`);
+}
+
+function openLibraryBrowser() {
+  let query = '', level = 'all';
+  const list = h('div', {});
+  const search = h('input', {
+    type: 'text', placeholder: 'Search — adder, counter, memory, CPU…', spellcheck: 'false',
+    oninput: (ev) => { query = ev.target.value.trim().toLowerCase(); draw(); },
+  });
+  const levels = h('div', { class: 'seg' });
+  for (const [k, label, tip] of [['all', 'All', 'everything']].concat(LIB_LEVELS)) {
+    levels.append(h('button', {
+      class: k === 'all' ? 'on' : '', title: tip,
+      onclick: (ev) => { level = k; levels.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b === ev.currentTarget)); draw(); },
+    }, label));
+  }
+  const draw = () => {
+    list.innerHTML = '';
+    const match = (e) => (level === 'all' || e.level === level)
+      && (!query || (e.name + ' ' + e.cat + ' ' + e.key + ' ' + e.desc).toLowerCase().includes(query));
+    let shown = 0;
+    for (const cat of LIB_CAT_ORDER) {
+      const items = LIBRARY.filter((e) => e.cat === cat && match(e));
+      if (!items.length) continue;
+      shown += items.length;
+      list.append(h('div', { class: 'libcat' },
+        h('span', { class: 'sw', style: `background:${LIB_CAT_COLOR[cat]}` }), h('b', {}, cat),
+        h('span', { class: 'meta' }, String(items.length)), h('span', { class: 'grow' }),
+        h('button', { class: 'btn', onclick: () => { items.forEach((e) => installLib(e.key)); scheduleSave(); renderPalette(); toast(`${items.length} chips added to your parts list.`); draw(); } }, 'Add all')));
+      for (const e of items) {
+        const have = LIB[libId(e.key)] && LIB[libId(e.key)].lib && !LIB[libId(e.key)].lib.dep;
+        list.append(h('div', { class: 'librow' },
+          h('div', { class: 'top' }, h('span', { class: 'nm' }, e.name), h('span', { class: 'lvl lvl-' + e.level }, e.level)),
+          h('p', {}, e.desc),
+          h('div', { class: 'acts' },
+            h('button', { class: 'btn' + (have ? '' : ' primary'), onclick: () => { addLibChip(e); draw(); } }, have ? 'In your parts ✓' : 'Add to parts'),
+            h('button', { class: 'btn', title: 'Pick it up, ready to put on the board', onclick: () => { closeModal(); armPart({ type: 'CHIP', chip: installLib(e.key) }); scheduleSave(); renderPalette(); } }, 'Place'),
+            h('button', { class: 'btn', title: 'Copy what is inside it onto the board, to take apart', onclick: () => { const id = installLib(e.key, true); closeModal(); insertDef(clone(LIB[id])); scheduleSave(); } }, 'Look inside'))));
+      }
+    }
+    if (!shown) list.append(h('p', { class: 'muted' }, 'Nothing in the library matches that.'));
+  };
+  const total = LIBRARY.length;
+  const body = h('div', { class: 'libbrowser' },
+    h('p', { class: 'muted', style: 'margin:0 0 10px' },
+      `${total} ready-made chips, from a NOT gate made of one NAND to whole working computers. Every one is built from this simulator’s own parts, so nothing is a black box: “Look inside” puts a copy of its insides on the board.`),
+    h('div', { class: 'libtools' }, search, levels), list);
+  draw();
+  openModal('Chip library', body, h('button', { class: 'btn', onclick: closeModal }, 'Done'), true);
+  setTimeout(() => search.focus(), 30);
+}
+
+/* ---- the computers, wired up on the board ------------------------------- */
+
+/** A clock, a reset button, one of the computer chips, and something to watch it. */
+function exComputer(key, title, bits, opts) {
+  opts = opts || {};
+  const b = builder(title, CHIP_COLORS[5]);
+  const comp = b.add('CHIP', 260, 100, { chip: installLib(key) });
+  const ck = b.add('CLOCK', 60, 100, { hz: opts.hz || 2 });
+  const rst = b.add('IN', 60, 220, { label: 'RST', momentary: true });
+  b.w(ck, 0, comp, 0); b.w(rst, 0, comp, 1);
+  if (opts.terminal) {
+    const t = b.add('TERMINAL', 560, 40);
+    for (let i = 0; i < 8; i++) b.w(comp, i, t, i);
+    b.w(comp, 8, t, 8);                                          // STB is the terminal's write strobe
+    b.w(comp, 9, b.add('LED', 560, 340), 0);
+  } else {
+    const num = b.add('NUM', 560, 100, { bits });
+    for (let i = 0; i < bits; i++) b.w(comp, i, num, i);
+    b.w(comp, opts.hlt != null ? opts.hlt : bits, b.add('LED', 560, 300), 0);
+  }
+  return b.def;
+}
+function exLibAdder() {
+  const b = builder('Adder with number entry', CHIP_COLORS[1]);
+  const a = b.add('NUMIN', 60, 40, { bits: 8, value: 100 }), c = b.add('NUMIN', 60, 200, { bits: 8, value: 55 });
+  const add = b.add('CHIP', 280, 60, { chip: installLib('add8') });
+  for (let i = 0; i < 8; i++) { b.w(a, i, add, i); b.w(c, i, add, 8 + i); }
+  b.w(b.add('CONST', 60, 360, { value: 0 }), 0, add, 16);
+  const sum = b.add('NUM', 540, 60, { bits: 8 }); for (let i = 0; i < 8; i++) b.w(add, i, sum, i);
+  b.w(add, 8, b.add('LED', 540, 300), 0);
+  return b.def;
+}
+function exLibCounter() {
+  const b = builder('Decimal counter', CHIP_COLORS[5]);
+  const ck = b.add('CLOCK', 60, 100, { hz: 2 }), cl = b.add('IN', 60, 220, { label: 'CLR', momentary: true });
+  const cnt = b.add('CHIP', 260, 60, { chip: installLib('bcd2') });
+  b.w(b.add('CONST', 60, 340, { value: 1 }), 0, cnt, 0); b.w(ck, 0, cnt, 1); b.w(cl, 0, cnt, 2);
+  const tens = b.add('HEX', 520, 40), ones = b.add('HEX', 520, 200);
+  for (let i = 0; i < 4; i++) { b.w(cnt, 4 + i, tens, 3 - i); b.w(cnt, i, ones, 3 - i); }          // HEX reads 8-4-2-1
+  return b.def;
+}
+function exLibAlu() {
+  const b = builder('ALU on the board', CHIP_COLORS[1]);
+  const a = b.add('NUMIN', 60, 40, { bits: 8, value: 200 }), c = b.add('NUMIN', 60, 200, { bits: 8, value: 100 });
+  const op = b.add('NUMIN', 60, 360, { bits: 3, value: 0 });
+  const alu = b.add('CHIP', 300, 40, { chip: installLib('alu8') });
+  for (let i = 0; i < 8; i++) { b.w(a, i, alu, i); b.w(c, i, alu, 8 + i); }
+  for (let i = 0; i < 3; i++) b.w(op, i, alu, 16 + i);
+  b.w(b.add('CONST', 60, 480, { value: 0 }), 0, alu, 19);
+  const f = b.add('NUM', 580, 40, { bits: 8 }); for (let i = 0; i < 8; i++) b.w(alu, i, f, i);
+  ['CO', 'Z', 'N', 'V'].forEach((nm, i) => b.w(alu, 8 + i, b.add('LED', 580, 280 + i * 60, { color: LED_COLORS[i] }), 0));
+  return b.def;
+}
+EDITOR_EXAMPLES.push(
+  { name: 'Computer: TINY-4 counting', desc: 'A 4-bit processor made of gates runs a three-instruction program. Open the computer chip, then its ROM, to see the program.', make: () => ({ work: exComputer('computer4-count', 'TINY-4 counting', 4, { hz: 4 }) }) },
+  { name: 'Computer: TINY-4 Fibonacci', desc: 'The same gate-built processor, running a program that uses its memory to compute Fibonacci numbers.', make: () => ({ work: exComputer('computer4-fib', 'TINY-4 Fibonacci', 4, { hz: 4 }) }) },
+  { name: 'Computer: TINY-8 Fibonacci', desc: 'An 8-bit processor with four registers and an ALU, counting out the Fibonacci numbers up to 233.', make: () => ({ work: exComputer('computer8-fib', 'TINY-8 Fibonacci', 8, { hz: 2, hlt: 9 }) }) },
+  { name: 'Computer: TINY-8 Hello, World!', desc: 'The 8-bit processor prints a message to a terminal. Press Operate (top bar) to read it full size.', make: () => ({ work: exComputer('computer8-hello', 'TINY-8 Hello, World!', 8, { hz: 4, terminal: true }) }) },
+  { name: 'Library: adder with number entry', desc: 'Type two numbers, read their sum. An 8-bit ripple-carry adder from the chip library — open it to see the full adders.', make: () => ({ work: exLibAdder() }) },
+  { name: 'Library: decimal counter', desc: 'A two-digit decimal counter from the library, counting 00 to 99 on two hex digits.', make: () => ({ work: exLibCounter() }) },
+  { name: 'Library: ALU on the board', desc: 'Two numbers and an operation code (0 add, 1 subtract, 2 AND, 3 OR, 4 XOR, 5 NOT, 6 shift left, 7 shift right) into a gate-built 8-bit ALU, with its flags on the lamps.', make: () => ({ work: exLibAlu() }) },
+);
+
+/* @@LIB-END@@ */
+
+/* ==========================================================================
    16 · HELP
    ========================================================================== */
 
@@ -5442,6 +6848,24 @@ chips that need real power, plus a bare design board — is a separate app:
       palette and can be dropped into bigger circuits. Double-click a placed chip to open it.</li>
   <li>Editing a chip updates every copy of it already in use.</li>
 </ul>
+
+<h4>The chip library — gates to a working computer</h4>
+<p>Press <b>Browse the built-in library…</b> at the bottom of the parts list for a shelf of
+ready-made chips, grouped by what they do and tagged <b>raw</b> (nothing but NANDs or NORs),
+<b>simple</b>, <b>intermediate</b>, <b>advanced</b> or <b>computer</b>. Gates built out of NANDs;
+latches and flip-flops; adders, subtractors, multipliers, comparators, shifters and a gate-built
+ALU; decoders and multiplexers; registers, shift registers and counters; RAM, ROM, a register
+file and a stack; two processors, <b>TINY-4</b> (made of gates and flip-flops, 4 bits) and
+<b>TINY-8</b> (8 bits, four registers); and whole computers that run a program from their own
+ROM — counting, Fibonacci, multiplying, and printing “Hello, World!” to a terminal.</p>
+<p>Everything in it is made from this simulator’s own parts, so nothing is a black box. <b>Add to
+parts</b> puts a chip in your parts list; <b>Place</b> picks it up; <b>Look inside</b> copies its
+insides onto the board for you to take apart. Typing in the search box above the parts list finds
+library chips too, and pressing one adds it. The parts list also has more building blocks of its
+own now — JK and T flip-flops, registers, counters, shift registers, multiplexers, decoders,
+adders, comparators and an ALU — and the inspector shows the gate-built twin of each.</p>
+<p>To run a computer, set a clock going, press and release <b>RST</b>, and watch the output. Open
+the computer chip and select its <b>ROM</b> to read the program, or type a different one in.</p>
 
 <h4>Seeing inside a part</h4>
 <p>Click any gate, latch or flip-flop and the panel on the right shows <b>what it is
@@ -5633,7 +7057,7 @@ function boot() {
 /* A handle for the console — and for the automated checks that ship with the
    repository, which drive the engine directly rather than through the UI. */
 window.LogicLab = {
-  S, PARTS, compile, Sim, computeTruthTable,
+  S, PARTS, compile, Sim, computeTruthTable, LIBRARY, installLib, libEntry, assemble4, assemble8, PROGRAMS,
   newDef, makeNode, ioOrder, builder, ramArray, ramArraySize,
   geom: (n) => geom(n, ctx), toScreen, fitView, deleteHandle, renderInspector, renderPalette, renderCrumbs,
   wireHandles,

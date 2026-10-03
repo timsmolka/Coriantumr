@@ -65,6 +65,30 @@ The two used to be one page ("Logic Lab") and now share nothing but a look.
 Some of the notes below were written when they were one, and mention the
 breadboard.
 
+**The chip library — from a NAND to a working computer.** *Browse the built-in
+library…* at the bottom of the parts list opens ~120 ready-made chips, grouped by
+what they do and tagged raw / simple / intermediate / advanced / computer: every
+gate built from nothing but NANDs or NORs; latches and flip-flops (SR, D, JK, T —
+master–slave and edge-triggered); half and full adders and subtractors, 4/8/16-bit
+ripple adders, a carry-lookahead adder, adder/subtractors, multipliers up to 8×8,
+barrel shifters, comparators, parity, and a **gate-built ALU**; multiplexers,
+demultiplexers, decoders, priority encoders and Gray code; registers, shift
+registers, ring/Johnson counters, an LFSR, ripple, synchronous, up/down and decimal
+counters, clock dividers and a sequencer; RAM from flip-flops, RAM/ROM parts, a
+register file and a stack; and two processors — **TINY-4** (a 4-bit accumulator
+machine made of gates and flip-flops) and **TINY-8** (8-bit, four registers, ALU,
+flags, program counter, 16-bit instructions) — plus finished **computers** that run
+a program out of their own ROM: counting, Fibonacci, multiplying, a memory test, and
+"Hello, World!" printed to a terminal. Everything is built from the simulator's own
+parts, so any chip can be opened and taken apart to the gates (*Look inside*). Chips
+are written as netlists in `logic.html` (`lib(...)` entries, section 15b) and laid
+out automatically. The parts list gained the wider building blocks too — JK, T and
+SR flip-flops, a clearable D flip-flop, REGISTER, COUNTER, SHIFT REGISTER,
+MULTIPLEXER, DEMULTIPLEXER, DECODER, PRIORITY ENCODER, ADDER, COMPARATOR and ALU, with
+a settable width — and the inspector shows the gate-built twin of each. A ROM's panel
+has an assembler for the two processors (with sample programs), so a program is
+written as text, not hex.
+
 **Edit or Use.** A switch in the top bar (or the <kbd>E</kbd> key) decides what a
 click does. In **Edit** it builds — place, wire, move, delete. In **Use** a click
 only works the thing you have already built: it flips a switch, holds a button
