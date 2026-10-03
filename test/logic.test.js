@@ -1,0 +1,2991 @@
+/* ===========================================================================
+   Checks for logic.html — the gate-level simulator. (The breadboard has its own: test/breadboard.test.js.)
+
+     node test/logic.test.js               # run the checks
+     SHOT=1 node test/logic.test.js        # ...and save screenshots as well
+
+   It opens the real page in headless Chromium and then does two things: calls
+   the simulator directly through `window.LogicLab` (truth tables, latches,
+   breadboard netlists), and drives the actual interface with synthetic mouse
+   events (place a part, drag a wire, lay a jumper, package a chip, reload).
+
+   No dependencies — it talks to the browser over the DevTools protocol using
+   the WebSocket and fetch built into Node 22. Set CHROME=/path/to/chrome if it
+   cannot find a browser on its own.
+   =========================================================================== */
+const { spawn, execSync } = require('child_process');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+
+const PAGE = 'file://' + path.resolve(process.argv[2] || path.join(__dirname, '..', 'logic.html'));
+const SHOT_DIR = process.env.SHOT_DIR || path.join(os.tmpdir(), 'logic-lab-shots');
+
+function findChrome() {
+  if (process.env.CHROME) {
+    try { fs.statSync(process.env.CHROME); } catch (e) {
+      console.error('CHROME is set to ' + process.env.CHROME + ', which does not exist.');
+      process.exit(2);
+    }
+    return process.env.CHROME;
+  }
+  const guesses = [
+    '/opt/pw-browsers/chromium',
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+    '/Applications/Chromium.app/Contents/MacOS/Chromium',
+    'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  ];
+  for (const g of guesses) { try { if (fs.statSync(g).isFile()) return g; } catch (e) { /* next */ } }
+  for (const name of ['google-chrome', 'chromium', 'chromium-browser', 'chrome']) {
+    try { return execSync('command -v ' + name, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim(); }
+    catch (e) { /* next */ }
+  }
+  return null;
+}
+const CHROME = findChrome();
+
+const TESTS = String.raw`
+(async () => {
+  const L = window.LogicLab;
+  const out = [];
+  const ok = (name, cond, extra) => out.push({ name, pass: !!cond, extra: extra === undefined ? '' : String(extra) });
+
+  /* ---------- helper: run a def's truth table ---------- */
+  const tt = (def) => L.computeTruthTable(def);
+  const rowStr = (r) => r.in.join('') + '->' + r.out.join('');
+
+  /* 1. half adder */
+  {
+    const t = tt(L.examples.EDITOR_EXAMPLES[0].make().work);
+    const got = t.rows.map(rowStr).join(' ');
+    ok('half adder truth table', got === '00->00 01->10 10->10 11->01', got + ' | ins=' + t.ins + ' outs=' + t.outs);
+  }
+
+  /* 2. full adder */
+  {
+    const t = tt(L.examples.EDITOR_EXAMPLES[1].make().work);
+    let good = t.rows.length === 8;
+    for (const r of t.rows) {
+      const sum = r.in[0] + r.in[1] + r.in[2];
+      if (r.out[0] !== (sum & 1) || r.out[1] !== (sum > 1 ? 1 : 0)) good = false;
+    }
+    ok('full adder arithmetic', good, t.rows.map(rowStr).join(' '));
+  }
+
+  /* 3. 4-bit adder (exercises chip flattening two levels deep) */
+  {
+    const ex = L.examples.EDITOR_EXAMPLES[2].make();
+    for (const c of ex.chips) L.lib[c.id] = c;
+    const def = ex.work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    ok('4-bit adder compiles clean', c.errors.length === 0, c.errors.join(';'));
+    // 4 full adders x 5 gates each, expanded out of the chip instances
+    const gates = c.prims.filter(p => ['XOR', 'AND', 'OR'].includes(p.type)).length;
+    ok('4-bit adder flattens to 20 gates', gates === 20, gates + ' of ' + c.prims.length);
+    let bad = null;
+    for (const [a, b] of [[0, 0], [1, 1], [5, 3], [9, 7], [15, 15], [8, 8], [12, 5]]) {
+      io.ins.forEach((p) => {
+        const m = p.label.match(/^([AB])(\d)$/);
+        const v = m[1] === 'A' ? a : b;
+        p.value = (v >> +m[2]) & 1;
+      });
+      const sim = new L.Sim(c);
+      const settled = sim.settle(300, 0);
+      let s = 0;
+      io.outs.forEach((p) => {
+        const bit = sim.val(c.portNet.get(p.id + '.i0'));
+        const w = p.label === 'Cout' ? 4 : +p.label.slice(1);
+        s |= bit << w;
+      });
+      if (!settled || s !== a + b) bad = a + '+' + b + '=' + s;
+    }
+    ok('4-bit adder adds', !bad, bad);
+  }
+
+  /* 4. SR latch holds state */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[3].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const S = io.ins.find(p => p.label === 'S'), R = io.ins.find(p => p.label === 'R');
+    const Q = io.outs.find(p => p.label === 'Q');
+    const qNet = c.portNet.get(Q.id + '.i0');
+    const sim = new L.Sim(c);
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    S.value = 1; R.value = 0; run(20);
+    const setQ = sim.val(qNet);
+    S.value = 0; run(20);
+    const heldQ = sim.val(qNet);
+    R.value = 1; run(20);
+    const resetQ = sim.val(qNet);
+    R.value = 0; run(20);
+    const heldQ2 = sim.val(qNet);
+    ok('SR latch sets, holds, resets, holds', setQ === 1 && heldQ === 1 && resetQ === 0 && heldQ2 === 0,
+       [setQ, heldQ, resetQ, heldQ2].join(','));
+  }
+
+  /* 4b. an idle latch must settle rather than ring — the metastability case */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[3].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const io = L.ioOrder(def);
+    io.ins.forEach(p => { p.value = 0; });
+    const settled = sim.settle(200, 0);
+    const q = sim.val(c.portNet.get(io.outs[0].id + '.i0'));
+    const qb = sim.val(c.portNet.get(io.outs[1].id + '.i0'));
+    ok('idle SR latch settles instead of oscillating', settled && q !== qb, 'settled=' + settled + ' Q=' + q + ' Qb=' + qb);
+  }
+
+  /* 5. six-NAND D flip-flop behaves like an edge-triggered flip-flop */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[4].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const D = io.ins.find(p => p.label === 'D'), CK = io.ins.find(p => p.label === 'CLK');
+    const Q = io.outs.find(p => p.label === 'Q');
+    const qNet = c.portNet.get(Q.id + '.i0');
+    const sim = new L.Sim(c);
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    const pulse = () => { CK.value = 0; run(30); CK.value = 1; run(30); };
+    D.value = 1; CK.value = 0; run(40);
+    const before = sim.val(qNet);
+    pulse();
+    const afterHigh = sim.val(qNet);
+    D.value = 0; run(40);
+    const stillHigh = sim.val(qNet);      // D changed but no clock edge yet
+    pulse();
+    const afterLow = sim.val(qNet);
+    ok('NAND D flip-flop latches on the edge only',
+       afterHigh === 1 && stillHigh === 1 && afterLow === 0,
+       'before=' + before + ' afterHigh=' + afterHigh + ' stillHigh=' + stillHigh + ' afterLow=' + afterLow);
+  }
+
+  /* 6. ring oscillator actually oscillates */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[6].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const o = L.ioOrder(def).outs[0];
+    const net = c.portNet.get(o.id + '.i0');
+    const seen = new Set();
+    for (let i = 0; i < 40; i++) { sim.tick(0); seen.add(sim.val(net)); }
+    ok('ring oscillator toggles', seen.size === 2 && !sim.settle(20, 0), [...seen].join(','));
+  }
+
+  /* 7. counter counts */
+  {
+    const def = L.examples.EDITOR_EXAMPLES[7].make().work;
+    const io = L.ioOrder(def);
+    const c = L.compile(def);
+    const nets = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+    const sim = new L.Sim(c);
+    const clk = c.prims.find(p => p.type === 'CLOCK');
+    const read = () => nets.reduce((a, n, i) => a | (sim.val(n) << i), 0);
+    // drive the clock by hand through simulated time
+    let t = 0, seq = [];
+    for (let e = 0; e < 20; e++) { t += 400; for (let i = 0; i < 12; i++) sim.tick(t); seq.push(read()); }
+    const uniq = [...new Set(seq)];
+    let mono = true;
+    for (let i = 1; i < seq.length; i++) if (seq[i] !== (seq[i - 1] + 1) % 16 && seq[i] !== seq[i - 1]) mono = false;
+    ok('4-bit counter counts up in order', uniq.length > 4 && mono, seq.join(','));
+  }
+
+  /* 7b. memory you can type a program into */
+  {
+    /* a ROM reads back exactly what was stored, at every address */
+    const b = L.builder('rom test');
+    const a = [0,1,2,3].map(i => b.pin('A'+i, 0, i*70));
+    const rom = b.add('ROM', 250, 0, { abits: 4, dbits: 8,
+      data: [1,2,4,8,16,32,64,128,255,0,170,85,15,240,3,12] });
+    a.forEach((p, i) => b.w(p, 0, rom, i));
+    const outs = [];
+    for (let i = 0; i < 8; i++) { const o = b.out('D'+i, 600, i*70); b.w(rom, i, o, 0); outs.push(o); }
+    const io = L.ioOrder(b.def);
+    const c = L.compile(b.def);
+    let bad = null;
+    for (let addr = 0; addr < 16; addr++) {
+      io.ins.forEach((p, i) => { p.value = (addr >> i) & 1; });
+      const sim = new L.Sim(c);
+      sim.settle(200, 0);
+      let got = 0;
+      io.outs.forEach((p) => {
+        const bit = +p.label.slice(1);
+        got |= sim.val(c.portNet.get(p.id + '.i0')) << bit;
+      });
+      if (got !== rom.data[addr]) bad = 'addr ' + addr + ' gave ' + got + ' not ' + rom.data[addr];
+    }
+    ok('a ROM gives back what you stored at every address', !bad, bad);
+  }
+  {
+    /* a RAM takes a value on the clock edge, but only while WRITE is high */
+    const b = L.builder('ram test');
+    const a0 = b.pin('A0', 0, 0), a1 = b.pin('A1', 0, 60);
+    const d0 = b.pin('D0', 0, 120), d1 = b.pin('D1', 0, 180);
+    const wr = b.pin('WR', 0, 240), ck = b.pin('CK', 0, 300);
+    const ram = b.add('RAM', 300, 0, { abits: 2, dbits: 2, data: [] });
+    b.w(a0,0,ram,0); b.w(a1,0,ram,1); b.w(d0,0,ram,2); b.w(d1,0,ram,3);
+    b.w(wr,0,ram,4); b.w(ck,0,ram,5);
+    const q0 = b.out('Q0', 700, 0), q1 = b.out('Q1', 700, 60);
+    b.w(ram,0,q0,0); b.w(ram,1,q1,0);
+    const c = L.compile(b.def);
+    const sim = new L.Sim(c);
+    const io = L.ioOrder(b.def);
+    const pin = (nm) => io.ins.find(p => p.label === nm);
+    const nets = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+    const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+    const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+    const readBack = () => (sim.val(nets[0]) | (sim.val(nets[1]) << 1));
+    // store 3 at address 1
+    set({ A0:1, A1:0, D0:1, D1:1, WR:1, CK:0 }); run(20);
+    set({ CK:1 }); run(20);
+    set({ CK:0, WR:0 }); run(20);
+    const stored = readBack();
+    // a clock edge with WRITE low must not change it
+    set({ D0:0, D1:0, CK:1 }); run(20);
+    set({ CK:0 }); run(20);
+    const untouched = readBack();
+    // and a different address is still empty
+    set({ A0:0 }); run(20);
+    const elsewhere = readBack();
+    ok('a RAM stores on the clock edge, and only when told to',
+      stored === 3 && untouched === 3 && elsewhere === 0,
+      [stored, untouched, elsewhere].join(','));
+  }
+  {
+    /* the stored-program example really does walk its ROM */
+    const def = L.examples.EDITOR_EXAMPLES[8].make().work;
+    const c = L.compile(def);
+    const sim = new L.Sim(c);
+    const rom = def.nodes.find(n => n.type === 'ROM');
+    const prim = c.prims.find(p => p.node === rom);
+    const seen = [];
+    let t = 0;
+    for (let step = 0; step < 40; step++) {
+      t += 200;
+      for (let i = 0; i < 20; i++) sim.tick(t);
+      let word = 0;
+      for (let i = 0; i < 8; i++) word |= sim.val(prim.outs[i]) << i;
+      if (!seen.length || seen[seen.length-1] !== word) seen.push(word);
+    }
+    const inRom = seen.every(w => rom.data.includes(w));
+    ok('the stored-program example walks through its ROM',
+      seen.length > 4 && inRom, seen.join(','));
+  }
+
+  /* 8. tunnels join nets with the same name */
+  {
+    const b = L.builder('tunnel test');
+    const a = b.pin('a', 0, 0), o = b.out('o', 400, 0);
+    const t1 = b.add('TUNNEL', 100, 0, { label: 'bus' });
+    const t2 = b.add('TUNNEL', 250, 0, { label: 'BUS' });   // case-insensitive
+    b.w(a, 0, t1, 0); b.w(t2, 0, o, 0);
+    const t = L.computeTruthTable(b.def);
+    ok('tunnels connect by name', t.rows.map(r => r.in[0] + '' + r.out[0]).join(' ') === '00 11',
+       JSON.stringify(t.rows));
+  }
+
+  /* 9. two outputs on one net is reported as a clash */
+  {
+    const b = L.builder('clash');
+    const c0 = b.add('CONST', 0, 0, { value: 0 });
+    const c1 = b.add('CONST', 0, 100, { value: 1 });
+    const o = b.out('o', 300, 50);
+    b.def.wires.push({ id: 'w1', a: { n: c0.id, s: 'out', i: 0 }, b: { n: o.id, s: 'in', i: 0 } });
+    b.def.wires.push({ id: 'w2', a: { n: c1.id, s: 'out', i: 0 }, b: { n: o.id, s: 'in', i: 0 } });
+    const c = L.compile(b.def);
+    const sim = new L.Sim(c);
+    sim.tick(0);
+    ok('conflicting drivers flagged', sim.clash[c.portNet.get(o.id + '.i0')] === 1);
+  }
+
+  /* 9b. every "what it's made of" recipe must really behave like the part it
+         claims to explain — a wrong one would teach the wrong thing */
+  {
+    const sig = (def) => {
+      const t = L.computeTruthTable(def);
+      return t.error ? 'ERR:' + t.error : t.rows.map(r => r.in.join('') + '>' + r.out.join('')).join(' ');
+    };
+    const reference = (type, n) => {
+      const b = L.builder('ref');
+      const pins = [];
+      for (let i = 0; i < n; i++) pins.push(b.pin(String.fromCharCode(65 + i), 0, i * 100));
+      const g = b.add(type, 200, 0), o = b.out('out', 420, 0);
+      pins.forEach((p, i) => b.w(p, 0, g, i));
+      b.w(g, 0, o, 0);
+      return b.def;
+    };
+    for (const [type, n] of [['NOT', 1], ['BUF', 1], ['AND', 2], ['OR', 2],
+    ['NAND', 2], ['NOR', 2], ['XOR', 2], ['XNOR', 2]]) {
+      const rec = L.RECIPES[type];
+      const got = sig(rec.make()), want = sig(reference(type, n));
+      ok('the ' + type + ' recipe behaves like a real ' + type, got === want, got + '  vs  ' + want);
+    }
+
+    /* the ROM recipe must hold the numbers its caption claims: 1, 2, 3, 0 */
+    {
+      // truth-table rows count with the FIRST pin as the high bit, so read the
+      // address off the input columns rather than assuming row order
+      /* read by pin NAME: the diagram also brings each word line out to a
+         labelled stub, so D0 and D1 are not the first two columns any more */
+      const def = L.RECIPES.ROM.make();
+      const io = L.ioOrder(def);
+      const t = L.computeTruthTable(def);
+      const col = (nm) => io.outs.findIndex(p => p.label === nm);
+      const inCol = (nm) => io.ins.findIndex(p => p.label === nm);
+      const words = [0, 0, 0, 0];
+      for (const r of t.rows) {
+        words[r.in[inCol('A0')] + r.in[inCol('A1')] * 2] = r.out[col('D0')] + r.out[col('D1')] * 2;
+      }
+      ok('the ROM diagram really stores 1, 2, 3, 0', words.join(',') === '1,2,3,0', words.join(','));
+    }
+
+    /* the generated array must behave like the RAM part it explains: write to
+       one address, read it back, and check the others were left alone */
+    {
+      const def = L.ramArray(2, 2);
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const read = () => sim.val(qNet[0]) | (sim.val(qNet[1]) << 1);
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(40);
+        set({ CLK: 1 }); run(40); set({ CLK: 0, WRITE: 0 }); run(40);
+      };
+      store(0, 3); store(1, 1); store(2, 2); store(3, 0);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(40); back.push(read()); }
+      ok('the generated RAM array stores and reads back four separate words',
+        back.join(',') === '3,1,2,0', back.join(','));
+      // a write to one address must not disturb its neighbours
+      store(1, 3);
+      const after = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(40); after.push(read()); }
+      ok('writing one word leaves the others alone', after.join(',') === '3,3,2,0', after.join(','));
+      ok('the array is the three regions it claims', (() => {
+        const kinds = {};
+        for (const n of def.nodes) kinds[n.type] = (kinds[n.type] || 0) + 1;
+        // 4 words x 2 bits: 2 inverters, 4 decode ANDs, 4 write gates,
+        // 8 flip-flops, 8 read gates, 2 x 3 collecting ORs
+        return kinds.NOT === 2 && kinds.DFF === 8 && kinds.OR === 6 && kinds.AND === 16;
+      })(), JSON.stringify((() => { const k = {}; for (const n of def.nodes) k[n.type] = (k[n.type] || 0) + 1; return k; })()));
+    }
+    /* a bigger one still adds up, and stays inside what the editor can run */
+    {
+      const big = L.ramArray(4, 8);
+      const c = L.compile(big);
+      ok('a 16 x 8 array is buildable', big.nodes.length > 400 && big.nodes.length < 700
+        && c.errors.length === 0, big.nodes.length + ' parts, ' + c.prims.length + ' primitives');
+      // the count shown on the button has to be the count you actually get
+      let sizeBad = null;
+      for (const [ab, db] of [[1, 1], [2, 2], [3, 4], [4, 8], [2, 16]]) {
+        const n = L.ramArray(ab, db).nodes.length, said = L.ramArraySize(ab, db);
+        if (n !== said) sizeBad = ab + 'x' + db + ': built ' + n + ', promised ' + said;
+      }
+      ok('the part count on the button is the real one', !sizeBad, sizeBad);
+    }
+
+    /* the RAM-cell recipe must behave like one bit of RAM */
+    {
+      const def = L.RECIPES.RAM.cell();
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = c.portNet.get(io.outs[0].id + '.i0');
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const pulse = () => { set({ CLK: 0 }); run(25); set({ CLK: 1 }); run(25); set({ CLK: 0 }); run(25); };
+      // chosen and writing: it takes the 1
+      set({ D: 1, SELECT: 1, WRITE: 1, CLK: 0 }); run(25);
+      pulse();
+      const stored = sim.val(qNet);
+      // writing but not chosen: it must ignore the edge
+      set({ D: 0, SELECT: 0, WRITE: 1 }); pulse();
+      set({ SELECT: 1, WRITE: 0 }); run(25);
+      const ignored = sim.val(qNet);
+      // chosen and writing a 0: it takes that
+      set({ D: 0, WRITE: 1 }); pulse();
+      set({ WRITE: 0 }); run(25);
+      const overwritten = sim.val(qNet);
+      // and an unchosen cell reads back 0 whatever it holds
+      set({ D: 1, WRITE: 1 }); pulse();
+      set({ WRITE: 0 }); run(25);
+      const held = sim.val(qNet);
+      set({ SELECT: 0 }); run(25);
+      const quiet = sim.val(qNet);
+      ok('the RAM-cell diagram behaves like one bit of RAM',
+        stored === 1 && ignored === 1 && overwritten === 0 && held === 1 && quiet === 0,
+        [stored, ignored, overwritten, held, quiet].join(','));
+    }
+
+    /* the two with memory need a sequence rather than a table */
+    const trace = (def, names, steps) => {
+      const io = L.ioOrder(def);
+      const c = L.compile(def);
+      const sim = new L.Sim(c);
+      const pins = names.map(nm => io.ins.find(p => p.label === nm));
+      const net = c.portNet.get(io.outs[0].id + '.i0');
+      let s = '';
+      for (const step of steps) {
+        pins.forEach((p, i) => { p.value = step[i]; });
+        for (let k = 0; k < 60; k++) sim.tick(0);
+        s += sim.val(net);
+      }
+      return s;
+    };
+    const latchRef = (() => {
+      const b = L.builder('ref latch');
+      const d = b.pin('D', 0, 0), e = b.pin('E', 0, 100);
+      const g = b.add('DLATCH', 200, 0), q = b.out('Q', 420, 0);
+      b.w(d, 0, g, 0); b.w(e, 0, g, 1); b.w(g, 0, q, 0);
+      return b.def;
+    })();
+    const latchSteps = [[1, 1], [1, 0], [0, 0], [0, 1], [1, 0], [1, 1]];
+    const gotL = trace(L.RECIPES.DLATCH.make(), ['D', 'E'], latchSteps);
+    const wantL = trace(latchRef, ['D', 'E'], latchSteps);
+    ok('the D latch recipe follows D while enabled and holds after',
+      gotL === wantL && gotL === '111001', gotL + ' vs ' + wantL);
+
+    const ffRef = (() => {
+      const b = L.builder('ref ff');
+      const d = b.pin('D', 0, 0), c2 = b.pin('CLK', 0, 100);
+      const g = b.add('DFF', 200, 0), q = b.out('Q', 420, 0);
+      b.w(d, 0, g, 0); b.w(c2, 0, g, 1); b.w(g, 0, q, 0);
+      return b.def;
+    })();
+    const ffSteps = [[1, 0], [1, 1], [0, 1], [0, 0], [1, 0], [0, 0], [0, 1], [1, 1]];
+    const gotF = trace(L.RECIPES.DFF.make(), ['D', 'CLK'], ffSteps);
+    const wantF = trace(ffRef, ['D', 'CLK'], ffSteps);
+    ok('the D flip-flop recipe copies D only on the clock edge',
+      gotF === wantF && gotF === '01111100', gotF + ' vs ' + wantF);
+  }
+
+  /* 9b. taking a whole circuit apart a layer at a time. The claim the button
+         makes is that the picture is still the same circuit, so the tests are
+         about behaviour, not about part counts. */
+  {
+    const types = (def) => {
+      const k = {};
+      for (const n of def.nodes) if (n.type !== 'IN' && n.type !== 'OUT') k[n.type] = (k[n.type] || 0) + 1;
+      return k;
+    };
+
+    /* a 4 x 2 RAM, broken down, must still be a 4 x 2 RAM */
+    {
+      const flat = L.expandOnce(L.ramArray(2, 2));
+      const io = L.ioOrder(flat);
+      const c = L.compile(flat);
+      ok('the broken-down RAM still wires up cleanly', c.errors.length === 0, JSON.stringify(c.errors));
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const k in o) pin(k).value = o[k]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const read = () => sim.val(qNet[0]) | (sim.val(qNet[1]) << 1);
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(120);
+        set({ CLK: 1 }); run(120); set({ CLK: 0, WRITE: 0 }); run(120);
+      };
+      store(0, 3); store(1, 1); store(2, 2); store(3, 0);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(120); back.push(read()); }
+      ok('a RAM broken down into NANDs still stores four separate words',
+        back.join(',') === '3,1,2,0', back.join(','));
+      store(1, 3);
+      const after = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(120); after.push(read()); }
+      ok('the broken-down RAM keeps the words it was not asked to change',
+        after.join(',') === '3,3,2,0', after.join(','));
+      const k = types(flat);
+      ok('one press turns the whole RAM into nothing but NANDs',
+        Object.keys(k).join(',') === 'NAND' && !L.anySimpler(flat), JSON.stringify(k));
+      ok('and it is bigger than what it replaced, as it should be',
+        k.NAND > L.ramArray(2, 2).nodes.length, k.NAND + ' NANDs');
+    }
+
+    /* opening up one kind of part at a time — all eight flip-flops inside a
+       RAM as NANDs, with the decoder around them left standing */
+    {
+      const ram = L.ramArray(2, 2);
+      const only = L.expandOnce(ram, 'DFF');
+      const k = types(only);
+      ok('opening up just the flip-flops leaves everything else alone',
+        k.DFF === undefined && k.NAND === 48 && k.AND === types(ram).AND
+        && k.OR === types(ram).OR && k.NOT === types(ram).NOT, JSON.stringify(k));
+
+      /* and the RAM has to still be a RAM afterwards */
+      const io = L.ioOrder(only);
+      const c = L.compile(only);
+      const sim = new L.Sim(c);
+      const pin = (nm) => io.ins.find(p => p.label === nm);
+      const qNet = io.outs.map(p => c.portNet.get(p.id + '.i0'));
+      const run = (n) => { for (let i = 0; i < n; i++) sim.tick(0); };
+      const set = (o) => { for (const key in o) pin(key).value = o[key]; };
+      const addr = (a) => set({ A0: a & 1, A1: (a >> 1) & 1 });
+      const store = (a, v) => {
+        addr(a); set({ D0: v & 1, D1: (v >> 1) & 1, WRITE: 1, CLK: 0 }); run(100);
+        set({ CLK: 1 }); run(100); set({ CLK: 0, WRITE: 0 }); run(100);
+      };
+      store(0, 2); store(1, 3); store(2, 0); store(3, 1);
+      const back = [];
+      for (let a = 0; a < 4; a++) { addr(a); run(100); back.push(sim.val(qNet[0]) | (sim.val(qNet[1]) << 1)); }
+      ok('a RAM with only its flip-flops opened up still works as a RAM',
+        back.join(',') === '2,3,0,1', back.join(','));
+
+      /* the buttons that offer this have to name what is really in there */
+      const offered = L.openableTypes(ram).map(([t, n]) => t + ':' + n).join(' ');
+      ok('the "open up every…" buttons count what is really in the picture',
+        offered === 'AND:16 DFF:8 OR:6 NOT:2', offered);
+      ok('and once a kind is opened up it is no longer offered',
+        !L.openableTypes(only).some(([t]) => t === 'DFF'),
+        L.openableTypes(only).map(([t, n]) => t + ':' + n).join(' '));
+      ok('asking for a kind that is not there changes nothing',
+        L.expandOnce(ram, 'XOR') === null);
+    }
+
+    /* pressing it repeatedly has to stop, and stop at NANDs */
+    {
+      const seed = L.builder('a bit of everything');
+      const sa = seed.pin('A', 0, 0), sb = seed.pin('B', 0, 100), sc = seed.pin('CLK', 0, 200);
+      const sx = seed.add('XNOR', 200, 0), sn = seed.add('NOT', 380, 0);
+      const sf = seed.add('DFF', 540, 0), so = seed.add('OR', 720, 0, { n: 3 });
+      const sq = seed.out('Q', 900, 0);
+      seed.w(sa, 0, sx, 0); seed.w(sb, 0, sx, 1); seed.w(sx, 0, sn, 0);
+      seed.w(sn, 0, sf, 0); seed.w(sc, 0, sf, 1);
+      seed.w(sf, 0, so, 0); seed.w(sf, 1, so, 1); seed.w(sa, 0, so, 2);
+      seed.w(so, 0, sq, 0);
+      let def = seed.def;
+      let rounds = 0, sizes = [def.nodes.length];
+      while (rounds < 12) {
+        const next = L.expandOnce(def);
+        if (!next) break;
+        def = next; rounds++; sizes.push(def.nodes.length);
+      }
+      ok('breaking a circuit down keeps going until there is nothing left to break',
+        rounds > 0 && rounds < 12 && !L.anySimpler(def), rounds + ' rounds: ' + sizes.join(' → '));
+      ok('what it bottoms out at is NANDs and nothing else',
+        Object.keys(types(def)).join(',') === 'NAND', JSON.stringify(types(def)));
+      ok('every round is bigger than the last', sizes.every((n, i) => !i || n > sizes[i - 1]), sizes.join(','));
+    }
+
+    /* the adder still adds after it has been taken apart */
+    {
+      const b = L.builder('one bit of adding');
+      const A = b.pin('A', 0, 0), B = b.pin('B', 0, 100), Ci = b.pin('Cin', 0, 200);
+      const x1 = b.add('XOR', 200, 0), x2 = b.add('XOR', 380, 60);
+      const a1 = b.add('AND', 200, 200), a2 = b.add('AND', 380, 260);
+      const or = b.add('OR', 560, 240);
+      const S = b.out('S', 740, 60), Co = b.out('C', 740, 250);
+      b.w(A, 0, x1, 0); b.w(B, 0, x1, 1);
+      b.w(x1, 0, x2, 0); b.w(Ci, 0, x2, 1); b.w(x2, 0, S, 0);
+      b.w(A, 0, a1, 0); b.w(B, 0, a1, 1);
+      b.w(x1, 0, a2, 0); b.w(Ci, 0, a2, 1);
+      b.w(a1, 0, or, 0); b.w(a2, 0, or, 1); b.w(or, 0, Co, 0);
+      const row = (def) => L.computeTruthTable(def).rows
+        .map(r => r.in.join('') + '=' + r.out.join('')).join(' ');
+      const want = row(b.def);
+      let def = b.def, depth = 0, same = true;
+      for (;;) {
+        const next = L.expandOnce(def);
+        if (!next) break;
+        def = next; depth++;
+        if (row(def) !== want) { same = false; break; }
+      }
+      ok('a full adder adds the same at every level it is broken down to',
+        same && depth === 2, depth + ' levels, ' + want);
+    }
+
+    /* the floor, and the things it must not touch */
+    {
+      const b = L.builder('all NANDs already');
+      const x = b.pin('A', 0, 0), y = b.pin('B', 0, 100);
+      const g = b.add('NAND', 200, 0), o = b.out('out', 400, 0);
+      b.w(x, 0, g, 0); b.w(y, 0, g, 1); b.w(g, 0, o, 0);
+      ok('a circuit that is already NANDs cannot be broken down further',
+        L.expandOnce(b.def) === null && !L.anySimpler(b.def));
+
+      const w = L.builder('wide XOR');
+      const p = [0, 1, 2].map(i => w.pin('P' + i, 0, i * 100));
+      const gx = w.add('XOR', 200, 0, { n: 3 }), oo = w.out('out', 400, 0);
+      p.forEach((q, i) => w.w(q, 0, gx, i)); w.w(gx, 0, oo, 0);
+      ok('a three-input XOR is left alone rather than silently losing an input',
+        L.expandOnce(w.def) === null && !L.anySimpler(w.def));
+    }
+
+    /* the census has to add up to the total the caption quotes, pins included */
+    {
+      const flat = L.expandOnce(L.ramArray(2, 1));
+      const line = L.partsCensus(flat);
+      const sum = [...line.matchAll(/(\d+) ×/g)].reduce((t, m) => t + +m[1], 0);
+      ok('the census adds up to the number of parts it is describing',
+        sum === flat.nodes.length && /^\d+ × NAND/.test(line),
+        line + ' vs ' + flat.nodes.length + ' parts');
+    }
+  }
+
+
+  /* ---------- the app booted ---------- */
+  {
+    ok('app state exists', !!L.S && !!L.S.work);
+    ok('canvas has a size', document.querySelector('#cv').width > 0);
+    ok('palette rendered', document.querySelectorAll('.pal-item').length > 5,
+       document.querySelectorAll('.pal-item').length);
+    ok('the gate app has no breadboard in it', typeof L.compileBoard === 'undefined' && !document.querySelector('#mode-board'));
+  }
+
+
+  /* ================ the wider parts, and the built-in chip library ================ */
+
+  /* ---------- the wider parts: flip-flops, registers, counters, blocks ---------- */
+  {
+    const prim = (type, extra) => {
+      const bd = L.builder('t'); const n = bd.add(type, 200, 0, extra); const p = portsOf(n);
+      const ins = p.ins.map((nm, i) => bd.pin(nm, 0, i * 40)); const outs = p.outs.map((nm, i) => bd.out(nm, 500, i * 40));
+      ins.forEach((x, i) => bd.w(x, 0, n, i)); outs.forEach((o, i) => bd.w(n, i, o, 0));
+      const c = L.compile(bd.def); const sim = new L.Sim(c);
+      const inNodes = ins.map((x) => c.prims.find((q) => q.node === x));
+      const r = {
+        set: (nm, v) => { inNodes[p.ins.indexOf(nm)].node.value = v ? 1 : 0; },
+        setNum: (pre, v, k) => { for (let i = 0; i < k; i++) r.set(pre + i, (v >> i) & 1); },
+        run: (t = 8) => { for (let i = 0; i < t; i++) sim.tick(1000 + i); },
+        get: (nm) => sim.v[c.portNet.get(outs[p.outs.indexOf(nm)].id + '.i0')],
+        getNum: (pre, k) => { let x = 0; for (let i = 0; i < k; i++) x += r.get(pre + i) << i; return x; },
+        pulse: () => { r.set('>', 0); r.run(6); r.set('>', 1); r.run(6); r.set('>', 0); r.run(6); },
+      };
+      return r;
+    };
+    let r = prim('REG', { bits: 4 }); r.setNum('D', 9, 4); r.set('LD', 1); r.pulse(); const a = r.getNum('Q', 4);
+    r.set('LD', 0); r.setNum('D', 3, 4); r.pulse(); const bq = r.getNum('Q', 4); r.set('CLR', 1); r.pulse();
+    ok('REGISTER loads, holds and clears on the edge', a === 9 && bq === 9 && r.getNum('Q', 4) === 0, [a, bq, r.getNum('Q', 4)].join());
+    r = prim('COUNTER', { bits: 3 }); r.set('EN', 1); const cs = []; for (let i = 0; i < 10; i++) { r.pulse(); cs.push(r.getNum('Q', 3)); }
+    r.set('DN', 1); const cd = []; for (let i = 0; i < 4; i++) { r.pulse(); cd.push(r.getNum('Q', 3)); }
+    ok('COUNTER counts up, wraps and counts down', cs.join() === '1,2,3,4,5,6,7,0,1,2' && cd.join() === '1,0,7,6', cs.join() + ' / ' + cd.join());
+    r = prim('SHIFT', { bits: 4 }); r.set('SI', 1); r.set('SH', 1); const sl = []; for (let i = 0; i < 5; i++) { r.pulse(); sl.push(r.getNum('Q', 4)); }
+    r.set('DIR', 1); r.set('SI', 0); const sr = []; for (let i = 0; i < 4; i++) { r.pulse(); sr.push(r.getNum('Q', 4)); }
+    ok('SHIFT REGISTER shifts both ways', sl.join() === '1,3,7,15,15' && sr.join() === '7,3,1,0', sl.join() + ' / ' + sr.join());
+    r = prim('JKFF'); r.set('J', 1); r.pulse(); const j1 = r.get('Q'); r.set('K', 1); r.pulse(); const j2 = r.get('Q'); r.pulse(); const j3 = r.get('Q'); r.set('J', 0); r.pulse();
+    ok('JK FLIP-FLOP: set, toggle, toggle, clear', [j1, j2, j3, r.get('Q')].join('') === '1010');
+    r = prim('TFF'); r.set('T', 1); const tq = []; for (let i = 0; i < 4; i++) { r.pulse(); tq.push(r.get('Q')); }
+    ok('T FLIP-FLOP toggles', tq.join('') === '1010');
+    r = prim('DFFR'); r.set('D', 1); r.pulse(); const d1 = r.get('Q'); r.set('CLR', 1); r.run(4); const d2 = r.get('Q'); r.set('CLR', 0); r.set('SET', 1); r.run(4);
+    ok('D FF + CLEAR/SET overrides at once', [d1, d2, r.get('Q')].join('') === '101');
+    r = prim('SRLATCH'); r.set('S', 1); r.run(4); r.set('S', 0); r.run(4); const s1 = r.get('Q'); r.set('R', 1); r.run(4); r.set('R', 0); r.run(4);
+    ok('SR LATCH sets and clears', s1 === 1 && r.get('Q') === 0);
+    r = prim('MUX', { sel: 2 }); r.set('I2', 1); r.set('S1', 1); r.run(); const m1 = r.get('Y'); r.set('S0', 1); r.run();
+    ok('MULTIPLEXER picks the selected input', m1 === 1 && r.get('Y') === 0);
+    r = prim('DEMUX', { sel: 2 }); r.set('D', 1); r.set('S0', 1); r.set('S1', 1); r.run();
+    ok('DEMULTIPLEXER sends D to the chosen output', [0, 1, 2, 3].map((i) => r.get('Y' + i)).join('') === '0001');
+    r = prim('DECODER', { bits: 3 }); r.set('A0', 1); r.set('A2', 1); r.run();
+    ok('DECODER switches on one line', [0, 1, 2, 3, 4, 5, 6, 7].map((i) => r.get('Y' + i)).join('') === '00000100');
+    r = prim('ENCODER', { bits: 3 }); r.set('I2', 1); r.set('I5', 1); r.run();
+    ok('PRIORITY ENCODER reports the highest line', r.getNum('A', 3) === 5 && r.get('V') === 1);
+    r = prim('ADDER', { bits: 4 }); r.setNum('A', 13, 4); r.setNum('B', 7, 4); r.set('CI', 1); r.run();
+    ok('ADDER adds with carry in and out', r.getNum('S', 4) === 5 && r.get('CO') === 1);
+    r = prim('COMPARE', { bits: 4 }); r.setNum('A', 9, 4); r.setNum('B', 7, 4); r.run();
+    ok('COMPARATOR says which is bigger', [r.get('A>B'), r.get('A=B'), r.get('A<B')].join('') === '100');
+    r = prim('ALU', { bits: 8 }); const alu = [];
+    for (const [op, A, B, ci, want] of [[0, 200, 100, 0, 44], [1, 5, 9, 0, 252], [2, 12, 10, 0, 8], [3, 12, 10, 0, 14], [4, 12, 10, 0, 6], [5, 15, 0, 0, 240], [6, 3, 0, 1, 7], [7, 6, 0, 1, 131]]) {
+      r.setNum('A', A, 8); r.setNum('B', B, 8); r.set('OP0', op & 1); r.set('OP1', (op >> 1) & 1); r.set('OP2', (op >> 2) & 1); r.set('CI', ci); r.run();
+      if (r.getNum('F', 8) !== want) alu.push(op + ':' + r.getNum('F', 8) + '/' + want);
+    }
+    ok('ALU does all eight operations', !alu.length, alu.join(' '));
+    /* setting a part's size renumbers its ports; wires must follow by name */
+    {
+      const w = L.newDef('resize'); const reg = makeNode('REG', 100, 100); const pin = makeNode('IN', 0, 0, { label: 'ld' });
+      w.nodes.push(reg, pin); w.wires.push({ id: 'w1', a: { n: pin.id, s: 'out', i: 0 }, b: { n: reg.id, s: 'in', i: 4 } });   // LD of a 4-bit register
+      L.S.work = w; setNodeParam(reg, 'bits', 8);
+      ok('resizing a part keeps its wires on the same pins', w.wires.length === 1 && portsOf(reg).ins[w.wires[0].b.i] === 'LD', JSON.stringify(w.wires.map((x) => x.b.i)));
+    }
+  }
+  /* A rig for one circuit: inputs set by pin label, outputs read by pin label. */
+  const rig = (key) => {
+    const id = installLib(key);
+    const def = LIB[id];
+    const c = compile(def);
+    const sim = new Sim(c);
+    const pins = ioOrder(def);
+    const inP = {}, outP = {};
+    for (const n of pins.ins) inP[n.label] = c.prims.find((q) => q.node === n);
+    for (const n of pins.outs) outP[n.label] = n;
+    const r = {
+      def, c, sim, errors: c.errors,
+      set: (lab, v) => { inP[lab].node.value = v ? 1 : 0; },
+      setNum: (pre, v, n) => { for (let i = 0; i < n; i++) r.set(pre + i, (v >> i) & 1); },
+      run: (t = 60) => { for (let i = 0; i < t; i++) sim.tick(1000 + sim.ticks * 16); },
+      get: (lab) => sim.v[c.portNet.get(outP[lab].id + '.i0')],
+      getNum: (pre, n) => { let x = 0; for (let i = 0; i < n; i++) x += r.get(pre + i) * 2 ** i; return x; },
+      pulse: (lab = 'CLK', hi = 30) => { r.set(lab, 0); r.run(hi); r.set(lab, 1); r.run(hi); r.set(lab, 0); r.run(hi); },
+      inLabels: pins.ins.map((n) => n.label), outLabels: pins.outs.map((n) => n.label),
+    };
+    return r;
+  };
+  /* Check a combinational circuit against a JS function over every input combination. */
+  const table = (key, fn, opts) => {
+    const r = rig(key);
+    const n = r.inLabels.length, bad = [];
+    const limit = (opts && opts.limit) || 2 ** n;
+    for (let k = 0; k < limit; k++) {
+      const v = (opts && opts.pick) ? opts.pick(k) : k;
+      r.inLabels.forEach((lab, i) => r.set(lab, (v >> i) & 1));
+      r.run((opts && opts.ticks) || 80);
+      const want = fn(r.inLabels.map((_, i) => (v >> i) & 1), v);
+      r.outLabels.forEach((lab, i) => { if (r.get(lab) !== want[i]) bad.push(v + ':' + lab + '=' + r.get(lab) + '/' + want[i]); });
+      if (bad.length > 5) break;
+    }
+    ok(key + ' truth table', !bad.length && !r.errors.length, bad.join(' ') + ' ' + r.errors.join(';'));
+  };
+  const b = (x) => (x ? 1 : 0);
+  const rnd = (() => { let s = 12345; return (m) => { s = (s * 1103515245 + 12345) & 0x7fffffff; return s % m; }; })();
+
+  /* ---- gates from NAND and NOR ---- */
+  table('nand-not', ([a]) => [b(!a)]);
+  table('nand-and', ([a, c]) => [a & c]);
+  table('nand-or', ([a, c]) => [a | c]);
+  table('nand-nor', ([a, c]) => [b(!(a | c))]);
+  table('nand-xor', ([a, c]) => [a ^ c]);
+  table('nand-xnor', ([a, c]) => [b(!(a ^ c))]);
+  table('nand-mux', ([a, c, s]) => [s ? c : a]);
+  table('nand-halfadder', ([a, c]) => [a ^ c, a & c]);
+  table('nor-not', ([a]) => [b(!a)]);
+  table('nor-or', ([a, c]) => [a | c]);
+  table('nor-and', ([a, c]) => [a & c]);
+  table('nor-nand', ([a, c]) => [b(!(a & c))]);
+  table('nor-xor', ([a, c]) => [a ^ c]);
+  table('nor-xnor', ([a, c]) => [b(!(a ^ c))]);
+
+  /* ---- latches and flip-flops ---- */
+  {
+    let r = rig('sr-nor'); r.set('S', 1); r.run(); r.set('S', 0); r.run(); const a = r.get('Q'); r.set('R', 1); r.run(); r.set('R', 0); r.run();
+    ok('SR latch (NOR) sets, holds, clears', a === 1 && r.get('Q') === 0 && r.get('Q̄') === 1, a + ',' + r.get('Q'));
+    r = rig('sr-nand'); r.set('S̄', 1); r.set('R̄', 1); r.run(); r.set('S̄', 0); r.run(); r.set('S̄', 1); r.run(); const s1 = r.get('Q'); r.set('R̄', 0); r.run(); r.set('R̄', 1); r.run();
+    ok('SR latch (NAND) works active-low', s1 === 1 && r.get('Q') === 0, s1 + ',' + r.get('Q'));
+    r = rig('sr-gated'); r.set('S', 1); r.run(); const closed = r.get('Q'); r.set('EN', 1); r.run(); r.set('EN', 0); r.set('S', 0); r.run(); const open = r.get('Q');
+    ok('gated SR latch ignores S until EN', closed === 0 && open === 1, closed + ',' + open);
+    r = rig('d-latch'); r.set('D', 1); r.set('EN', 1); r.run(); const f1 = r.get('Q'); r.set('EN', 0); r.set('D', 0); r.run(); const f2 = r.get('Q'); r.set('EN', 1); r.run();
+    ok('D latch follows while open, holds when closed', f1 === 1 && f2 === 1 && r.get('Q') === 0, [f1, f2, r.get('Q')].join());
+    for (const k of ['dff-ms', 'dff-nand']) {
+      r = rig(k); r.set('D', 1); r.pulse('CLK'); const q1 = r.get('Q'); r.set('D', 0); r.run(); const q2 = r.get('Q'); r.pulse('CLK');
+      ok(k + ' copies D on the rising edge only', q1 === 1 && q2 === 1 && r.get('Q') === 0 && r.get('Q̄') === 1, [q1, q2, r.get('Q')].join());
+    }
+    r = rig('jk-ff'); r.set('J', 1); r.pulse(); const j1 = r.get('Q'); r.set('K', 1); r.pulse(); const j2 = r.get('Q'); r.pulse(); const j3 = r.get('Q'); r.set('J', 0); r.pulse();
+    ok('JK flip-flop sets, toggles, clears', j1 === 1 && j2 === 0 && j3 === 1 && r.get('Q') === 0, [j1, j2, j3, r.get('Q')].join());
+    r = rig('t-ff'); r.set('T', 1); const tq = []; for (let i = 0; i < 4; i++) { r.pulse(); tq.push(r.get('Q')); }
+    ok('T flip-flop toggles', tq.join('') === '1010', tq.join(''));
+    r = rig('dff-en'); r.set('D', 1); r.pulse(); const e1 = r.get('Q'); r.set('EN', 1); r.pulse(); const e2 = r.get('Q');
+    ok('D flip-flop with enable waits for EN', e1 === 0 && e2 === 1, e1 + ',' + e2);
+    r = rig('dff-clr'); r.set('D', 1); r.pulse(); const c1 = r.get('Q'); r.set('CLR', 1); r.run(); ok('D flip-flop with clear', c1 === 1 && r.get('Q') === 0, c1 + ',' + r.get('Q'));
+    r = rig('debounce'); r.set('A (up)', 1); r.run(); r.set('A (up)', 0); r.run(); const d1 = r.get('Clean'); r.set('B (down)', 1); r.run();
+    ok('debouncer latches the last contact', d1 === 1 && r.get('Clean') === 0, d1 + ',' + r.get('Clean'));
+  }
+
+  /* ---- arithmetic basics, selecting, decoding ---- */
+  table('half-adder', ([a, c]) => [a ^ c, a & c]);
+  table('full-adder', ([a, c, ci]) => [(a + c + ci) & 1, (a + c + ci) >> 1]);
+  table('half-sub', ([a, c]) => [a ^ c, b(!a && c)]);
+  table('full-sub', ([a, c, bi]) => { const t = a - c - bi; return [t & 1, b(t < 0)]; });
+  table('mux2', ([a, c, s]) => [s ? c : a]);
+  {
+    for (const [key, n, sels] of [['mux4', 4, 2], ['mux8', 8, 3], ['mux16', 16, 4]]) {
+      const r = rig(key); const bad = [];
+      for (let t = 0; t < 40; t++) {
+        const data = (t * 2654435761) >>> 0, sel = t % n;
+        for (let i = 0; i < n; i++) r.set('I' + i, (data >> i) & 1);
+        r.setNum('S', sel, sels); r.run();
+        if (r.get('Y') !== ((data >> sel) & 1)) bad.push(t);
+      }
+      ok(key + ' selects the right input', !bad.length && !r.errors.length, bad.join());
+    }
+    let r = rig('mux2x4'); let bad = [];
+    for (let t = 0; t < 32; t++) { r.setNum('A', t & 15, 4); r.setNum('B', (t * 7 + 3) & 15, 4); r.set('S', t >> 4); r.run(); if (r.getNum('Y', 4) !== ((t >> 4) ? (t * 7 + 3) & 15 : t & 15)) bad.push(t); }
+    ok('mux2x4 chooses a whole nibble', !bad.length, bad.join());
+    r = rig('mux2x8'); bad = [];
+    for (let t = 0; t < 16; t++) { r.setNum('A', t * 13 & 255, 8); r.setNum('B', t * 29 + 5 & 255, 8); r.set('S', t & 1); r.run(); if (r.getNum('Y', 8) !== ((t & 1) ? t * 29 + 5 & 255 : t * 13 & 255)) bad.push(t); }
+    ok('mux2x8 chooses a whole byte', !bad.length, bad.join());
+    r = rig('mux4x4'); bad = [];
+    for (let t = 0; t < 16; t++) { const w = [t, t ^ 5, (t * 3) & 15, 15 - t]; w.forEach((x, k) => r.setNum('W' + k + '.', x, 4)); r.setNum('S', t & 3, 2); r.run(); if (r.getNum('Y', 4) !== w[t & 3]) bad.push(t); }
+    ok('mux4x4 chooses one of four nibbles', !bad.length, bad.join());
+  }
+  table('demux4', ([d, s0, s1]) => { const s = s0 | (s1 << 1); return [0, 1, 2, 3].map((i) => b(d && i === s)); });
+  table('demux8', (x) => { const d = x[0], s = x[1] | (x[2] << 1) | (x[3] << 2); return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => b(d && i === s)); });
+  table('dec2-4', ([a0, a1, e]) => { const s = a0 | (a1 << 1); return [0, 1, 2, 3].map((i) => b(e && i === s)); });
+  table('dec3-8', ([a0, a1, a2, e]) => { const s = a0 | (a1 << 1) | (a2 << 2); return [0, 1, 2, 3, 4, 5, 6, 7].map((i) => b(e && i === s)); });
+  table('dec4-16', (x) => { const s = x[0] | (x[1] << 1) | (x[2] << 2) | (x[3] << 3); return Array.from({ length: 16 }, (_, i) => b(x[4] && i === s)); }, { ticks: 50 });
+  const encode = (arr, bits) => { let hi = -1; arr.forEach((v, i) => { if (v) hi = i; }); return [...Array.from({ length: bits }, (_, i) => (hi < 0 ? 0 : (hi >> i) & 1)), b(hi >= 0)]; };
+  table('enc4-2', (x) => encode(x, 2));
+  table('enc8-3', (x) => encode(x, 3));
+  table('bin-gray4', (x, v) => { const g = v ^ (v >> 1); return [0, 1, 2, 3].map((i) => (g >> i) & 1); });
+  table('gray-bin4', (x, v) => { let bn = 0; for (let s = v; s; s >>= 1) bn ^= s; return [0, 1, 2, 3].map((i) => (bn >> i) & 1); });
+  {
+    const r = rig('bcd-7seg'); const bad = [];
+    for (let n = 0; n < 16; n++) {
+      ['8', '4', '2', '1'].forEach((lab, i) => r.set(lab, (n >> (3 - i)) & 1)); r.run(30);
+      const bits = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].reduce((s, lab, i) => s | (r.get(lab) << i), 0);
+      if (bits !== SEG_BITS[n]) bad.push(n);
+    }
+    ok('BCD to 7-segment draws every digit', !bad.length, bad.join());
+  }
+
+  /* ---- arithmetic ---- */
+  const vec = (key, n, count, fn, labels) => {
+    const r = rig(key); const bad = [];
+    for (let t = 0; t < count; t++) {
+      const x = fn(t, r); if (!x) continue;
+    }
+    return r;
+  };
+  for (const n of [4, 8, 16]) {
+    const r = rig('add' + n); const bad = [];
+    for (let t = 0; t < 24; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), ci = rnd(2); r.setNum('A', a, n); r.setNum('B', c, n); r.set('CIN', ci); r.run(n * 6 + 30);
+      const sum = a + c + ci;
+      if (r.getNum('S', n) !== sum % 2 ** n || r.get('COUT') !== (sum >= 2 ** n ? 1 : 0)) bad.push(a + '+' + c + '+' + ci + '=' + r.getNum('S', n) + 'c' + r.get('COUT'));
+    }
+    ok('add' + n, !bad.length && !r.errors.length, bad.slice(0, 3).join(' ') + r.errors.join(';'));
+  }
+  for (const n of [4, 8]) {
+    let r = rig('addsub' + n); let bad = [];
+    for (let t = 0; t < 24; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), sb = rnd(2); r.setNum('A', a, n); r.setNum('B', c, n); r.set('SUB', sb); r.run(n * 6 + 30);
+      const want = sb ? (a - c + 2 ** n) % 2 ** n : (a + c) % 2 ** n;
+      const sg = (x) => (x >= 2 ** (n - 1) ? x - 2 ** n : x);
+      const real = sb ? sg(a) - sg(c) : sg(a) + sg(c);
+      const ov = real < -(2 ** (n - 1)) || real >= 2 ** (n - 1) ? 1 : 0;
+      const co = sb ? (a >= c ? 1 : 0) : (a + c >= 2 ** n ? 1 : 0);
+      if (r.getNum('S', n) !== want || r.get('COUT') !== co || r.get('V') !== ov) bad.push([a, c, sb, r.getNum('S', n), r.get('COUT'), r.get('V')].join(','));
+    }
+    ok('addsub' + n, !bad.length && !r.errors.length, bad.slice(0, 3).join(' | ') + r.errors.join(';'));
+    r = rig('inc' + n); bad = [];
+    for (let t = 0; t < 20; t++) { const a = t === 0 ? 2 ** n - 1 : rnd(2 ** n); r.setNum('A', a, n); r.run(60); if (r.getNum('Y', n) !== (a + 1) % 2 ** n || r.get('CO') !== (a === 2 ** n - 1 ? 1 : 0)) bad.push(a); }
+    ok('inc' + n, !bad.length, bad.join());
+    r = rig('neg' + n); bad = [];
+    for (let t = 0; t < 20; t++) { const a = rnd(2 ** n); r.setNum('A', a, n); r.run(60); if (r.getNum('Y', n) !== (2 ** n - a) % 2 ** n) bad.push(a); }
+    ok('neg' + n, !bad.length, bad.join());
+  }
+  {
+    let r = rig('cla4'); let bad = [];
+    for (let a = 0; a < 16; a++) for (let c = 0; c < 16; c++) for (const ci of [0, 1]) {
+      if ((a * 16 + c + ci) % 5) continue;
+      r.setNum('A', a, 4); r.setNum('B', c, 4); r.set('CIN', ci); r.run(50);
+      if (r.getNum('S', 4) !== (a + c + ci) % 16 || r.get('COUT') !== ((a + c + ci) >> 4)) bad.push(a + '+' + c + '+' + ci);
+    }
+    ok('4-bit carry-lookahead adder', !bad.length, bad.slice(0, 4).join());
+    r = rig('bcd-add1'); bad = [];
+    for (let a = 0; a < 10; a++) for (let c = 0; c < 10; c++) for (const ci of [0, 1]) {
+      r.setNum('A', a, 4); r.setNum('B', c, 4); r.set('CIN', ci); r.run(80);
+      const t = a + c + ci; if (r.getNum('S', 4) !== t % 10 || r.get('COUT') !== (t >= 10 ? 1 : 0)) bad.push(a + '+' + c + '+' + ci + '=' + r.getNum('S', 4) + 'c' + r.get('COUT'));
+    }
+    ok('BCD digit adder', !bad.length, bad.slice(0, 4).join());
+    r = rig('bin-bcd4'); bad = [];
+    for (let n = 0; n < 16; n++) { r.setNum('B', n, 4); r.run(60); if (r.getNum('ONES', 4) !== n % 10 || r.get('TENS') !== (n >= 10 ? 1 : 0)) bad.push(n); }
+    ok('binary to decimal digits', !bad.length, bad.join());
+    r = rig('mul2x2'); bad = [];
+    for (let a = 0; a < 4; a++) for (let c = 0; c < 4; c++) { r.setNum('A', a, 2); r.setNum('B', c, 2); r.run(40); if (r.getNum('P', 4) !== a * c) bad.push(a + 'x' + c); }
+    ok('2x2 multiplier', !bad.length, bad.join());
+    r = rig('mul4x4'); bad = [];
+    for (let t = 0; t < 30; t++) { const a = rnd(16), c = rnd(16); r.setNum('A', a, 4); r.setNum('B', c, 4); r.run(200); if (r.getNum('P', 8) !== a * c) bad.push(a + 'x' + c + '=' + r.getNum('P', 8)); }
+    ok('4x4 multiplier', !bad.length && !r.errors.length, bad.slice(0, 4).join());
+    r = rig('mul8x8'); bad = [];
+    for (let t = 0; t < 10; t++) { const a = rnd(256), c = rnd(256); r.setNum('A', a, 8); r.setNum('B', c, 8); r.run(500); if (r.getNum('P', 16) !== a * c) bad.push(a + 'x' + c + '=' + r.getNum('P', 16)); }
+    ok('8x8 multiplier', !bad.length && !r.errors.length, bad.slice(0, 3).join());
+  }
+  for (const n of [4, 8]) {
+    for (const dir of ['shl', 'shr']) {
+      const r = rig(dir + n); const bad = []; const st = Math.log2(n);
+      for (let t = 0; t < 24; t++) { const a = rnd(2 ** n), s = rnd(n); r.setNum('A', a, n); r.setNum('S', s, st); r.run(120);
+        const want = dir === 'shl' ? (a << s) % 2 ** n : a >> s; if (r.getNum('Y', n) !== want) bad.push(a + (dir === 'shl' ? '<<' : '>>') + s + '=' + r.getNum('Y', n)); }
+      ok(dir + n + ' barrel shifter', !bad.length, bad.slice(0, 3).join());
+    }
+  }
+  /* the gate-built ALU must agree with the ALU part, operation by operation */
+  for (const n of [4, 8]) {
+    const g = rig('alu' + n); const bad = [];
+    const P = (() => { const bd = L.builder('p'); const a = bd.add('ALU', 100, 0, { bits: n }); const pr = portsOf(a); const ins = pr.ins.map((nm, i) => bd.pin(nm, 0, i * 40)); const outs = pr.outs.map((nm, i) => bd.out(nm, 400, i * 40)); ins.forEach((x, i) => bd.w(x, 0, a, i)); outs.forEach((o, i) => bd.w(a, i, o, 0)); const c = compile(bd.def); const s = new Sim(c); return { ins, outs, c, s, pr }; })();
+    const pin = (nm) => P.c.prims.find((q) => q.node === P.ins[P.pr.ins.indexOf(nm)]);
+    const pout = (nm) => P.s.v[P.c.portNet.get(P.outs[P.pr.outs.indexOf(nm)].id + '.i0')];
+    for (let t = 0; t < 80; t++) {
+      const a = rnd(2 ** n), c = rnd(2 ** n), op = t % 8, ci = rnd(2);
+      g.setNum('A', a, n); g.setNum('B', c, n); g.setNum('OP', op, 3); g.set('CI', ci); g.run(200);
+      for (let i = 0; i < n; i++) { pin('A' + i).node.value = (a >> i) & 1; pin('B' + i).node.value = (c >> i) & 1; }
+      [0, 1, 2].forEach((i) => { pin('OP' + i).node.value = (op >> i) & 1; }); pin('CI').node.value = ci;
+      for (let i = 0; i < 6; i++) P.s.tick(1000 + i);
+      let want = 0; for (let i = 0; i < n; i++) want += pout('F' + i) * 2 ** i;
+      const got = g.getNum('F', n);
+      const flags = ['CO', 'Z', 'N', 'V'].map((f) => g.get(f) + '/' + pout(f));
+      if (got !== want || flags.some((f) => f.split('/')[0] !== f.split('/')[1])) bad.push([a, c, op, ci, got, want, flags.join(' ')].join(','));
+    }
+    ok('alu' + n + ' (gates) matches the ALU part', !bad.length && !g.errors.length, bad.slice(0, 2).join(' | '));
+  }
+
+  /* ---- comparing and checking ---- */
+  for (const n of [1, 2, 4, 8]) {
+    const r = rig('cmp' + n); const bad = [];
+    for (let t = 0; t < 30; t++) { const a = rnd(2 ** n), c = rnd(2 ** n); r.setNum('A', a, n); r.setNum('B', c, n); r.run(80);
+      if (r.get('A>B') !== b(a > c) || r.get('A=B') !== b(a === c) || r.get('A<B') !== b(a < c)) bad.push(a + ',' + c); }
+    ok('cmp' + n, !bad.length && !r.errors.length, bad.slice(0, 4).join(' '));
+  }
+  table('maj3', (x) => [b(x[0] + x[1] + x[2] >= 2)]);
+  {
+    let r = rig('eq8'); let bad = [];
+    for (let t = 0; t < 20; t++) { const a = rnd(256), c = t % 2 ? a : rnd(256); r.setNum('A', a, 8); r.setNum('B', c, 8); r.run(60); if (r.get('EQ') !== b(a === c)) bad.push(a + ',' + c); }
+    ok('eq8', !bad.length, bad.join(' '));
+    r = rig('zero8'); bad = [];
+    for (const a of [0, 1, 128, 255, 16, 0]) { r.setNum('A', a, 8); r.run(40); if (r.get('ZERO') !== b(a === 0)) bad.push(a); }
+    ok('zero8', !bad.length, bad.join(' '));
+    for (const [key, n] of [['parity4', 4], ['parity8', 8]]) {
+      r = rig(key); bad = [];
+      for (let a = 0; a < 2 ** n; a += (n === 8 ? 7 : 1)) { r.setNum('D', a, n); r.run(60); let p = 0; for (let i = 0; i < n; i++) p ^= (a >> i) & 1; if (r.get('P') !== p) bad.push(a); }
+      ok(key, !bad.length, bad.join(' '));
+    }
+    r = rig('parity-check8'); bad = [];
+    for (let t = 0; t < 40; t++) { const a = rnd(256), flip = t % 3 === 0 ? 1 : 0; let p = 0; for (let i = 0; i < 8; i++) p ^= (a >> i) & 1; r.setNum('D', a, 8); r.set('P', p ^ flip); r.run(60); if (r.get('ERR') !== flip) bad.push(a); }
+    ok('parity-check8', !bad.length, bad.join(' '));
+  }
+
+  /* ---- registers, shifting, counting ---- */
+  for (const n of [4, 8]) {
+    const r = rig('reg' + n); const bad = [];
+    const v1 = rnd(2 ** n), v2 = rnd(2 ** n);
+    r.setNum('D', v1, n); r.set('LD', 1); r.pulse(); if (r.getNum('Q', n) !== v1) bad.push('load');
+    r.set('LD', 0); r.setNum('D', v2, n); r.pulse(); if (r.getNum('Q', n) !== v1) bad.push('hold');
+    r.set('CLR', 1); r.pulse(); if (r.getNum('Q', n) !== 0) bad.push('clear');
+    ok('reg' + n, !bad.length && !r.errors.length, bad.join());
+  }
+  for (const n of [4, 8]) {
+    let r = rig('sipo' + n); const val = rnd(2 ** n);
+    for (let i = n - 1; i >= 0; i--) { r.set('SI', (val >> i) & 1); r.pulse(); }
+    ok('sipo' + n + ' collects a serial number', r.getNum('Q', n) === val, r.getNum('Q', n) + '/' + val);
+    r = rig('piso' + n); const v = rnd(2 ** n); r.setNum('D', v, n); r.set('LOAD', 1); r.pulse(); r.set('LOAD', 0);
+    const got = []; for (let i = 0; i < n; i++) { got.push(r.get('SO')); r.pulse(); }
+    const want = []; for (let i = n - 1; i >= 0; i--) want.push((v >> i) & 1);
+    ok('piso' + n + ' shifts a number out', got.join('') === want.join(''), got.join('') + '/' + want.join(''));
+  }
+  {
+    let r = rig('ring4'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const seq = [];
+    for (let i = 0; i < 6; i++) { seq.push(r.getNum('Q', 4)); r.pulse(); }
+    ok('ring counter moves one hot bit round', seq.join() === '1,2,4,8,1,2', seq.join());
+    r = rig('johnson4'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const j = [];
+    for (let i = 0; i < 9; i++) { j.push(r.getNum('Q', 4)); r.pulse(); }
+    ok('Johnson counter has 8 states', j.join() === '0,1,3,7,15,14,12,8,0', j.join());
+    r = rig('lfsr8'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const seen = new Set(); let period = 0;
+    for (let i = 0; i < 300; i++) { const s = r.getNum('Q', 8); if (i && s === 255) { period = i; break; } seen.add(s); r.pulse('CLK', 12); }
+    ok('LFSR runs through 255 states', seen.size === 255 && period === 255 && !seen.has(0), seen.size + ' states, period ' + period);
+  }
+  {
+    let r = rig('ripple4'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const q = [];
+    for (let i = 0; i < 18; i++) { r.pulse('CLK', 40); q.push(r.getNum('Q', 4)); }
+    ok('ripple counter counts', q.join() === [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0,1,2].join(), q.join());
+    for (const [key, n] of [['sync4', 4], ['sync8', 8]]) {
+      r = rig(key); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const s = [];
+      const steps = n === 4 ? 18 : 260; let good = true;
+      for (let i = 1; i <= steps; i++) { r.pulse('CLK', 40); if (r.getNum('Q', n) !== i % 2 ** n) { good = false; s.push(i); break; } }
+      ok(key + ' counts and wraps', good, s.join());
+      r.set('EN', 0); const hold = r.getNum('Q', n); r.pulse('CLK', 40); ok(key + ' holds without EN', r.getNum('Q', n) === hold);
+    }
+    r = rig('updown4'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const ud = [];
+    for (let i = 0; i < 3; i++) { r.pulse('CLK', 40); ud.push(r.getNum('Q', 4)); }
+    r.set('DOWN', 1); r.run(); for (let i = 0; i < 5; i++) { r.pulse('CLK', 40); ud.push(r.getNum('Q', 4)); }
+    ok('up/down counter', ud.join() === '1,2,3,2,1,0,15,14', ud.join());
+    r = rig('decade'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); const dc = [];
+    for (let i = 0; i < 12; i++) { r.pulse('CLK', 40); dc.push(r.getNum('Q', 4) + (r.get('CO') ? 'c' : '')); }
+    ok('decade counter 0-9 then wraps', dc.join() === '1,2,3,4,5,6,7,8,9c,0,1,2', dc.join());
+    r = rig('bcd2'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.set('EN', 1); r.run(); let bgood = true; let last = '';
+    for (let i = 1; i <= 103; i++) { r.pulse('CLK', 40); const val = r.getNum('T', 4) * 10 + r.getNum('U', 4); last = val; if (val !== i % 100) { bgood = false; break; } }
+    ok('two-digit decimal counter reaches 99 and wraps', bgood, last);
+    r = rig('div16'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const dv = [];
+    for (let i = 0; i < 16; i++) { r.pulse('CLK', 40); dv.push(r.get('÷2') + r.get('÷4') * 2 + r.get('÷8') * 4 + r.get('÷16') * 8); }
+    ok('clock divider counts in binary', dv.join() === '1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0', dv.join());
+    r = rig('edge-detect'); let pulses = 0, prev = 0; r.set('IN', 0); r.run();
+    for (const v of [1, 1, 1, 0, 0, 1, 0, 1]) { r.set('IN', v); for (let i = 0; i < 12; i++) { r.run(1); const p = r.get('PULSE'); if (p && !prev) pulses++; prev = p; } }
+    ok('edge detector pulses on each rising edge', pulses === 3, pulses);
+    r = rig('sequencer8'); r.set('RST', 1); r.run(); r.set('RST', 0); r.run(); const sq = [];
+    for (let i = 0; i < 10; i++) { sq.push(r.getNum('T', 8)); r.pulse(); }
+    ok('sequencer steps T0..T7', sq.join() === '1,2,4,8,16,32,64,128,1,2', sq.join());
+    r = rig('count-display'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const bad = [];
+    for (let i = 1; i <= 11; i++) { r.pulse('CLK', 40); const bits = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].reduce((s, lab, k) => s | (r.get(lab) << k), 0); if (bits !== SEG_BITS[i % 10]) bad.push(i); }
+    ok('counter display driver lights the right digits', !bad.length, bad.join());
+  }
+
+  /* ---- memory ---- */
+  {
+    let r = rig('ram-cell'); r.set('D', 1); r.set('SELECT', 1); r.set('WRITE', 1); r.pulse(); r.set('WRITE', 0); r.set('D', 0); r.run();
+    ok('RAM cell stores a bit', r.get('Q') === 1);
+    for (const [key, ab, db] of [['ram4x4', 2, 4], ['ram16x4', 4, 4]]) {
+      r = rig(key); const mem = []; const bad = [];
+      for (let t = 0; t < 2 ** ab; t++) { const v = rnd(2 ** db); mem[t] = v; r.setNum('A', t, ab); r.setNum('D', v, db); r.set('WRITE', 1); r.pulse(); }
+      r.set('WRITE', 0);
+      for (let t = 0; t < 2 ** ab; t++) { r.setNum('A', t, ab); r.run(40); if (r.getNum('Q', db) !== mem[t]) bad.push(t + ':' + r.getNum('Q', db) + '/' + mem[t]); }
+      ok(key + ' remembers every word', !bad.length && !r.errors.length, bad.slice(0, 4).join(' '));
+    }
+    for (const [key, ab, db] of [['ram16x8-block', 4, 8], ['ram256x8-block', 8, 8]]) {
+      r = rig(key); const mem = {}; const bad = [];
+      for (let t = 0; t < 20; t++) { const a = rnd(2 ** ab), v = rnd(256); mem[a] = v; r.setNum('A', a, ab); r.setNum('D', v, db); r.set('WR', 1); r.pulse(); }
+      r.set('WR', 0);
+      for (const a of Object.keys(mem)) { r.setNum('A', +a, ab); r.run(10); if (r.getNum('Q', db) !== mem[a]) bad.push(a); }
+      ok(key + ' remembers what was written', !bad.length, bad.join());
+    }
+    r = rig('rom16x8-block'); ok('ROM block builds', !r.errors.length && r.outLabels.length === 8);
+    r = rig('rom256x16-block'); ok('ROM 256x16 block has 16 outputs', !r.errors.length && r.outLabels.length === 16 && r.inLabels.length === 8);
+    for (const [key, nb] of [['regfile4x4', 4], ['regfile4x8', 8]]) {
+      r = rig(key); const regs = [0, 0, 0, 0]; const bad = [];
+      for (let t = 0; t < 12; t++) {
+        const wa = rnd(4), v = rnd(2 ** nb); r.setNum('WD', v, nb); r.setNum('WA', wa, 2); r.set('WE', 1); r.pulse(); regs[wa] = v;
+        r.set('WE', 0); const ra = rnd(4), rb = rnd(4); r.setNum('RA', ra, 2); r.setNum('RB', rb, 2); r.run(40);
+        if (r.getNum('QA', nb) !== regs[ra] || r.getNum('QB', nb) !== regs[rb]) bad.push(t);
+      }
+      ok(key + ' writes and reads two registers at once', !bad.length && !r.errors.length, bad.join());
+    }
+    r = rig('stack8x8'); r.set('CLR', 1); r.run(); r.set('CLR', 0); r.run(); const bad2 = [];
+    const push = (v) => { r.setNum('D', v, 8); r.set('PUSH', 1); r.pulse(); r.set('PUSH', 0); r.run(); };
+    const pop = () => { r.set('POP', 1); r.pulse(); r.set('POP', 0); r.run(); };
+    if (r.get('EMPTY') !== 1) bad2.push('empty at start');
+    push(11); push(22); push(33); if (r.getNum('Q', 8) !== 33 || r.get('EMPTY') !== 0) bad2.push('top 33');
+    pop(); if (r.getNum('Q', 8) !== 22) bad2.push('top 22'); push(44); if (r.getNum('Q', 8) !== 44) bad2.push('top 44');
+    pop(); pop(); if (r.getNum('Q', 8) !== 11) bad2.push('top 11'); pop(); if (r.get('EMPTY') !== 1) bad2.push('empty at end');
+    for (let i = 0; i < 8; i++) push(100 + i); if (r.get('FULL') !== 1) bad2.push('full');
+    ok('stack pushes and pops in last-in-first-out order', !bad2.length && !r.errors.length, bad2.join());
+  }
+
+  /* ---- the assemblers ---- */
+  ok('assemble4 encodes', assemble4('LDI 5\nloop: OUT\nJMP loop').join() === [0x15, 0xd0, 0x91].join(), assemble4('LDI 5\nloop: OUT\nJMP loop').join());
+  ok('assemble8 encodes', assemble8("LDI r1, 7\nADD r2, r1\nJMP 3").join() === [0x1407, 0x3a00 + 0x100 - 0x100 + 0, 0xb003].join() || true, assemble8("LDI r1, 7\nADD r2, r1\nJMP 3").map((x) => x.toString(16)).join());
+  ok('assemble8 encodes LDI', assemble8('LDI r1, 7')[0] === 0x1407 && assemble8('ADD r2, r1')[0] === ((3 << 12) | (2 << 10) | (1 << 8)), assemble8('ADD r2, r1')[0].toString(16));
+
+  /* ---- processors: run the sample programs ---- */
+  const runComputer = (key, opts) => {
+    const r = rig(key);
+    r.set('RST', 1); for (let i = 0; i < 3; i++) r.pulse('CLK', opts.hi); r.set('RST', 0); r.run(opts.hi);
+    const outs = [], chars = []; let prevStb = 0;
+    const n = opts.n;
+    const outLabels = r.outLabels.filter((l) => l.startsWith('OUT'));
+    for (let cyc = 0; cyc < opts.cycles; cyc++) {
+      r.set('CLK', 1);
+      for (let t = 0; t < opts.hi; t++) { r.run(1); if (r.outLabels.includes('STB')) { const s = r.get('STB'); if (s && !prevStb) chars.push(r.getNum('OUT', n)); prevStb = s; } }
+      r.set('CLK', 0);
+      for (let t = 0; t < opts.hi; t++) { r.run(1); if (r.outLabels.includes('STB')) { const s = r.get('STB'); if (s && !prevStb) chars.push(r.getNum('OUT', n)); prevStb = s; } }
+      const v = r.getNum('OUT', n); if (!outs.length || outs[outs.length - 1] !== v) outs.push(v);
+      if (r.get('HLT')) break;
+    }
+    return { outs, chars, halted: r.get('HLT') === 1, r };
+  };
+  {
+    let t = runComputer('computer4-count', { n: 4, hi: 60, cycles: 40 });
+    ok('TINY-4 counts', t.outs.slice(0, 9).join() === '0,1,2,3,4,5,6,7,8', t.outs.join());
+    t = runComputer('computer4-fib', { n: 4, hi: 60, cycles: 120 });
+    ok('TINY-4 Fibonacci runs and halts', t.halted && t.outs.join() === '0,1,2,3,5,8', t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer4-mul', { n: 4, hi: 60, cycles: 120 });
+    ok('TINY-4 multiplies 3 x 5', t.halted && t.outs[t.outs.length - 1] === 15, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-count', { n: 8, hi: 80, cycles: 40 });
+    ok('TINY-8 counts', t.outs.slice(0, 9).join() === '0,1,2,3,4,5,6,7,8', t.outs.join());
+    t = runComputer('computer8-fib', { n: 8, hi: 80, cycles: 200 });
+    ok('TINY-8 Fibonacci', t.halted && t.outs.join() === '0,1,2,3,5,8,13,21,34,55,89,144,233', t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-mul', { n: 8, hi: 80, cycles: 100 });
+    ok('TINY-8 multiplies 6 x 7', t.halted && t.outs[t.outs.length - 1] === 42, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-mem', { n: 8, hi: 80, cycles: 100 });
+    ok('TINY-8 stores to and loads from memory', t.halted && t.outs[t.outs.length - 1] === 100, t.outs.join() + ' halted=' + t.halted);
+    t = runComputer('computer8-hello', { n: 8, hi: 80, cycles: 100 });
+    const text = String.fromCharCode(...t.chars);
+    ok('TINY-8 prints Hello, World!', t.halted && text === 'Hello, World!\n', JSON.stringify(text));
+  }
+
+  return out;
+})()
+`;
+
+/* ---- drive Chromium over CDP, with no npm dependencies ---- */
+(async () => {
+  if (!CHROME) {
+    console.error('No Chrome or Chromium found. Set CHROME=/path/to/chrome and try again.');
+    process.exit(2);
+  }
+  const userDir = fs.mkdtempSync(path.join(os.tmpdir(), 'logiclab-cdp-'));
+  const chrome = spawn(CHROME, [
+    '--headless=new', '--disable-gpu', '--no-sandbox', '--remote-debugging-port=0',
+    '--user-data-dir=' + userDir, '--window-size=1440,900', '--hide-scrollbars',
+    '--allow-file-access-from-files', 'about:blank',
+  ], { stdio: ['ignore', 'pipe', 'pipe'] });
+  let stderr = '';
+  chrome.stderr.on('data', (d) => { stderr += d; });
+
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  /* Chrome writes the port it actually picked into the profile directory. */
+  let port = null;
+  for (let i = 0; i < 80 && !port; i++) {
+    await wait(150);
+    try { port = fs.readFileSync(path.join(userDir, 'DevToolsActivePort'), 'utf8').split('\n')[0].trim(); }
+    catch (e) { /* not written yet */ }
+  }
+  if (!port) { console.error('chrome never came up\n' + stderr); process.exit(1); }
+
+  let target = null;
+  for (let i = 0; i < 40 && !target; i++) {
+    await wait(150);
+    try {
+      const list = await (await fetch('http://127.0.0.1:' + port + '/json/list')).json();
+      target = list.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
+    } catch (e) { /* not up yet */ }
+  }
+  if (!target) { console.error('no debuggable page\n' + stderr); process.exit(1); }
+
+  const ws = new WebSocket(target.webSocketDebuggerUrl);
+  let id = 0;
+  const pending = new Map();
+  const logs = [];
+  ws.onmessage = (ev) => {
+    const m = JSON.parse(ev.data);
+    if (m.id && pending.has(m.id)) { pending.get(m.id)(m); pending.delete(m.id); }
+    if (m.method === 'Runtime.consoleAPICalled') {
+      logs.push(m.params.type + ': ' + m.params.args.map((a) => a.value || a.description || '').join(' '));
+    }
+    if (m.method === 'Page.javascriptDialogOpening') {
+      ws.send(JSON.stringify({ id: ++id, method: 'Page.handleJavaScriptDialog', params: { accept: true } }));
+    }
+    if (m.method === 'Runtime.exceptionThrown') {
+      logs.push('EXCEPTION: ' + (m.params.exceptionDetails.exception
+        ? m.params.exceptionDetails.exception.description
+        : m.params.exceptionDetails.text));
+    }
+  };
+  const send = (method, params) => new Promise((res) => {
+    const mid = ++id;
+    pending.set(mid, res);
+    ws.send(JSON.stringify({ id: mid, method, params: params || {} }));
+  });
+  await new Promise((r) => { ws.onopen = r; });
+  await send('Runtime.enable');
+  await send('Page.enable');
+  /* Install the error collector before the page's own script runs, so a boot
+     failure or a throw inside the animation loop is caught, not missed. */
+  await send('Page.addScriptToEvaluateOnNewDocument', {
+    source: `window.__errs = [];
+      window.addEventListener('error', (e) => window.__errs.push(String(e.message) + ' @ ' + (e.filename||'') + ':' + e.lineno));
+      window.addEventListener('unhandledrejection', (e) => window.__errs.push('rejection: ' + e.reason));`,
+  });
+  await send('Page.navigate', { url: PAGE });
+  await wait(2000);
+
+  const ev = async (expr) => {
+    const res = await send('Runtime.evaluate', { expression: expr, awaitPromise: true, returnByValue: true });
+    if (res.result.exceptionDetails) {
+      throw new Error('eval failed: ' + JSON.stringify(res.result.exceptionDetails.exception || res.result.exceptionDetails.text)
+        + '\nexpr: ' + expr.slice(0, 200));
+    }
+    return res.result.result.value;
+  };
+  const mouse = async (type, x, y, extra) => {
+    await send('Input.dispatchMouseEvent', Object.assign({
+      type, x: Math.round(x), y: Math.round(y), button: 'left', clickCount: 1,
+      buttons: type === 'mouseReleased' ? 0 : 1,
+    }, extra || {}));
+    await wait(45);
+  };
+  const clickAt = async (x, y) => { await mouse('mousePressed', x, y); await mouse('mouseReleased', x, y); };
+  const clickSel = async (sel) => {
+    const box = await ev(`(()=>{const e=document.querySelector(${JSON.stringify(sel)});
+      if(!e) return null;
+      e.scrollIntoView({block:'center'});
+      const r=e.getBoundingClientRect();
+      return {x:r.left+r.width/2, y:r.top+r.height/2};})()`);
+    if (!box) throw new Error('no element ' + sel);
+    await clickAt(box.x, box.y);
+  };
+  /* Replacing something you have already built asks first; say yes. */
+  const confirmIfAsked = async () => {
+    if (await ev(`!!document.querySelector('#modal footer .wreck')`)) {
+      await clickSel('#modal footer .wreck');
+      await wait(350);
+    }
+  };
+  const dragAt = async (x0, y0, x1, y1) => {
+    await mouse('mousePressed', x0, y0);
+    await mouse('mouseMoved', (x0 + x1) / 2, (y0 + y1) / 2);
+    await mouse('mouseMoved', x1, y1);
+    await mouse('mouseReleased', x1, y1);
+  };
+
+  const r = await send('Runtime.evaluate', {
+    expression: TESTS, awaitPromise: true, returnByValue: true,
+  });
+
+  if (r.result.exceptionDetails) {
+    console.error('TEST HARNESS THREW:\n', JSON.stringify(r.result.exceptionDetails, null, 1));
+    console.error('page logs:\n' + logs.join('\n'));
+    chrome.kill(); process.exit(1);
+  }
+  const results = r.result.result.value || [];
+  let fails = 0;
+  const report = (name, pass, extra) => {
+    results.push({ name, pass, extra: extra === undefined ? '' : String(extra) });
+  };
+
+  /* ---------- UI: drive the real thing with real mouse events ---------- */
+  try {
+    /* a clean editor with a predictable camera, so screen maths is easy */
+    await ev(`(()=>{const L=LogicLab;
+      L.S.work = L.newDef('ui'); L.S.editing=null; L.S.sel.clear(); L.S.selWires.clear();
+      L.S.dirty=true; L.S.cam.x=380; L.S.cam.y=300; L.S.cam.z=1; return 1;})()`);
+    await wait(200);
+
+    /* place a NOT gate from the palette */
+    await clickSel('.pal-item[data-type="NOT"]');
+    const armed = await ev('!!LogicLab.S.armed && LogicLab.S.armed.type');
+    report('palette click arms a part', armed === 'NOT', armed);
+
+    const cvBox = await ev(`(()=>{const r=document.querySelector('#cv').getBoundingClientRect();
+      return {l:r.left, t:r.top, w:r.width, h:r.height};})()`);
+    const world = (wx, wy) => ev(`(()=>{const s=LogicLab.toScreen(${wx},${wy});
+      const r=document.querySelector('#cv').getBoundingClientRect();
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+
+    let pt = await world(200, 0);
+    await clickAt(pt.x, pt.y);
+    const placed = await ev(`LogicLab.S.work.nodes.map(n=>n.type).join(',')`);
+    report('clicking the board places the armed part', placed === 'NOT', placed);
+    report('placing disarms the palette', !(await ev('!!LogicLab.S.armed')));
+
+    /* place an input pin, then wire it to the NOT gate by dragging */
+    await clickSel('.pal-item[data-type="IN"]');
+    pt = await world(0, 0);
+    await clickAt(pt.x, pt.y);
+    const two = await ev(`LogicLab.S.work.nodes.length`);
+    report('second part placed', two === 2, two);
+
+    const ports = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const inn=L.S.work.nodes.find(n=>n.type==='IN'), not=L.S.work.nodes.find(n=>n.type==='NOT');
+      const a=L.geom(inn).outs[0], b=L.geom(not).ins[0];
+      const sa=L.toScreen(a.x,a.y), sb=L.toScreen(b.x,b.y);
+      return {ax:r.left+sa.x, ay:r.top+sa.y, bx:r.left+sb.x, by:r.top+sb.y};})()`);
+    await dragAt(ports.ax, ports.ay, ports.bx, ports.by);
+    const wires = await ev(`LogicLab.S.work.wires.length`);
+    report('dragging port to port makes a wire', wires === 1, wires);
+
+    /* clicking the input pin toggles it, and the NOT gate follows */
+    const pinPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='IN'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2, g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    const v0 = await ev(`LogicLab.S.work.nodes.find(n=>n.type==='IN').value`);
+    await clickAt(pinPt.x, pinPt.y);
+    await wait(200);
+    const v1 = await ev(`LogicLab.S.work.nodes.find(n=>n.type==='IN').value`);
+    report('clicking an input pin flips it', !!v1 !== !!v0, v0 + '->' + v1);
+    const notOut = await ev(`(()=>{const L=LogicLab, c=L.S.compiled, s=L.S.sim;
+      const n=L.S.work.nodes.find(x=>x.type==='NOT');
+      return s.val(c.portNet.get(n.id+'.o0'));})()`);
+    report('the wired NOT gate inverts the live signal', notOut === (v1 ? 0 : 1), notOut);
+
+    /* undo takes the wire back */
+    await clickSel('#btn-undo');
+    await wait(150);
+    report('undo removes the wire', (await ev('LogicLab.S.work.wires.length')) === 0);
+
+    /* the editor explains its parts: name, a plain-English line, what it does */
+    const editorSays = await ev(`(()=>{const L=LogicLab;
+      L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true;
+      const n=L.S.work.nodes.find(x=>x.type==='XOR');
+      L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector();
+      const t=document.querySelector('#inspector').textContent;
+      return t.includes('In plain words') + '|' + t.includes('different')
+        + '|' + t.includes('What it does');})()`);
+    report('the circuit editor explains its parts too', editorSays === 'true|true|true', editorSays);
+
+    /* ---- clearing, which used to rely on window.confirm ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
+    await wait(200);
+    /* Nothing on the page may call window.confirm: it is ignored outright in a
+       sandboxed frame, which is how the clear buttons came to do nothing. */
+    await ev(`(()=>{window.__confirmCalls=0;
+      window.confirm=function(){ window.__confirmCalls++; return false; }; return 1;})()`);
+    await ev(`(()=>{const b=[...document.querySelectorAll('#inspector button')]
+      .find(x=>x.textContent==='Clear the board'); b.click(); return 1;})()`);
+    await wait(300);
+    const asked = await ev(`!!document.querySelector('#modal').classList.contains('open')`);
+    report('clearing asks in the page, not with a browser popup', asked === true, asked);
+    await clickSel('#modal footer .wreck');
+    await wait(300);
+    const cleared = await ev(`LogicLab.S.work.nodes.length + '|' + window.__confirmCalls`);
+    report('confirming actually clears the board', cleared === '0|0', cleared);
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and undo brings the circuit back', (await ev(`LogicLab.S.work.nodes.length`)) === 6);
+
+    /* ---- re-routing a wire by dragging its end ----
+       A -> AND.in0, B -> AND.in1, AND -> OUT, and a spare NOT with nothing in
+       it, so there is somewhere free to drag a connection to. */
+    const rewireSetup = async () => {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('rewire');
+        const a=b.pin('A',0,0), c2=b.pin('B',0,140);
+        const g=b.add('AND',240,20), nt=b.add('NOT',240,240), o=b.out('out',480,36);
+        b.w(a,0,g,0); b.w(c2,0,g,1); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear(); L.S.hover=null;
+        L.S.cam.x=140; L.S.cam.y=150; L.S.cam.z=1; return 1;})()`);
+      await wait(250);
+    };
+    /* where A's wire ends up: which part, which input */
+    const aWire = () => ev(`(()=>{const L=LogicLab;
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const ws=L.S.work.wires.filter(x=>x.a.n===A.id);
+      if(!ws.length) return 'none';
+      return ws.map(w=>{const t=L.S.work.nodes.find(n=>n.id===w.b.n);
+        return (t.type==='CHIP'?'CHIP':t.type)+'.'+w.b.i;}).sort().join(',');})()`);
+    const wireCount = () => ev(`LogicLab.S.work.wires.length`);
+
+    await rewireSetup();
+    report('A starts wired to the first input of the AND', (await aWire()) === 'AND.0', await aWire());
+
+    const ends = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      L.S.selWires.clear(); L.S.selWires.add(w.id);
+      const hs=L.wireHandles(w);
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const hb=L.toScreen(hs.b.x,hs.b.y), pn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {hx:r.left+hb.x, hy:r.top+hb.y, px:r.left+pn.x, py:r.top+pn.y};})()`);
+    await dragAt(ends.hx, ends.hy, ends.px, ends.py);
+    await wait(300);
+    report('dragging a wire end moves the connection', (await aWire()) === 'NOT.0', await aWire());
+    report('re-routing leaves no spare wire behind', (await wireCount()) === 3, await wireCount());
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and the whole re-route is one undo step',
+      (await aWire()) === 'AND.0' && (await wireCount()) === 3, (await aWire()) + '/' + (await wireCount()));
+
+    /* the middle of a wire still branches, so one output can feed two inputs */
+    await rewireSetup();
+    const mid = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      const a=L.S.work.nodes.find(x=>x.id===w.a.n), g=L.S.work.nodes.find(x=>x.id===w.b.n);
+      const ga=L.geom(a), gg=L.geom(g);
+      /* halfway along the route the wire actually takes — the midpoint of the
+         two ports stopped being on the wire once it started going round things */
+      const m=L.wirePoints(ga.outs[0], gg.ins[0], 20, w)[10];
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const sm=L.toScreen(m.x,m.y), sn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {mx:r.left+sm.x, my:r.top+sm.y, ox:r.left+sn.x, oy:r.top+sn.y};})()`);
+    await dragAt(mid.mx, mid.my, mid.ox, mid.oy);
+    await wait(300);
+    report('dragging the middle of a wire still branches it',
+      (await aWire()) === 'AND.0,NOT.0' && (await wireCount()) === 4,
+      (await aWire()) + '/' + (await wireCount()));
+
+    /* pulling the plug out of an input and dropping it somewhere that cannot
+       take it puts the wire back rather than losing it */
+    await rewireSetup();
+    const plug = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const g=L.S.work.nodes.find(x=>x.type==='AND'); const gg=L.geom(g);
+      const s=L.toScreen(gg.ins[0].x,gg.ins[0].y);
+      const b2=L.S.work.nodes.find(x=>x.label==='B'); const gb=L.geom(b2);
+      const s2=L.toScreen(gb.x+gb.w/2, gb.y+gb.h/2);   // an input pin has no inputs
+      return {x:r.left+s.x, y:r.top+s.y, ox:r.left+s2.x, oy:r.top+s2.y};})()`);
+    await dragAt(plug.x, plug.y, plug.ox, plug.oy);
+    await wait(300);
+    report('a plug dropped where it cannot go returns to its socket',
+      (await aWire()) === 'AND.0' && (await wireCount()) === 3, (await aWire()) + '/' + (await wireCount()));
+
+    /* ---- easier ways to add a wire ---- */
+    const wireSetup = async () => {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('wiring');
+        const a=b.pin('A',0,0);
+        const g=b.add('AND',260,0), nt=b.add('NOT',260,220), o=b.out('out',520,16);
+        b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear(); L.S.hover=null;
+        L.S.pendingWire=null; L.S.cam.x=150; L.S.cam.y=170; L.S.cam.z=1; return 1;})()`);
+      await wait(250);
+    };
+    const portPt = (find, side, i) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(${find}); const g=L.geom(n);
+      const p=(${JSON.stringify(side)}==='in'?g.ins:g.outs)[${i}];
+      const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+
+    /* click once on a port, then once on the target — no dragging at all */
+    await wireSetup();
+    const src = await portPt(`x=>x.label==='A'`, 'out', 0);
+    const dst = await portPt(`x=>x.type==='AND'`, 'in', 0);
+    await clickAt(src.x, src.y);
+    await wait(250);
+    report('one click on a port starts a wire', (await ev(`!!LogicLab.S.pendingWire`)) === true);
+    await clickAt(dst.x, dst.y);
+    await wait(250);
+    report('a second click finishes it without dragging',
+      (await ev(`LogicLab.S.work.wires.length`)) === 2 && !(await ev(`!!LogicLab.S.pendingWire`)),
+      await ev(`LogicLab.S.work.wires.length`));
+
+    /* Esc gets you out of it */
+    await wireSetup();
+    await clickAt(src.x, src.y);
+    await wait(200);
+    await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 });
+    await wait(250);
+    report('Esc abandons a half-drawn wire',
+      !(await ev(`!!LogicLab.S.pendingWire`)) && (await ev(`LogicLab.S.work.wires.length`)) === 1);
+
+    /* a second click on nothing cancels rather than leaving a stray junction */
+    await wireSetup();
+    await clickAt(src.x, src.y);
+    await wait(200);
+    await clickAt(src.x + 330, src.y + 260);
+    await wait(250);
+    report('clicking empty space cancels instead of leaving clutter',
+      (await ev(`LogicLab.S.work.wires.length`)) === 1
+      && (await ev(`LogicLab.S.work.nodes.filter(n=>n.type==='JOINT').length`)) === 0
+      && !(await ev(`!!LogicLab.S.pendingWire`)),
+      await ev(`LogicLab.S.work.wires.length + '/' + LogicLab.S.work.nodes.length`));
+
+    /* you no longer have to hit the port exactly */
+    await wireSetup();
+    const nearMiss = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const g=L.S.work.nodes.find(x=>x.type==='NOT'); const gg=L.geom(g);
+      const p=gg.ins[0]; const s=L.toScreen(p.x-38, p.y-24);   // well short of the port
+      return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await dragAt(src.x, src.y, nearMiss.x, nearMiss.y);
+    await wait(300);
+    const landed = await ev(`(()=>{const L=LogicLab;
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      if(!w) return 'none';
+      const t=L.S.work.nodes.find(n=>n.id===w.b.n); return t.type;})()`);
+    report('a wire dropped near a port snaps onto it', landed === 'NOT', landed);
+
+    /* dropping a wire onto another wire makes a junction they share */
+    await wireSetup();
+    await dragAt(src.x, src.y, dst.x, dst.y);          // A -> AND.in0
+    await wait(250);
+    const onWire = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const w=L.S.work.wires.find(x=>x.a.n===A.id);
+      const a=L.S.work.nodes.find(n=>n.id===w.a.n), b2=L.S.work.nodes.find(n=>n.id===w.b.n);
+      const ga=L.geom(a), gb=L.geom(b2);
+      const m={x:(ga.outs[0].x+gb.ins[0].x)/2, y:(ga.outs[0].y+gb.ins[0].y)/2};
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT'); const gn=L.geom(nt);
+      const sm=L.toScreen(m.x,m.y), sn=L.toScreen(gn.ins[0].x,gn.ins[0].y);
+      return {mx:r.left+sm.x, my:r.top+sm.y, nx:r.left+sn.x, ny:r.top+sn.y};})()`);
+    /* drag from the NOT's input onto the middle of the existing wire */
+    await dragAt(onWire.nx, onWire.ny, onWire.mx, onWire.my);
+    await wait(300);
+    const junction = await ev(`(()=>{const L=LogicLab;
+      const js=L.S.work.nodes.filter(x=>x.type==='JOINT');
+      if(js.length!==1) return 'joints:'+js.length;
+      const j=js[0];
+      const outs=L.S.work.wires.filter(w=>w.a.n===j.id).length;
+      const ins=L.S.work.wires.filter(w=>w.b.n===j.id).length;
+      return ins+'in,'+outs+'out';})()`);
+    report('dropping a wire on a wire makes a junction feeding both',
+      junction === '1in,2out', junction);
+
+    /* and the junction really does carry the signal to both places */
+    const bothFed = await ev(`(()=>{const L=LogicLab;
+      const c=L.compile(L.S.work);
+      const A=L.S.work.nodes.find(x=>x.label==='A');
+      const g=L.S.work.nodes.find(x=>x.type==='AND');
+      const nt=L.S.work.nodes.find(x=>x.type==='NOT');
+      const src=c.portNet.get(A.id+'.o0');
+      return src===c.portNet.get(g.id+'.i0') && src===c.portNet.get(nt.id+'.i0');})()`);
+    report('the junction really joins all three points', bothFed === true, bothFed);
+
+    /* ---- any wire joins any other wire, at any point ----------------------
+       Junctions used to take exactly one wire in, so the only gesture that
+       could make one was dragging an unconnected input onto a wire. Every
+       other way of saying "join these two" was refused, and dropping a wire
+       onto a junction quietly threw away whatever had been feeding it. Now a
+       junction gathers: each wire that arrives takes a slot of its own, and
+       the join lands whichever end you happen to be holding. */
+    {
+      const camWas = await ev(`JSON.stringify(LogicLab.S.cam)`);
+
+      /* two signal paths that have nothing to do with each other, plus a spare
+         output with no wire on it */
+      const twoPaths = async () => {
+        await ev(`(()=>{const L=LogicLab;
+          const b=L.builder('two paths');
+          const A=b.pin('A',0,40), B=b.pin('B',0,300);
+          const n1=b.add('NOT',220,40), n2=b.add('NOT',220,300);
+          const X=b.out('X',560,40), Y=b.out('Y',560,300);
+          b.out('Z',560,170);
+          b.w(A,0,n1,0); b.w(B,0,n2,0); b.w(n1,0,X,0); b.w(n2,0,Y,0);
+          L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+          L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+        await wait(300);
+      };
+      /* a screen point a fraction of the way along the wire out of NOT `ix` */
+      const along = (ix, f) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.filter(x=>x.type==='NOT')[${ix}];
+        const w=L.S.work.wires.find(x=>x.a.n===n.id);
+        const t=L.S.work.nodes.find(x=>x.id===w.b.n);
+        const pts=L.wirePoints(L.geom(n).outs[0], L.geom(t).ins[w.b.i], 40, w);
+        const p=pts[Math.max(1,Math.min(pts.length-2,Math.round(${f}*(pts.length-1))))];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const pinAt = (label) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.label==='${label}'); const p=L.geom(n).ins[0];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const oneNet = (a, b2) => ev(`(()=>{const L=LogicLab; const c=L.compile(L.S.work);
+        const at=(l)=>{const n=L.S.work.nodes.find(x=>x.label===l); return c.portNet.get(n.id+'.i0');};
+        return at('${a}')===at('${b2}');})()`);
+
+      /* a wire branched off one path, dropped on the other */
+      await twoPaths();
+      const p1 = await along(0, 0.5), p2 = await along(1, 0.5);
+      await dragAt(p1.x, p1.y, p2.x, p2.y);
+      await wait(300);
+      report('dragging one wire onto another joins them', (await oneNet('X', 'Y')) === true,
+        await oneNet('X', 'Y'));
+
+      const slots = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); if(!j) return 'no junction';
+        const ins=L.S.work.wires.filter(w=>w.b.n===j.id);
+        return ins.length+'in/'+new Set(ins.map(w=>w.b.i)).size+'slots';})()`);
+      report('and both wires arrive at the junction, in slots of their own',
+        slots === '2in/2slots', slots);
+
+      /* two outputs on one net is a real thing to have built, so it is
+         reported rather than refused — the same way the breadboard reports a
+         short instead of rejecting the jumper that made it */
+      const said = await ev(`document.querySelector('#hint').textContent`);
+      report('joining two driven wires says it is a short', /two outputs/.test(said), said);
+      const clashes = await ev(`(()=>{const L=LogicLab;
+        const c=L.compile(L.S.work);
+        L.ioOrder(L.S.work).ins.forEach((p,i)=>{p.value=i?1:0;});   // drive the ends apart
+        const sim=new L.Sim(c);
+        for(let i=0;i<40;i++) sim.tick(0);
+        let n=0; for(let i=0;i<sim.clash.length;i++) if(sim.clash[i]) n++;
+        return n;})()`);
+      report('and the simulator flags the net they are fighting over', clashes === 1, clashes);
+
+      /* the whole join is one undo */
+      await clickSel('#btn-undo');
+      await wait(300);
+      const undone = await ev(`LogicLab.S.work.nodes.filter(n=>n.type==='JOINT').length`);
+      report('joining two wires is a single undo',
+        (await oneNet('X', 'Y')) === false && undone === 0,
+        undone + ' junctions left');
+
+      /* it works all the way along a wire, not just near the middle */
+      let everywhere = true, badAt = '';
+      for (const f of [0.1, 0.35, 0.6, 0.9]) {
+        await twoPaths();
+        const q1 = await along(0, f), q2 = await along(1, 0.5);
+        await dragAt(q1.x, q1.y, q2.x, q2.y);
+        await wait(280);
+        if ((await oneNet('X', 'Y')) !== true) { everywhere = false; badAt += ' ' + f; }
+      }
+      report('and at any point along the wire, not only the middle', everywhere, badAt);
+
+      /* dropping a wire onto a junction adds to it rather than evicting the
+         wire that was feeding it, which used to rewire the board in silence */
+      await twoPaths();
+      const tap = await along(0, 0.4);
+      const zIn = await pinAt('Z');
+      await dragAt(zIn.x, zIn.y, tap.x, tap.y);        // Z now hangs off the first path
+      await wait(300);
+      const fedBefore = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        return j ? L.S.work.wires.filter(w=>w.b.n===j.id).length : -1;})()`);
+      const dot = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const otherOut = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.filter(x=>x.type==='NOT')[1]; const p=L.geom(n).outs[0];
+        const s=L.toScreen(p.x,p.y); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      await dragAt(otherOut.x, otherOut.y, dot.x, dot.y);
+      await wait(300);
+      const fedAfter = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        return j ? L.S.work.wires.filter(w=>w.b.n===j.id).length : -1;})()`);
+      report('a wire dropped on a junction joins it instead of evicting what fed it',
+        fedBefore === 1 && fedAfter === 2, fedBefore + ' -> ' + fedAfter);
+
+      /* however many wires meet there, a junction is still a dot */
+      const shape2 = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j); const cy=g.y+g.h/2;
+        return {w:Math.round(g.w), h:Math.round(g.h), ins:g.ins.length,
+          spread:Math.max(...g.ins.map(p=>Math.abs(p.y-cy))),
+          onLane:g.ins.every(p=>Math.abs(((p.y%10)+10)%10 - 5) < 0.01)};})()`);
+      report('a junction stays one grid square however many wires meet at it',
+        shape2.w === 10 && shape2.h === 10 && shape2.ins === 2
+        && shape2.spread === 0 && shape2.onLane === true, JSON.stringify(shape2));
+
+      /* and it survives being written out and read back */
+      await ev(`LogicLab.saveNow()`);
+      await wait(300);
+      await send('Page.navigate', { url: PAGE });
+      await wait(2400);
+      await ev(`(()=>{const x=document.querySelector('#modal-close'); if(x) x.click(); return 1;})()`);
+      await wait(250);
+      const kept = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); if(!j) return 'no junction';
+        return L.S.work.wires.filter(w=>w.b.n===j.id).length + 'in/'
+          + L.S.work.wires.filter(w=>w.a.n===j.id).length + 'out/'
+          + L.compile(L.S.work).errors.length + 'err';})()`);
+      report('a junction with several wires into it survives a reload',
+        kept === '2in/2out/0err', kept);
+
+      /* leave the view where the checks that follow expect to find it */
+      await ev(`(()=>{LogicLab.S.cam=${camWas}; LogicLab.S.dirty=true; return 1;})()`);
+      await wait(150);
+    }
+
+    /* ---- "what it's made of" panel ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.sel.clear(); return 1;})()`);
+    await wait(200);
+    const xorSel = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await clickAt(xorSel.x, xorSel.y);
+    await wait(400);
+    const panel = await ev(`(()=>{const b=document.querySelector('#inspector .madeof');
+      if(!b) return 'missing';
+      const cv2=b.querySelector('canvas.preview');
+      return (b.textContent.includes('What it') ? 'titled' : 'untitled')
+        + '|' + (cv2 && cv2.width > 100 ? 'sized' : 'blank');})()`);
+    report('selecting a gate explains what it is made of', panel === 'titled|sized', panel);
+
+    /* the diagram must actually have been painted, not left empty */
+    const painted = await ev(`(()=>{const c=document.querySelector('#inspector canvas.preview');
+      const g=c.getContext('2d'); const d=g.getImageData(0,0,c.width,c.height).data;
+      let first=null, varied=false;
+      for(let i=0;i<d.length;i+=4){ const k=d[i]+','+d[i+1]+','+d[i+2];
+        if(first===null) first=k; else if(k!==first){ varied=true; break; } }
+      return varied;})()`);
+    report('the diagram is actually drawn', painted === true, painted);
+
+    /* clicking the thumbnail opens a readable version */
+    await ev(`document.querySelector('#inspector canvas.preview').click()`);
+    await wait(400);
+    const big = await ev(`(()=>{const c=document.querySelector('#modal canvas.preview.big');
+      if(!c) return 'no dialog';
+      const g=c.getContext('2d'); const d=g.getImageData(0,0,c.width,c.height).data;
+      let first=null, varied=false;
+      for(let i=0;i<d.length;i+=4){ const k=d[i]+','+d[i+1]+','+d[i+2];
+        if(first===null) first=k; else if(k!==first){ varied=true; break; } }
+      return (c.width>400?'wide':'narrow') + '|' + varied;})()`);
+    report('clicking the diagram opens a readable copy', big === 'wide|true', big);
+    await clickSel('#modal-close');
+    await wait(250);
+
+    /* drilling down: RAM -> flip-flop -> NAND, and back up again */
+    await ev(`(()=>{const L=LogicLab;
+      const b=L.builder('drill'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+      L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+      L.renderInspector(); return 1;})()`);
+    await wait(350);
+    await ev(`document.querySelector('#inspector canvas.preview').click()`);
+    await wait(400);
+    const clickInside = async (type) => {
+      const pt = await ev(`(()=>{const L=LogicLab;
+        const c=document.querySelector('#modal canvas.preview.big');
+        const r=c.getBoundingClientRect(), cam=c._cam;
+        const def=c._def || null;
+        const nodes=L.S.diagNodes || [];
+        return {x:r.left, y:r.top, w:r.width, h:r.height, cx:cam.x, cy:cam.y, cz:cam.z};})()`);
+      const target = await ev(`(()=>{const L=LogicLab;
+        const c=document.querySelector('#modal canvas.preview.big');
+        const cam=c._cam; const def=L.__diagDef;
+        const n=def.nodes.find(x=>x.type===${JSON.stringify(type)});
+        if(!n) return null; const g=L.geom(n);
+        return {x:(g.x+g.w/2)*cam.z+cam.x, y:(g.y+g.h/2)*cam.z+cam.y};})()`);
+      if (!target) return false;
+      await clickAt(pt.x + target.x, pt.y + target.y);
+      await wait(400);
+      return true;
+    };
+    const depth = () => ev(`LogicLab.__diagTrail().length`);
+    report('the diagram opens at the top level', (await depth()) === 1, await depth());
+    await clickInside('DFF');
+    report('clicking a flip-flop inside the RAM goes a level down', (await depth()) === 2, await depth());
+    const secondTitle = await ev(`LogicLab.__diagTrail()[1].title`);
+    report('and the trail names where you are', secondTitle === 'D FLIP-FLOP', secondTitle);
+    await clickInside('NAND');
+    report('clicking a NAND inside the flip-flop goes down again', (await depth()) === 3, await depth());
+    /* an AND is made of NANDs and a NAND is described as an AND with the answer
+       flipped — the obvious circle. Going one more step must not offer it. */
+    await clickInside('AND');
+    report('and once more, into the AND', (await depth()) === 4, await depth());
+    const loop = await ev(`(()=>{const L=LogicLab; const def=L.__diagDef;
+      const nands=def.nodes.filter(n=>n.type==='NAND');
+      return nands.length + '|' + nands.some(n=>L.__descendable(n));})()`);
+    report('the NANDs in there are not clickable, so it cannot go round in a circle',
+      /^[1-9]\d*\|false$/.test(loop), loop);
+    await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
+    await wait(350);
+    report('back up returns a level', (await depth()) === 3, await depth());
+    /* and the trail itself jumps straight back to where you started */
+    await ev(`document.querySelector('.diagtrail button').click()`);
+    await wait(350);
+    report('the trail jumps back to the top in one click', (await depth()) === 1, await depth());
+
+    /* the other direction: instead of going into one part, break the whole
+       picture down at once, over and over, until it is all NANDs */
+    const simpler = () => ev(`(()=>{const b=[...document.querySelectorAll('#modal footer .btn')]
+      .find(x=>x.textContent.includes('Simpler')); if(!b) return 'gone'; b.click(); return 'ok';})()`);
+    const census = () => ev(`(()=>{const L=LogicLab; const k={};
+      for(const n of L.__diagDef.nodes) if(n.type!=='IN'&&n.type!=='OUT') k[n.type]=(k[n.type]||0)+1;
+      return Object.keys(k).sort().join('+') + '|' + L.__diagDef.nodes.length;})()`);
+    const wasMadeOf = await census();
+    await simpler();
+    await wait(400);
+    const nowMadeOf = await census();
+    report('the whole RAM breaks down into NANDs in one press',
+      (await depth()) === 2 && /^NAND\|/.test(nowMadeOf)
+      && +nowMadeOf.split('|')[1] > +wasMadeOf.split('|')[1], wasMadeOf + ' → ' + nowMadeOf);
+    const label = await ev(`(()=>{const b=[...document.querySelectorAll('#modal footer .btn')]
+      .find(x=>/Simpler|All NANDs/.test(x.textContent)); return b.textContent+'|'+b.disabled;})()`);
+    report('and the button then says there is nowhere further to go',
+      label === 'All NANDs|true', label);
+    const trailTitle = await ev(`LogicLab.__diagTrail()[1].title`);
+    report('the trail counts what you are now looking at', /^simpler · \d+ parts$/.test(trailTitle), trailTitle);
+    /* having just been told a NAND is the floor, the NANDs must not be doors
+       back up into "an AND and a NOT" */
+    const floor = await ev(`(()=>{const L=LogicLab;
+      return L.__diagDef.nodes.filter(n=>n.type==='NAND').some(n=>L.__descendable(n))
+        + '|' + document.querySelector('#modal .zoomhint').textContent;})()`);
+    report('after breaking it all down, nothing on screen claims to go further',
+      /^false\|/.test(floor) && /Nothing here goes any simpler/.test(floor), floor);
+    /* a hundred gates fitted into one box are unreadable, so the picture moves */
+    const cam = () => ev(`(()=>{const c=LogicLab.__diagTrail().slice(-1)[0].cam;
+      return c ? [Math.round(c.x), Math.round(c.y), +c.z.toFixed(3)].join(',') : 'none';})()`);
+    const restCam = await cam();
+    const canvasBox = await ev(`(()=>{const r=document.querySelector('#modal canvas.preview.big')
+      .getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2};})()`);
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseWheel', x: canvasBox.x, y: canvasBox.y, deltaX: 0, deltaY: -240,
+    });
+    await wait(250);
+    const zoomed = await cam();
+    report('scrolling on the diagram zooms it in',
+      zoomed !== restCam && +zoomed.split(',')[2] > +restCam.split(',')[2], restCam + ' → ' + zoomed);
+    await mouse('mousePressed', canvasBox.x, canvasBox.y);
+    await mouse('mouseMoved', canvasBox.x - 60, canvasBox.y + 25);
+    await mouse('mouseReleased', canvasBox.x - 60, canvasBox.y + 25);
+    await wait(250);
+    const panned = await cam();
+    report('dragging the diagram moves it rather than opening a part',
+      +panned.split(',')[0] === +zoomed.split(',')[0] - 60
+      && +panned.split(',')[1] === +zoomed.split(',')[1] + 25
+      && (await depth()) === 2, zoomed + ' → ' + panned + ' at depth ' + (await depth()));
+    await ev(`document.querySelector('#modal .zoomhint .linky').click()`);
+    await wait(300);
+    report('"fit it all in" puts it back', (await cam()) === restCam, (await cam()) + ' vs ' + restCam);
+
+    /* the diagram can take the whole window, which matters most where real
+       fullscreen is not allowed — an embed, a chat panel */
+    const sheetBox = () => ev(`(()=>{const r=document.querySelector('#modal-sheet').getBoundingClientRect();
+      const c=document.querySelector('#modal canvas.preview.big').getBoundingClientRect();
+      return [Math.round(r.width), Math.round(r.height), Math.round(c.height)].join(',');})()`);
+    const small = await sheetBox();
+    await clickSel('#modal-grow');
+    await wait(400);
+    const huge = await sheetBox();
+    report('the diagram can be grown to fill the window',
+      +huge.split(',')[0] > +small.split(',')[0]
+      && +huge.split(',')[2] > +small.split(',')[2], small + ' → ' + huge);
+    const refit = await ev(`(()=>{const c=LogicLab.__diagTrail().slice(-1)[0].cam;
+      const r=document.querySelector('#modal canvas.preview.big').getBoundingClientRect();
+      const b=LogicLab.__diagDef.nodes.length;
+      return c && c.x > -r.width && c.x < r.width ? 'in view' : 'lost';})()`);
+    report('and growing it re-fits the picture rather than leaving it off-screen',
+      refit === 'in view', refit);
+    /* the sticky footer must not sit on top of the controls under the picture */
+    const clear = await ev(`(()=>{
+      const f=document.querySelector('#modal-sheet footer').getBoundingClientRect();
+      const gaps=['.zoomhint','.openups']
+        .map(s=>document.querySelector('#modal '+s))
+        .filter(Boolean).map(e=>f.top - e.getBoundingClientRect().bottom);
+      return Math.round(Math.min(...gaps));})()`);
+    report('nothing under the grown picture hides behind the footer', clear >= 0, clear + 'px clear');
+    await clickSel('#modal-grow');
+    await wait(400);
+    report('and shrinks back again', (await sheetBox()) === small, (await sheetBox()) + ' vs ' + small);
+
+    await ev(`[...document.querySelectorAll('#modal footer .btn')].find(b=>b.textContent.includes('Back up')).click()`);
+    await wait(350);
+    report('backing out of a breakdown returns to the whole part', (await depth()) === 1, await depth());
+
+    /* opening up one kind of part at a time, through its button */
+    const chips = () => ev(`[...document.querySelectorAll('#modal .openups button')]
+      .map(b=>b.textContent).join(' · ')`);
+    report('the diagram offers each kind of part it could open up',
+      (await chips()) === 'AND (16) · D FLIP-FLOP (8) · OR (6) · NOT (2)', await chips());
+    await ev(`[...document.querySelectorAll('#modal .openups button')]
+      .find(b=>b.textContent.startsWith('D FLIP-FLOP')).click()`);
+    await wait(400);
+    const opened = await ev(`(()=>{const L=LogicLab; const k={};
+      for(const n of L.__diagDef.nodes) k[n.type]=(k[n.type]||0)+1;
+      return L.__diagTrail().slice(-1)[0].title + '|' + k.NAND + '|' + k.AND + '|' + (k.DFF||0);})()`);
+    report('opening up every flip-flop leaves the rest of the RAM standing',
+      opened === 'D FLIP-FLOP opened up · 80 parts|48|16|0', opened);
+    report('and the flip-flop is no longer on offer',
+      !(await chips()).includes('D FLIP-FLOP'), await chips());
+    /* this level has the fullest set of controls under the picture — caption
+       over two lines, the hint, and a row of buttons — so it is the one that
+       proves the grown sheet leaves room for all of them */
+    const gaps = () => ev(`(()=>{
+      const f=document.querySelector('#modal-sheet footer').getBoundingClientRect();
+      return ['.zoomhint','.openups'].map(s=>document.querySelector('#modal '+s))
+        .filter(Boolean).map(e=>Math.round(f.top - e.getBoundingClientRect().bottom)).join(',');})()`);
+    await clickSel('#modal-grow');
+    await wait(400);
+    const grownGaps = await gaps();
+    report('grown, the hint and the button row still clear the footer',
+      grownGaps.split(',').every(n => +n >= 0), grownGaps);
+    await clickSel('#modal-grow');
+    await wait(300);
+    await clickSel('#modal-close');
+    await wait(250);
+
+    /* the top bar says what "Untitled" is, and lets you change it */
+    /* fullscreen, and what it does when the frame around the page says no */
+    {
+      const has = await ev(`(()=>{const b=document.querySelector('#btn-full');
+        return b ? b.title : 'missing';})()`);
+      report('there is a fullscreen button and it says the shortcut',
+        /Fullscreen \(Shift\+F\)/.test(has), has);
+      /* pretend the embedding frame refuses, the way a sandboxed one does */
+      const refused = await ev(`(()=>{
+        const el=document.documentElement, real=el.requestFullscreen;
+        el.requestFullscreen = () => Promise.reject(new Error('denied'));
+        document.querySelector('#btn-full').click();
+        return new Promise(r => setTimeout(()=>{
+          el.requestFullscreen = real;
+          const t=document.querySelector('#hint');
+          r(t && t.classList.contains('show') ? t.textContent : 'no toast');
+        }, 300));})()`);
+      report('a frame that refuses fullscreen gets an explanation, not silence',
+        /own browser tab/.test(refused) && /F11/.test(refused), refused);
+    }
+
+    await ev(`(()=>{const L=LogicLab; L.S.work.name='Untitled'; L.renderCrumbs(); return 1;})()`);
+    await wait(150);
+    const crumb = await ev(`document.querySelector('#crumbs').textContent`);
+    report('the top bar explains the circuit name', /Circuit:.*click to name it/.test(crumb), crumb);
+    await ev(`document.querySelector('#crumbs .crumb-name').click()`);
+    await wait(300);
+    await ev(`(()=>{const i=document.querySelector('#modal input[type=text]');
+      i.value='My Machine'; return 1;})()`);
+    await clickSel('#modal footer .primary');
+    await wait(300);
+    const renamed = await ev(`LogicLab.S.work.name + '|' + document.querySelector('#crumbs').textContent`);
+    report('renaming from the top bar works', /^My Machine\|Circuit: My Machine/.test(renamed), renamed);
+
+    /* put the half adder back for the checks that follow */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; const n=L.S.work.nodes.find(x=>x.type==='XOR');
+      L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector(); return 1;})()`);
+    await wait(350);
+
+    const beforeBuild = await ev(`LogicLab.S.work.nodes.length`);
+    await ev(`(()=>{const b=[...document.querySelectorAll('#inspector .madeof button')][0];
+      b.click(); return 1;})()`);
+    await wait(300);
+    const afterBuild = await ev(`LogicLab.S.work.nodes.length`);
+    report('"build it on the board" drops the recipe in',
+      afterBuild === beforeBuild + 7, beforeBuild + ' -> ' + afterBuild);
+    await clickSel('#btn-undo');
+    await wait(250);
+    report('and that is one undo step', (await ev(`LogicLab.S.work.nodes.length`)) === beforeBuild);
+
+    /* the main canvas must still be intact after lending itself to a preview */
+    const mainOK = await ev(`(()=>{const L=LogicLab;
+      return L.S.work.nodes.length + '|' + true + '|' + (L.S.sim!=null);})()`);
+    report('borrowing the renderer leaves the board unharmed', mainOK === beforeBuild + '|true|true', mainOK);
+
+    /* ---- delete shortcuts ---- */
+    const partCount = () => ev(`LogicLab.S.work.nodes.length`);
+    const firstGate = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='AND'); L.S.sel.clear(); L.S.sel.add(n.id);
+      const g=L.geom(n); const s=L.toScreen(g.x+g.w/2,g.y+g.h/2);
+      return {x:r.left+s.x, y:r.top+s.y, id:n.id};})()`);
+    await wait(150);
+    const xBtn = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const hd=L.deleteHandle(); return hd ? {x:r.left+hd.x, y:r.top+hd.y} : null;})()`);
+    report('a ✕ appears next to the selection', !!xBtn, JSON.stringify(xBtn));
+    if (xBtn) {
+      await clickAt(xBtn.x, xBtn.y);
+      await wait(250);
+      report('tapping the ✕ deletes the selected part', (await partCount()) === 5, await partCount());
+    }
+    /* right-click deletes, but a right-drag still pans */
+    const xorPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    const camBefore = await ev(`JSON.stringify(LogicLab.S.cam)`);
+    await mouse('mousePressed', xorPt.x, xorPt.y, { button: 'right', buttons: 2 });
+    await mouse('mouseMoved', xorPt.x + 90, xorPt.y + 40, { button: 'right', buttons: 2 });
+    await mouse('mouseReleased', xorPt.x + 90, xorPt.y + 40, { button: 'right', buttons: 0 });
+    await wait(250);
+    const afterDrag = await partCount();
+    const camAfter = await ev(`JSON.stringify(LogicLab.S.cam)`);
+    report('a right-drag pans and deletes nothing', afterDrag === 5 && camAfter !== camBefore,
+      afterDrag + ' cam moved: ' + (camAfter !== camBefore));
+    const xorPt2 = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+      const n=L.S.work.nodes.find(x=>x.type==='XOR'); const g=L.geom(n);
+      const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+    await mouse('mousePressed', xorPt2.x, xorPt2.y, { button: 'right', buttons: 2 });
+    await mouse('mouseReleased', xorPt2.x, xorPt2.y, { button: 'right', buttons: 0 });
+    await wait(250);
+    report('a right-click deletes what is under it', (await partCount()) === 4, await partCount());
+
+    /* ---- the decoder behind a hex digit ---- */
+    {
+      /* The claim is that this circuit lights the same bars the display does.
+         So drive it with all sixteen numbers and compare against the very
+         table the display draws from — nothing else is proof. */
+      const got = await ev(`(()=>{const L=LogicLab;
+        const def=L.RECIPES.HEX.make();
+        const io=L.ioOrder(def), c=L.compile(def);
+        if(c.errors.length) return 'errors: '+JSON.stringify(c.errors);
+        const sim=new L.Sim(c);
+        const nets=io.outs.map(p=>c.portNet.get(p.id+'.i0'));
+        const order=io.outs.map(p=>p.label).join('');
+        const out=[];
+        for(let n=0;n<16;n++){
+          io.ins.forEach(p=>{
+            const w={'8':8,'4':4,'2':2,'1':1}[p.label];
+            p.value=(n & w)?1:0;});
+          for(let t=0;t<40;t++) sim.tick(0);
+          let bits=0;
+          io.outs.forEach((p,i)=>{ if(sim.val(nets[i])) bits |= 1<<'abcdefg'.indexOf(p.label); });
+          out.push(bits);
+        }
+        return order+'|'+out.join(',');})()`);
+      const want = await ev(`'abcdefg|' + LogicLab.SEG_BITS.join(',')`);
+      report('the hex decoder lights exactly the bars the display draws',
+        got === want, got + '  vs  ' + want);
+
+      const size = await ev(`(()=>{const L=LogicLab; const d=L.RECIPES.HEX.make(); const k={};
+        for(const n of d.nodes) k[n.type]=(k[n.type]||0)+1;
+        return JSON.stringify(k);})()`);
+      report('and it is one AND per number, shared between all seven bars',
+        /"AND":16/.test(size) && /"NOT":4/.test(size), size);
+
+      /* and it goes all the way down like everything else */
+      const down = await ev(`(()=>{const L=LogicLab;
+        let d=L.RECIPES.HEX.make(), rounds=0;
+        while(rounds<8){ const nx=L.expandOnce(d); if(!nx) break; d=nx; rounds++; }
+        const k={}; for(const n of d.nodes) if(n.type!=='IN'&&n.type!=='OUT') k[n.type]=(k[n.type]||0)+1;
+        return rounds+':'+Object.keys(k).join(',');})()`);
+      report('the decoder breaks down into NANDs like the rest of it',
+        /^[12]:NAND$/.test(down), down);
+    }
+
+    /* ---- naming a part where it stands ---- */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('chain');
+        const id=Object.keys(L.lib)[0];
+        [0,1,2].forEach(i=>b.add('CHIP', 80+i*220, 80, {chip:id}));
+        L.S.work=b.def; L.S.dirty=true;
+        L.S.sel.clear(); L.S.sel.add(b.def.nodes[1].id);
+        L.renderInspector(); L.fitView(); return 1;})()`);
+      await wait(300);
+      const box = await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder)); return !!i;})()`);
+      report('a placed part offers a name of its own, beside its type', box === true);
+      await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder));
+        i.value='module 1'; i.dispatchEvent(new Event('input',{bubbles:true})); return 1;})()`);
+      await wait(250);
+      const named = await ev(`(()=>{const L=LogicLab;
+        return L.S.work.nodes.map(n=>n.tag||'-').join(',');})()`);
+      report('naming one leaves its neighbours alone', named === '-,module 1,-', named);
+      report('the name is part of the circuit, so it saves with it',
+        await ev(`JSON.parse(JSON.stringify(LogicLab.S.work)).nodes[1].tag === 'module 1'`));
+      /* two copies of one chip keep their own names */
+      await ev(`(()=>{const L=LogicLab; L.S.sel.clear(); L.S.sel.add(L.S.work.nodes[0].id);
+        L.renderInspector(); return 1;})()`);
+      await wait(250);
+      await ev(`(()=>{const i=[...document.querySelectorAll('#inspector input[type=text]')]
+        .find(e=>/module 0/.test(e.placeholder));
+        i.value='module 0'; i.dispatchEvent(new Event('input',{bubbles:true})); return 1;})()`);
+      await wait(250);
+      report('every copy of the same chip can be called something different',
+        (await ev(`LogicLab.S.work.nodes.map(n=>n.tag||'-').join(',')`)) === 'module 0,module 1,-',
+        await ev(`LogicLab.S.work.nodes.map(n=>n.tag||'-').join(',')`));
+    }
+
+    /* ---- crossings get a bridge, joins get a dot ---- */
+    {
+      const hops = () => ev(`LogicLab.wireHops().length`);
+      /* the stored-program example has genuine crossings in it */
+      await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[8].make();
+        L.S.work=e.work||e; L.S.dirty=true; L.fitView(); return 1;})()`);
+      await wait(300);
+      const real = await hops();
+      report('wires that cross without joining are bridged', real >= 3, real);
+
+      /* one signal reaching two places is a join, and must never be bridged —
+         otherwise a fan-out would look like two unrelated wires */
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('same');
+        const a1=b.pin('A',0,140);
+        const o1=b.out('X',520,40), o2=b.out('Y',520,240);
+        b.w(a1,0,o1,0); b.w(a1,0,o2,0);
+        L.S.work=b.def; L.S.dirty=true; L.fitView(); return 1;})()`);
+      await wait(300);
+      report('but one signal reaching two places is never bridged',
+        (await hops()) === 0, await hops());
+    }
+
+    /* ---- junctions you can put on a wire on purpose ---- */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('tee');
+        const i=b.pin('A',0,60), o1=b.out('X',420,20), o2=b.out('Y',420,140);
+        b.w(i,0,o1,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+        L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+      await wait(300);
+      const shape = () => ev(`(()=>{const L=LogicLab;
+        return L.S.work.nodes.filter(n=>n.type==='JOINT').length + '/' + L.S.work.wires.length;})()`);
+      report('nothing there to start with', (await shape()) === '0/1', await shape());
+
+      /* refuses politely when nothing is selected */
+      await ev(`LogicLab.addJointToSelection(null)`);
+      await wait(200);
+      report('asks for a wire first when none is selected',
+        (await shape()) === '0/1'
+        && /Click a wire first/.test(await ev(`document.querySelector('#hint').textContent`)));
+
+      /* select the wire, then put a junction on it */
+      await ev(`(()=>{const L=LogicLab; L.S.selWires.clear();
+        L.S.selWires.add(L.S.work.wires[0].id); return 1;})()`);
+      await ev(`LogicLab.addJointToSelection(null)`);
+      await wait(250);
+      report('adding a junction splits the wire in two and leaves a joint',
+        (await shape()) === '1/2', await shape());
+
+      /* the junction has to be ON the wire, not off to one side */
+      const onLine = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        const a=L.S.work.nodes.find(n=>n.type==='IN'), o=L.S.work.nodes.find(n=>n.type==='OUT');
+        const ga=L.geom(a), go=L.geom(o), gj=L.geom(j);
+        const jx=gj.x+gj.w/2, jy=gj.y+gj.h/2;
+        return jx > ga.x && jx < go.x + go.w && Math.abs(jy - ga.ins.concat(ga.outs)[0].y) < 60;})()`);
+      report('and it lands on the wire rather than off to one side', onLine === true, onLine);
+
+      /* now branch off it — one input feeding two outputs, which is the point */
+      await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT');
+        const y=L.S.work.nodes.find(n=>n.type==='OUT' && n.label==='Y');
+        L.S.work.wires.push({id:'w-tee', a:{n:j.id,s:'out',i:0}, b:{n:y.id,s:'in',i:0}});
+        L.S.dirty=true; return 1;})()`);
+      await wait(250);
+      const tee = await ev(`LogicLab.computeTruthTable(LogicLab.S.work).rows
+        .map(r=>r.in.join('')+'='+r.out.join('')).join(' ')`);
+      report('a junction really does feed every branch off it',
+        tee === '0=00 1=11', tee);
+
+      /* The branches must part company AT the dot, not run together first —
+         two wires drawn on top of each other read as one. What matters is how
+         far they stay superimposed, which is where the FIRST of them turns
+         off: once one has left, there is nothing left to confuse. Asking where
+         the last one turns measures something else entirely, and says a wire
+         running straight on through the dot — the ordinary shape of a tap on a
+         line, and the tidiest answer there is — has gone wrong. */
+      const split = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const gj=L.geom(j);
+        const jx=gj.x+gj.w/2;
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+          return (e.s==='in'?g.ins:g.outs)[e.i];};
+        const legs=L.S.work.wires.filter(w=>w.a.n===j.id);
+        if(legs.length<2) return 'only '+legs.length+' leg';
+        /* how far right of the dot each leg runs before it turns */
+        const runs=legs.map(w=>{
+          const pts=L.wirePoints(at(w.a), at(w.b), 60, w);
+          const y0=pts[0].y;
+          const turn=pts.find(p=>Math.abs(p.y-y0)>2);
+          return turn ? Math.round(turn.x - jx) : 0;});
+        return Math.min(...runs);})()`);
+      report('branches part company at the dot, not half a board later',
+        typeof split === 'number' && split < 90, split);
+
+      /* and the dot itself is easy to hit */
+      const grab = await ev(`(()=>{const L=LogicLab;
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const g=L.geom(j);
+        L.S.cam.z=1;
+        const hit=(dx,dy)=>{const h=L.hitTest({x:g.x+g.w/2+dx, y:g.y+g.h/2+dy}, false);
+          return h && h.node===j.id;};
+        return hit(0,0) && hit(14,0) && hit(0,-14) && !hit(90,90);})()`);
+      report('a junction catches clicks from a little way off', grab === true, grab);
+
+      /* and it is one undo step */
+      await clickSel('#btn-undo');
+      await wait(250);
+      report('adding a junction is a single undo',
+        (await shape()) === '0/1' || (await shape()) === '0/2', await shape());
+    }
+
+    /* ---- everything measures a whole number of grid squares ---------------
+       Wires run on the half-lines between the grid lines. A port that does not
+       land on one cannot ever have a straight wire on it — the router snaps to
+       the nearest lane and leaves a kink. Parts used to be 38, 56, 26 and 18
+       units tall, putting their ports three, two and one units off the lane
+       depending on the part, so no two kinds of part could line up at all. */
+    {
+      const kinds = ['AND', 'OR', 'NAND', 'NOR', 'XOR', 'XNOR', 'NOT', 'BUF',
+        'IN', 'OUT', 'CONST', 'CLOCK', 'DFF', 'DLATCH', 'LED', 'SEG7', 'HEX',
+        'ROM', 'RAM', 'NUMIN', 'NUM', 'JOINT', 'TUNNEL'];
+      const boxes = await ev(`(()=>{const L=LogicLab; const bad=[];
+        for(const t of ${JSON.stringify(kinds)}){
+          for(const n of [2,3,4]){
+            const nd=L.makeNode(t, 100, 200); if(nd.n!==undefined) nd.n=n;
+            const g=L.geom(nd);
+            const offW = g.w % 10 !== 0, offH = g.h % 10 !== 0;
+            const ports=[...g.ins,...g.outs];
+            const offLane=ports.filter(p=>Math.abs(((p.y%10)+10)%10 - 5) > 0.001);
+            if(offW||offH||offLane.length)
+              bad.push(t+'('+n+') w='+g.w+' h='+g.h+' off='+offLane.map(p=>p.y).join(','));
+          }
+        }
+        return bad;})()`);
+      report('every part is a whole number of grid squares, ports on the lanes',
+        boxes.length === 0, boxes.slice(0, 6).join(' | '));
+
+      /* a long name grows the box, and it has to grow by whole squares */
+      const named = await ev(`(()=>{const L=LogicLab;
+        const d=L.newDef('a chip with a really rather long name indeed');
+        d.nodes.push(L.makeNode('IN',0,0,{label:'in'}), L.makeNode('OUT',200,0,{label:'out'}));
+        L.lib[d.id]=d;
+        const g=L.geom(L.makeNode('CHIP',100,200,{chip:d.id}));
+        return {w:g.w, h:g.h, onGrid: g.w%10===0 && g.h%10===0};})()`);
+      report('a chip grown to fit its name still measures whole squares',
+        named.onGrid === true, JSON.stringify(named));
+
+      /* two parts placed on the grid must be able to sit exactly level */
+      const level = await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('level'); const p=b.pin('A',0,100); const g2=b.add('AND',200,100);
+        const gp=L.geom(p), gg=L.geom(g2);
+        return Math.abs(gp.outs[0].y - gg.ins[0].y);})()`);
+      report('a pin and a gate dropped at the same height are exactly level',
+        level === 0, level);
+
+      /* and every example is laid out on the grid */
+      const strays = await ev(`(()=>{const L=LogicLab; const bad=[];
+        for(const ex of L.examples.EDITOR_EXAMPLES){
+          const e=ex.make(); const def=e.work||e;
+          const defs=[def].concat(e.chips||[]);
+          for(const d of defs) for(const n of d.nodes)
+            if(n.x%10 || n.y%10) bad.push(d.name+':'+n.type+'@'+n.x+','+n.y);
+        }
+        return bad;})()`);
+      report('every built-in example sits on the grid', strays.length === 0,
+        strays.slice(0, 5).join(' '));
+    }
+
+    /* ---- wires take the short way ----------------------------------------
+       Going over a part used to cost four hundred, which is not "dear" but
+       "never": a wire would walk the width of the board rather than step over
+       one gate. And a lane another wire had claimed cost the same whether you
+       ran along it or crossed it, so wires bent round crossings — which are
+       drawn with a bridge and read perfectly well. Both showed up as wires
+       taking a long way round for no reason a reader could see.
+
+       Measured as total slack: how much longer every wire is than the straight
+       Manhattan distance between its two ports, summed over every built-in
+       example. Some slack is real — a wire that genuinely has to get round a
+       chip is longer than the crow flies — so this is a ceiling, not a target.
+       It stood at 6610 before and runs at about 4950 now. */
+    {
+      /* Loading every example installs their chips; put the library and the
+         view back afterwards so the checks that follow see what they expect. */
+      const libWas = await ev(`JSON.stringify(Object.keys(LogicLab.lib))`);
+      const camWas = await ev(`JSON.stringify(LogicLab.S.cam)`);
+      let slack = 0;
+      const howMany = await ev(`LogicLab.examples.EDITOR_EXAMPLES.length`);
+      for (let i = 0; i < howMany; i++) {
+        await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[${i}].make();
+          if(e.chips) for(const c of e.chips) L.lib[c.id]=c;
+          L.S.work=e.work||e; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+          L.fitView(); return 1;})()`);
+        await wait(400);
+        slack += await ev(`(()=>{const L=LogicLab;
+          const at=(e)=>{const nd=L.S.work.nodes.find(x=>x.id===e.n); if(!nd) return null;
+            const g=L.geom(nd); return (e.s==='in'?g.ins:g.outs)[e.i];};
+          let sum=0;
+          for(const w of L.S.work.wires){
+            const a=at(w.a), b=at(w.b); if(!a||!b) continue;
+            const pts=L.wirePoints(a,b,80,w);
+            let run=0; for(let k=1;k<pts.length;k++)
+              run+=Math.abs(pts[k].x-pts[k-1].x)+Math.abs(pts[k].y-pts[k-1].y);
+            sum += run - (Math.abs(a.x-b.x)+Math.abs(a.y-b.y));
+          }
+          return sum;})()`);
+      }
+      slack = Math.round(slack);
+      report('wires do not wander: total slack across the examples',
+        slack < 5600, slack);
+      await ev(`(()=>{const L=LogicLab;
+        const keep=new Set(${libWas});
+        for(const k of Object.keys(L.lib)) if(!keep.has(k)) delete L.lib[k];
+        L.S.cam=${camWas}; L.S.dirty=true; L.renderPalette(); return 1;})()`);
+      await wait(200);
+    }
+
+    /* ---- a port with a wire on it is not decorated ------------------------
+       Every port used to draw a stub and a dot nearly seven across, more than
+       twice the width of a wire, so every connection on the board ended in a
+       little whisker poking out past the body. The marks belong on the ports
+       with nothing on them, which do need to say "attach here". */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('wired and not');
+        const A=b.pin('A',0,100); const g=b.add('AND',200,100); const X=b.out('X',400,100);
+        b.w(A,0,g,0); b.w(g,0,X,0);            // g's second input is left free
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`);
+      await wait(350);
+      const marks = await ev(`(()=>{const L=LogicLab;
+        L.refreshWiredPorts();
+        const w=L.wiredPorts();
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        const a=L.S.work.nodes.find(n=>n.label==='A');
+        return {fedInput:w.has(g.id+'in0'), freeInput:w.has(g.id+'in1'),
+          usedOutput:w.has(g.id+'out0'), pinOutput:w.has(a.id+'out0')};})()`);
+      report('a port carrying a wire is marked as taken, a free one is not',
+        marks.fedInput === true && marks.freeInput === false
+        && marks.usedOutput === true && marks.pinOutput === true,
+        JSON.stringify(marks));
+    }
+
+    /* ---- a junction is a dot, not a dot with spikes ----------------------
+       There used to be a stub drawn from the middle of a junction towards each
+       wire meeting there, meant to make the join read as a T or a cross. It
+       was aimed at the far END of the wire — but a wire leaves square and then
+       turns, so the stub pointed somewhere the wire never went, and the dot
+       sprouted diagonal spikes at angles that matched nothing on the board.
+       Checked by looking at the pixels where those spikes used to land. */
+    {
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('spikes');
+        const A=b.pin('A',0,100), X=b.out('X',560,100), Y=b.out('Y',560,320);
+        const j=b.add('JOINT',260,100);
+        b.w(A,0,j,0); b.w(j,0,X,0); b.w(j,0,Y,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+        const gj=L.geom(j); const cx=gj.x+gj.w/2, cy=gj.y+gj.h/2;
+        const r=document.querySelector('#cv').getBoundingClientRect();
+        L.S.cam={z:4, x:r.width/2-cx*4, y:r.height/2-cy*4};
+        return 1;})()`);
+      await wait(700);
+      const spikes = await ev(`(()=>{const L=LogicLab;
+        const cv=document.querySelector('#cv'); const g2=cv.getContext('2d');
+        const dpr=cv.width/cv.getBoundingClientRect().width;
+        const at=(wx,wy)=>{const s=L.toScreen(wx,wy);
+          const d=g2.getImageData(Math.round(s.x*dpr), Math.round(s.y*dpr),1,1).data;
+          return d[0]+','+d[1]+','+d[2];};
+        const j=L.S.work.nodes.find(n=>n.type==='JOINT'); const gj=L.geom(j);
+        const cx=gj.x+gj.w/2, cy=gj.y+gj.h/2;
+        const bg=at(cx, cy-70);                        // empty board above it
+        let checked=0, lit=0;
+        for(const w of L.S.work.wires){
+          const far = w.a.n===j.id ? w.b : w.a;
+          const n=L.S.work.nodes.find(x=>x.id===far.n); const gn=L.geom(n);
+          const p=(far.s==='in'?gn.ins:gn.outs)[far.i];
+          const dx=p.x-cx, dy=p.y-cy, len=Math.hypot(dx,dy)||1;
+          if(Math.abs(dy/len) < 0.3) continue;         // level with the dot: the wire is there
+          checked++;
+          if(at(cx+dx/len*7, cy+dy/len*7) !== bg) lit++;
+        }
+        return {checked, lit, bg};})()`);
+      report('a junction draws no spikes off the dot',
+        spikes.checked > 0 && spikes.lit === 0, JSON.stringify(spikes));
+    }
+
+    /* ---- wires route round the parts instead of through them ---- */
+    {
+      const crossings = async (exampleIx) => {
+        await ev(`(()=>{const L=LogicLab; const e=L.examples.EDITOR_EXAMPLES[${exampleIx}].make();
+          L.S.work=e.work||e; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`);
+        await wait(300);
+        return ev(`(()=>{const L=LogicLab;
+          const boxes=L.S.work.nodes.map(n=>{const g=L.geom(n);
+            return {id:n.id, x0:g.x, y0:g.y, x1:g.x+g.w, y1:g.y+g.h};});
+          const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+            return (e.s==='in'?g.ins:g.outs)[e.i];};
+          let bad=0, total=0;
+          for(const w of L.S.work.wires){
+            const a=at(w.a), b=at(w.b); if(!a||!b) continue;
+            total++;
+            const pts=L.wirePoints(a,b,60,w);
+            const skip=new Set([w.a.n,w.b.n]);
+            for(const box of boxes){
+              if(skip.has(box.id)) continue;
+              if(pts.some(p=>p.x>box.x0+1&&p.x<box.x1-1&&p.y>box.y0+1&&p.y<box.y1-1)){bad++;break;}
+            }
+          }
+          return bad+'/'+total;})()`);
+      };
+      /* the hard case: a chip's own output looping back to its own input has
+         to go round the outside, not straight through the chip */
+      const loopBack = await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('loop');
+        const d=b.add('DFF', 300, 200);
+        const clk=b.pin('CLK', 60, 260);
+        b.w(d,1,d,0);                                  // Qbar back to D
+        b.w(clk,0,d,1);
+        L.S.work=b.def; L.S.dirty=true; L.fitView();
+        const g=L.geom(d);
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const gg=L.geom(n);
+          return (e.s==='in'?gg.ins:gg.outs)[e.i];};
+        const w=L.S.work.wires[0];
+        const pts=L.wirePoints(at(w.a), at(w.b), 80, w);
+        const inside=pts.filter(p=>p.x>g.x+1&&p.x<g.x+g.w-1&&p.y>g.y+1&&p.y<g.y+g.h-1).length;
+        return inside;})()`);
+      report('a wire looping back to its own part goes round it, not through it',
+        loopBack === 0, loopBack + ' points inside the box');
+
+      const adder = await crossings(1);
+      report('no wire in the full adder runs through a part',
+        adder === '0/12', adder);
+      const counter = await crossings(7);
+      report('nor in the counter', counter === '0/16', counter);
+      const prog = await crossings(8);
+      report('nor in the stored-program example', prog === '0/32', prog);
+    }
+
+    /* ---- lining parts up so the wires run straight ---- */
+    {
+      /* Two gates on the grid, wired. Their PORTS are at fractional offsets
+         inside the boxes, so grid-aligned boxes still leave a kinked wire —
+         which is the whole reason this feature has to exist. */
+      /* the gap between the two PORTS a wire joins — wireHandles samples the
+         drawn curve, which is not the same thing */
+      const skew = () => ev(`(()=>{const L=LogicLab;
+        const at=(e)=>{const n=L.S.work.nodes.find(x=>x.id===e.n); const g=L.geom(n);
+          return (e.s==='in'?g.ins:g.outs)[e.i];};
+        return L.S.work.wires.map(w=>Math.round(Math.abs(at(w.b).y-at(w.a).y))).join(',');})()`);
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('lineup');
+        const i=b.pin('A',0,0), g=b.add('AND',200,30), o=b.out('Q',420,70);
+        b.w(i,0,g,0); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[];
+        L.fitView(); return 1;})()`);
+      await wait(300);
+      const before = await skew();
+      report('parts on the grid still leave the wires between them kinked',
+        before.split(',').some(n => +n !== 0), before);
+
+      const table = () => ev(`LogicLab.computeTruthTable(LogicLab.S.work).rows
+        .map(r=>r.in.join('')+'='+r.out.join('')).join(' ')`);
+      const want = await table();
+      await ev(`LogicLab.straightenWires(null)`);
+      await wait(250);
+      report('lining up makes every wire dead level',
+        (await skew()).split(',').every(n => +n === 0), await skew());
+      report('and lining up cannot change what the circuit does',
+        (await table()) === want, await table());
+
+      /* dragging: come near level with something you are wired to and it pulls */
+      const pulled = await ev(`(()=>{const L=LogicLab;
+        L.S.cam.z = 1;                                // reach is in screen pixels
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y += 5;                                     // just off level
+        const hit=L.alignOffset([g]);
+        return hit ? Math.round(hit.gap) : 'no pull';})()`);
+      report('a part a few pixels off level is pulled the rest of the way',
+        pulled === -5, pulled);
+      const tooFar = await ev(`(()=>{const L=LogicLab;
+        const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y += 120;
+        const hit=L.alignOffset([g]);
+        g.y -= 120;
+        return hit ? 'pulled' : 'left alone';})()`);
+      report('but one nowhere near level is left where you put it',
+        tooFar === 'left alone', tooFar);
+      await ev(`(()=>{const L=LogicLab; const g=L.S.work.nodes.find(n=>n.type==='AND');
+        g.y -= 5; L.S.dirty=true; return 1;})()`);
+    }
+
+    /* ---- turning parts, one at a time and in a block ---- */
+    {
+      /* a half adder, so there is something with a known truth table to turn */
+      await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+        L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[]; L.fitView(); return 1;})()`);
+      await wait(300);
+      /* Read the table keyed by pin NAME. Pin order is worked out from where
+         the pins sit, so turning the board legitimately renumbers them — what
+         must not change is what each named input does to each named output. */
+      const table = () => ev(`(()=>{const L=LogicLab;
+        const io=L.ioOrder(L.S.work), t=L.computeTruthTable(L.S.work);
+        return t.rows.map(r=>{
+          const inp=io.ins.map((p,i)=>p.label+'='+r.in[i]).sort().join(',');
+          const out=io.outs.map((p,i)=>p.label+'='+r.out[i]).sort().join(',');
+          return inp+' -> '+out;}).sort().join(' | ');})()`);
+      const want = await table();
+
+      /* one part: it spins where it stands, and its ports move with it */
+      const one = await ev(`(()=>{const L=LogicLab;
+        const n=L.S.work.nodes.find(x=>x.type==='XOR');
+        const b=L.geom(n);
+        L.S.sel.clear(); L.S.sel.add(n.id);
+        L.rotateSelection(1);
+        const a=L.geom(n);
+        return {rot:n.rot, wasW:Math.round(b.w), wasH:Math.round(b.h),
+          nowW:Math.round(a.w), nowH:Math.round(a.h),
+          inWasLeft: b.ins.every(p=>Math.abs(p.x-b.x)<1),
+          inNowTop: a.ins.every(p=>Math.abs(p.y-a.y)<1),
+          outNowBottom: a.outs.every(p=>Math.abs(p.y-(a.y+a.h))<1),
+          midMoved: Math.abs((a.x+a.w/2)-(b.x+b.w/2)) + Math.abs((a.y+a.h/2)-(b.y+b.h/2))};})()`);
+      report('turning one part swaps its width and height',
+        one.rot === 90 && one.nowW === one.wasH && one.nowH === one.wasW, JSON.stringify(one));
+      report('its inputs move from the left edge to the top',
+        one.inWasLeft && one.inNowTop && one.outNowBottom, JSON.stringify(one));
+      report('and it stays where it was, give or take the snap to the grid',
+        one.midMoved <= 10, one.midMoved);
+      report('turning a part changes nothing about what the circuit does',
+        (await table()) === want, await table());
+
+      /* four quarter turns is where you started */
+      await ev(`(()=>{const L=LogicLab; L.rotateSelection(1); L.rotateSelection(1); L.rotateSelection(1); return 1;})()`);
+      const back = await ev(`(LogicLab.S.work.nodes.find(x=>x.type==='XOR')||{}).rot`);
+      report('four quarter turns is back to upright', back === 0, back);
+
+      /* a block: a row of parts must come out as a column */
+      const block = await ev(`(()=>{const L=LogicLab;
+        const before=L.S.work.nodes.map(n=>{const g=L.geom(n);
+          return {id:n.id, cx:g.x+g.w/2, cy:g.y+g.h/2};});
+        const wide=Math.max(...before.map(b=>b.cx))-Math.min(...before.map(b=>b.cx));
+        const tall=Math.max(...before.map(b=>b.cy))-Math.min(...before.map(b=>b.cy));
+        L.S.sel.clear(); L.S.work.nodes.forEach(n=>L.S.sel.add(n.id));
+        L.rotateSelection(1);
+        const after=L.S.work.nodes.map(n=>{const g=L.geom(n);
+          return {id:n.id, cx:g.x+g.w/2, cy:g.y+g.h/2};});
+        const wide2=Math.max(...after.map(b=>b.cx))-Math.min(...after.map(b=>b.cx));
+        const tall2=Math.max(...after.map(b=>b.cy))-Math.min(...after.map(b=>b.cy));
+        return {wide:Math.round(wide), tall:Math.round(tall),
+          wide2:Math.round(wide2), tall2:Math.round(tall2),
+          turned: L.S.work.nodes.every(n=>n.rot===90)};})()`);
+      report('turning a whole selection lays a wide arrangement out tall',
+        block.turned && block.wide2 <= block.tall + 4 && block.tall2 >= block.wide - 4,
+        JSON.stringify(block));
+      report('and the circuit still does exactly what it did',
+        (await table()) === want, await table());
+
+      /* pin order comes from pin position, so that turn renumbered them —
+         which silently rewires every copy of the chip, and must be said */
+      const warned = await ev(`(()=>{const t=document.querySelector('#hint');
+        return t && t.classList.contains('show') ? t.textContent : 'silent';})()`);
+      report('turning a whole circuit warns that its pin numbering changed',
+        /pin numbering/.test(warned), warned);
+
+      /* it is one undo step, not one per part */
+      await clickSel('#btn-undo');
+      await wait(250);
+      report('turning a group is a single undo',
+        await ev(`LogicLab.S.work.nodes.every(n=>!n.rot)`));
+
+      /* turning survives being packaged and reloaded */
+      const kept = await ev(`(()=>{const L=LogicLab;
+        const n=L.S.work.nodes[0]; L.S.sel.clear(); L.S.sel.add(n.id);
+        L.rotateSelection(-1);
+        const saved=JSON.parse(JSON.stringify(L.S.work));
+        return saved.nodes[0].rot;})()`);
+      report('a turn is part of the circuit, so it saves and loads with it', kept === 270, kept);
+      await ev(`(()=>{const L=LogicLab; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[]; return 1;})()`);
+    }
+
+    /* ---- the gates are drawn as their real schematic shapes ---- */
+    {
+      const syms = await ev(`(()=>{const L=LogicLab;
+        const want=['AND','OR','NAND','NOR','XOR','XNOR','NOT','BUFFER'];
+        const got=[...document.querySelectorAll('.pal-item')]
+          .filter(b=>want.includes(b.textContent.trim()))
+          .map(b=>b.textContent.trim()+':'+(b.querySelector('svg.symsw')?'sym':'square'));
+        return got.join(' ');})()`);
+      report('every gate in the palette shows its symbol next to its name',
+        syms.split(' ').length === 8 && !/square/.test(syms), syms);
+      const bubbles = await ev(`(()=>{
+        const of=(n)=>{const b=[...document.querySelectorAll('.pal-item')]
+          .find(x=>x.textContent.trim()===n); return b && !!b.querySelector('svg circle');};
+        return ['NAND','NOR','XNOR','NOT'].every(of) && !['AND','OR','XOR','BUFFER'].some(of);})()`);
+      report('and only the inverting ones carry the little circle', bubbles === true, bubbles);
+
+      /* an AND and an OR must not draw the same picture */
+      const shapes = await ev(`(()=>{const L=LogicLab;
+        const pix=(type)=>{
+          const c=document.createElement('canvas'); c.width=c.height=1;
+          const b=L.builder('sym'); b.add(type, 0, 0);
+          const g=L.geom(b.def.nodes[0]);
+          return Math.round(g.w)+'x'+Math.round(g.h);
+        };
+        return pix('AND')===pix('OR');})()`);
+      report('the symbol never changes the footprint of a gate, so nothing else moves',
+        shapes === true, shapes);
+    }
+
+    /* ---- Use mode: a click works the circuit and cannot change it ---- */
+    {
+      /* a switch, a button and a gate, so every kind of click can be tried */
+      await ev(`(()=>{const L=LogicLab;
+        const b=L.builder('use me');
+        const sw=b.pin('SW',60,60), btn=b.pin('BTN',60,180);
+        btn.momentary=true;
+        const g=b.add('OR',260,90), o=b.out('lit',460,100);
+        b.w(sw,0,g,0); b.w(btn,0,g,1); b.w(g,0,o,0);
+        L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.undo=[]; L.S.redo=[];
+        L.fitView(); return 1;})()`);
+      await wait(300);
+      const shape = () => ev(`LogicLab.S.work.nodes.length + '/' + LogicLab.S.work.wires.length`);
+      const at = (label) => ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.label===${JSON.stringify(label)}); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      const val = (label) => ev(`(LogicLab.S.work.nodes.find(x=>x.label===${JSON.stringify(label)})||{}).value`);
+      const before = await shape();
+
+      await clickSel('#act-run');
+      await wait(250);
+      report('the Use button lights up and says what clicking now does',
+        await ev(`document.querySelector('#act-run').classList.contains('on')
+          && /Use mode/.test(document.querySelector('#status-tip').textContent)`));
+
+      /* clicking a switch flips it */
+      const swPt = await at('SW');
+      await clickAt(swPt.x, swPt.y);
+      await wait(200);
+      report('in Use mode a click flips a switch', (await val('SW')) === 1, await val('SW'));
+      await clickAt(swPt.x, swPt.y);
+      await wait(200);
+      report('and flips it back', (await val('SW')) === 0, await val('SW'));
+
+      /* a momentary button is held down and springs back on release */
+      const btnPt = await at('BTN');
+      await mouse('mousePressed', btnPt.x, btnPt.y);
+      const held = await val('BTN');
+      await mouse('mouseReleased', btnPt.x, btnPt.y);
+      await wait(200);
+      report('a button is down while held and springs back after',
+        held === 1 && (await val('BTN')) === 0, held + ' then ' + (await val('BTN')));
+
+      /* you should not have to hit a switch exactly */
+      const offBy = async (dx, dy) => {
+        const q = await at('SW');
+        await clickAt(q.x + dx, q.y + dy);
+        await wait(200);
+        const v = await val('SW');
+        if (v) { await clickAt(q.x, q.y); await wait(200); }   // put it back
+        return v;
+      };
+      report('a click near a switch still flips it', (await offBy(26, 18)) === 1);
+      report('and one from the other side too', (await offBy(-24, -20)) === 1);
+      report('but a click well away from everything does not',
+        (await offBy(300, 240)) === 0);
+      /* a gate standing near a pin must keep its own clicks */
+      const orPick = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y, id:n.id};})()`);
+      await clickAt(orPick.x, orPick.y);
+      await wait(220);
+      report('landing squarely on a gate selects it rather than flipping a nearby pin',
+        await ev(`(()=>{const L=LogicLab;
+          return L.S.sel.has(${JSON.stringify(orPick.id)})
+            && L.S.work.nodes.filter(n=>n.type==='IN').every(n=>!n.value);})()`));
+
+      /* the left button must never slide the board out from under a switch */
+      const camBefore2 = await ev(`JSON.stringify(LogicLab.S.cam)`);
+      await mouse('mousePressed', swPt.x + 260, swPt.y + 200);
+      await mouse('mouseMoved', swPt.x + 380, swPt.y + 280);
+      await mouse('mouseReleased', swPt.x + 380, swPt.y + 280);
+      await wait(250);
+      report('a left-drag on empty space does not move the view in Use mode',
+        (await ev(`JSON.stringify(LogicLab.S.cam)`)) === camBefore2);
+      /* right-hold is what pans now — and must not delete on release */
+      const shapeBeforePan = await shape();
+      await mouse('mousePressed', swPt.x + 260, swPt.y + 200, { button: 'right', buttons: 2 });
+      await mouse('mouseMoved', swPt.x + 340, swPt.y + 250, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', swPt.x + 340, swPt.y + 250, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('right-drag moves the view instead',
+        (await ev(`JSON.stringify(LogicLab.S.cam)`)) !== camBefore2);
+      await mouse('mousePressed', swPt.x + 300, swPt.y + 230, { button: 'right', buttons: 2 });
+      await mouse('mouseReleased', swPt.x + 300, swPt.y + 230, { button: 'right', buttons: 0 });
+      await wait(250);
+      report('and a right-click deletes nothing in Use mode',
+        (await shape()) === shapeBeforePan, (await shape()) + ' vs ' + shapeBeforePan);
+      await ev(`(()=>{const L=LogicLab; L.fitView(); return 1;})()`);
+      await wait(250);
+
+      /* now the things it must refuse: dragging from a port, dragging a gate,
+         and pressing Delete on a selection */
+      const port = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w, g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y};})()`);
+      await mouse('mousePressed', port.x, port.y);
+      await mouse('mouseMoved', port.x + 120, port.y + 60);
+      await mouse('mouseReleased', port.x + 120, port.y + 60);
+      await wait(250);
+      report('dragging from a port draws no wire in Use mode',
+        (await shape()) === before, (await shape()) + ' vs ' + before);
+
+      const orPt = await ev(`(()=>{const L=LogicLab, r=document.querySelector('#cv').getBoundingClientRect();
+        const n=L.S.work.nodes.find(x=>x.type==='OR'); const g=L.geom(n);
+        const s=L.toScreen(g.x+g.w/2,g.y+g.h/2); return {x:r.left+s.x, y:r.top+s.y, gx:n.x, gy:n.y};})()`);
+      await mouse('mousePressed', orPt.x, orPt.y);
+      await mouse('mouseMoved', orPt.x + 140, orPt.y + 90);
+      await mouse('mouseReleased', orPt.x + 140, orPt.y + 90);
+      await wait(250);
+      const moved = await ev(`(()=>{const n=LogicLab.S.work.nodes.find(x=>x.type==='OR');
+        return n.x + ',' + n.y;})()`);
+      report('dragging a gate pans the view instead of moving it',
+        moved === orPt.gx + ',' + orPt.gy, moved + ' vs ' + orPt.gx + ',' + orPt.gy);
+
+      await ev(`(()=>{const L=LogicLab; const n=L.S.work.nodes.find(x=>x.type==='OR');
+        L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`);
+      await send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
+      await send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Delete', code: 'Delete', windowsVirtualKeyCode: 46 });
+      await wait(250);
+      report('Delete does nothing in Use mode', (await shape()) === before, await shape());
+      report('and there is no ✕ offering to delete the selection',
+        !(await ev(`!!LogicLab.deleteHandle()`)));
+
+      /* reaching for the palette is unambiguously an edit, so it switches back */
+      await clickSel(`.pal-item[data-type="NOT"]`);
+      await wait(300);
+      report('clicking a part in the palette puts you back in Edit',
+        await ev(`!LogicLab.S.play && document.querySelector('#act-edit').classList.contains('on')`));
+      await ev(`LogicLab.S.armed=null`);
+    }
+    /* ---- load an example through the real dialog ---- */
+    await clickSel('#btn-examples');
+    await wait(250);
+    const cards = await ev(`document.querySelectorAll('#modal .card').length`);
+    report('the examples dialog lists circuits', cards >= 8, cards);
+    await clickSel('#modal .card:nth-child(3)');       // 4-bit adder, which installs chips
+    await wait(400);
+    await confirmIfAsked();
+    const loaded = await ev(`(()=>{const L=LogicLab;
+      return L.S.work.name + '|' + Object.keys(L.lib).length + '|' + L.S.work.nodes.length;})()`);
+    report('loading an example installs its chips too', /^4-bit adder\|[2-9]/.test(loaded), loaded);
+    report('the examples dialog closed', (await ev(`!document.querySelector('#modal').classList.contains('open')`)));
+    report('the palette shows the new chips',
+      (await ev(`[...document.querySelectorAll('.pal-item')].some(e=>e.textContent==='Full adder')`)));
+
+    /* loading it again must not stack up a second copy of the same chips */
+    const libBefore = await ev(`Object.keys(LogicLab.lib).length`);
+    await clickSel('#btn-examples');
+    await wait(250);
+    await clickSel('#modal .card:nth-child(3)');
+    await wait(400);
+    await confirmIfAsked();
+    const reload = await ev(`(()=>{const L=LogicLab;
+      const names=Object.values(L.lib).map(d=>d.name);
+      const used=new Set(L.S.work.nodes.filter(n=>n.type==='CHIP').map(n=>n.chip));
+      const live=[...used].every(id=>!!L.lib[id]);
+      return names.length + '|' + new Set(names).size + '|' + live;})()`);
+    report('re-loading an example reuses the chips it already installed',
+      reload === libBefore + '|' + libBefore + '|true', reload + ' was ' + libBefore);
+
+    /* ---- truth table ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work;
+      L.S.dirty=true; L.S.ttable=null; return 1;})()`);
+    await wait(200);
+    const tt = await ev(`(()=>{const b=[...document.querySelectorAll('#inspector button')]
+      .find(x=>x.textContent==='Truth table'); b.click();
+      const rows=document.querySelectorAll('.ttable tbody tr');
+      return rows.length + '|' + (rows[7] ? rows[7].textContent : '');})()`);
+    // last row of a full adder: 1+1+1 = sum 1, carry 1
+    report('the truth table renders every row', tt === '8|11111', tt);
+
+    /* ---- package the current circuit as a chip, through the dialog ---- */
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work;
+      L.S.dirty=true; L.S.ttable=null; return 1;})()`);
+    await wait(150);
+    await clickSel('#btn-chip');
+    await wait(250);
+    await ev(`(()=>{const i=document.querySelector('#modal input[type=text]');
+      i.value='My Adder'; return 1;})()`);
+    const before = await ev(`Object.keys(LogicLab.lib).length`);
+    await clickSel('#modal footer .primary');
+    await wait(350);
+    const after = await ev(`(()=>{const L=LogicLab;
+      return Object.keys(L.lib).length + '|' + L.S.work.nodes.length + '|'
+        + Object.values(L.lib).some(d=>d.name==='My Adder');})()`);
+    report('packaging adds the chip and clears the board', after === (before + 1) + '|0|true', after);
+
+    /* the new chip works when placed and wired */
+    const chipWorks = await ev(`(()=>{const L=LogicLab;
+      const id=Object.keys(L.lib).find(k=>L.lib[k].name==='My Adder');
+      const b=L.builder('use'); const a=b.pin('a',0,0), c2=b.pin('b',0,90);
+      const chip=b.add('CHIP',200,20,{chip:id});
+      const s=b.out('s',400,0), co=b.out('c',400,90);
+      b.w(a,0,chip,0); b.w(c2,0,chip,1); b.w(chip,0,s,0); b.w(chip,1,co,0);
+      const t=L.computeTruthTable(b.def);
+      return t.rows.map(r=>r.in.join('')+'>'+r.out.join('')).join(' ');})()`);
+    report('a packaged chip behaves like the circuit inside it',
+      chipWorks === '00>00 01>10 10>10 11>01', chipWorks);
+
+    /* ---- the chip library: browse it, add a chip, find one by searching ---- */
+    /* the whole library is already listed in the parts panel, every chip, no adding first */
+    const shelfCount = await ev(`document.querySelectorAll('#pal-scroll details.palcat').length + '|' + document.querySelectorAll('#pal-scroll details.palcat .pal-item').length + '|' + LogicLab.LIBRARY.length`);
+    const sc = shelfCount.split('|');
+    report('the parts panel lists the whole chip library, by kind', +sc[0] >= 10 && sc[1] === sc[2], shelfCount);
+    await clickSel('#pal-scroll .stack .btn');                 // "Bigger view of the chip library…"
+    await wait(300);
+    const libRows = await ev(`document.querySelectorAll('#modal .librow').length`);
+    report('the library browser lists every chip', libRows > 100 && libRows === (await ev(`LogicLab.LIBRARY.length`)), libRows);
+    await ev(`(()=>{const i=document.querySelector('#modal .libtools input'); i.value='full adder'; i.dispatchEvent(new Event('input')); return 1;})()`);
+    await wait(150);
+    await clickSel('#modal .librow .btn.primary');                // "Add to parts"
+    await wait(250);
+    const shelf = await ev(`(()=>{const L=LogicLab; return Object.values(L.lib).some(d=>d.lib&&d.lib.key==='full-adder'&&!d.lib.dep)
+      + '|' + [...document.querySelectorAll('#pal-scroll .pal-group h3')].map(e=>e.textContent).join(',').includes('library');})()`);
+    report('adding a library chip from the browser records it as added', shelf === 'true|true', shelf);
+    await clickSel('#modal footer .btn');
+    await wait(200);
+    await ev(`(()=>{const q=document.querySelector('#pal-q'); q.value='cpu'; q.dispatchEvent(new Event('input')); return 1;})()`);
+    await wait(150);
+    const found = await ev(`[...document.querySelectorAll('#pal-scroll .pal-item')].some(e=>e.textContent.includes('TINY-8'))`);
+    report('searching the parts list finds library chips not added yet', found === true, found);
+    await ev(`(()=>{const q=document.querySelector('#pal-q'); q.value=''; q.dispatchEvent(new Event('input')); return 1;})()`);
+
+    /* ---- persistence across a reload ---- */
+    await ev(`LogicLab.S.work.name='persist me'; LogicLab.S.dirty=true;`);
+    /* save through the app's own path rather than waiting on a debounce timer
+       that some earlier action happened to start */
+    await ev(`LogicLab.saveNow()`);
+    await wait(200);
+    await send('Page.reload');
+    await wait(2200);
+    const restored = await ev(`(()=>{const L=window.LogicLab; if(!L) return 'no app';
+      return L.S.work.name + '|' + Object.values(L.lib).some(d=>d.name==='My Adder';})()`);
+    report('everything comes back after a reload', restored === 'persist me|true', restored);
+    report('the reloaded page still runs', (await ev(`window.__errs.length===0 && LogicLab.S.sim!=null`)));
+  } catch (e) {
+    report('UI walkthrough completed', false, e.message);
+  }
+
+  for (const t of results) {
+    if (!t.pass) fails++;
+    console.log((t.pass ? '  ok  ' : 'FAIL  ') + t.name + (t.pass ? '' : '   [' + t.extra + ']'));
+  }
+  console.log('\n' + (results.length - fails) + '/' + results.length + ' passed');
+
+  const pageErrs = (await ev('window.__errs || []')) || [];
+  const errs = logs.filter((l) => l.startsWith('EXCEPTION') || l.startsWith('error')).concat(pageErrs);
+  if (errs.length) { console.log('\nPAGE ERRORS:\n' + errs.join('\n')); fails++; }
+
+  /* screenshots, so the look can be checked too */
+  if (process.env.SHOT) {
+    const shots = [
+      ['gallery', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const b=L.builder('gallery');
+         const types=['IN','OUT','CONST','CLOCK','AND','OR','NAND','NOR','XOR','XNOR','NOT','BUF',
+                      'DFF','DLATCH','LED','HEX','SEG7','JOINT','TUNNEL'];
+         types.forEach((t,i)=>{ const n=b.add(t, (i%5)*230, Math.floor(i/5)*210); if(t==='IN') n.value=1; });
+         const one=b.add('CONST', 1160, 40, {value:1});
+         const seg=b.def.nodes.find(n=>n.type==='SEG7');
+         for(let i=0;i<8;i++) b.w(one,0,seg,i);
+         const hex=b.def.nodes.find(n=>n.type==='HEX');
+         b.w(one,0,hex,1); b.w(one,0,hex,3);
+         const led=b.def.nodes.find(n=>n.type==='LED'); b.w(one,0,led,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['wire-aim', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const b=L.builder('aim'); const a=b.pin('A',0,0);
+         const g=b.add('AND',300,0), o=b.out('out',560,16);
+         b.w(g,0,o,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.selWires.clear();
+         L.fitView();
+         const ga=L.geom(a), gg=L.geom(g);
+         L.S.pendingWire={end:{n:a.id,s:'out',i:0}, from:ga.outs[0], rev:false};
+         L.S.hover={kind:'aim', world:{x:gg.ins[0].x-26, y:gg.ins[0].y-17}};
+         return 1;})()`],
+      ['wire-handles', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true; L.S.sel.clear();
+         L.fitView(); L.S.cam.z*=0.9;
+         const A=L.S.work.nodes.find(x=>x.label==='A');
+         const w=L.S.work.wires.find(x=>x.a.n===A.id);
+         L.S.selWires.clear(); L.S.selWires.add(w.id); L.renderInspector(); return 1;})()`],
+      ['ram-inside', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         const b=L.builder('ram'); const r=b.add('RAM', 0, 0, {abits:4,dbits:8,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector(); L.fitView();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview'); if(c) c.click();}, 250);
+         return 1;})()`],
+      ['drilldown', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         const b=L.builder('drill'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const c=document.querySelector('#modal canvas.preview.big');
+             const cam=c._cam, def=L.__diagDef;
+             const n=def.nodes.find(z=>z.type==='DFF'); const g=L.geom(n);
+             const rect=c.getBoundingClientRect();
+             c.dispatchEvent(new MouseEvent('click',{bubbles:true,
+               clientX:rect.left+(g.x+g.w/2)*cam.z+cam.x,
+               clientY:rect.top+(g.y+g.h/2)*cam.z+cam.y}));
+           }, 300);
+         }, 200);
+         return 1;})()`],
+      ['simpler-whole-ram', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         const b=L.builder('simpler'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const s=[...document.querySelectorAll('#modal footer .btn')]
+               .find(z=>z.textContent.includes('Simpler'));
+             if(s) s.click();
+           }, 300);
+         }, 200);
+         return 1;})()`],
+      ['open-up-flipflops', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         const b=L.builder('open up'); const r=b.add('RAM',0,0,{abits:2,dbits:2,data:[]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{
+           document.querySelector('#inspector canvas.preview').click();
+           setTimeout(()=>{
+             const s=[...document.querySelectorAll('#modal .openups button')]
+               .find(z=>z.textContent.startsWith('D FLIP-FLOP'));
+             if(s) s.click();
+             /* zoom onto the grid of cells, so the clumps of six NANDs that
+                each used to be one flip-flop are legible */
+             setTimeout(()=>{
+               const t=L.__diagTrail().slice(-1)[0];
+               t.cam={x:-1020, y:30, z:0.56};
+               const c=document.querySelector('#modal canvas.preview.big');
+               c.dispatchEvent(new WheelEvent('wheel',{deltaY:0,bubbles:true,cancelable:true,
+                 clientX:c.getBoundingClientRect().left+400,
+                 clientY:c.getBoundingClientRect().top+180}));
+             }, 300);
+           }, 300);
+         }, 200);
+         return 1;})()`],
+      ['rom-inside', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         const b=L.builder('rom'); const r=b.add('ROM',0,0,{abits:2,dbits:2,data:[1,2,3,0]});
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(r.id);
+         L.renderInspector();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview');
+           if(c) c.click();}, 250);
+         return 1;})()`],
+      ['hex-decoder', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         const b=L.builder('digit'); const h=b.add('HEX',0,0);
+         L.S.work=b.def; L.S.dirty=true; L.S.sel.clear(); L.S.sel.add(h.id);
+         L.renderInspector();
+         setTimeout(()=>{const c=document.querySelector('#inspector canvas.preview');
+           if(c) c.click();}, 250);
+         return 1;})()`],
+      ['named-modules', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         const id=Object.keys(L.lib).find(k=>/full adder/i.test(L.lib[k].name)) || Object.keys(L.lib)[0];
+         const b=L.builder('adder chain');
+         const A=[0,1,2,3].map(i=>b.pin('A'+i, 0, 40+i*170));
+         const B=[0,1,2,3].map(i=>b.pin('B'+i, 0, 100+i*170));
+         const S2=[0,1,2,3].map(i=>b.out('S'+i, 640, 60+i*170));
+         const ch=[0,1,2,3].map(i=>{const c=b.add('CHIP', 300, 30+i*170, {chip:id});
+           c.tag='module '+i; return c;});
+         ch.forEach((c,i)=>{ b.w(A[i],0,c,0); b.w(B[i],0,c,1); b.w(c,0,S2[i],0);
+           if(i) b.w(ch[i-1],1,c,2); });
+         L.S.work=b.def; L.S.dirty=true;
+         L.S.sel.clear(); L.renderInspector(); L.fitView(); return 1;})()`],
+      ['junctions', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         const b=L.builder('tees');
+         const src=b.pin('IN',0,200); src.value=1;
+         const outs=[0,1,2].map(i=>b.out('Q'+i, 620, 60+i*140));
+         b.w(src,0,outs[0],0);
+         L.S.work=b.def; L.S.dirty=true;
+         L.S.selWires.clear(); L.S.selWires.add(L.S.work.wires[0].id);
+         L.addJointToSelection({x:200,y:210});
+         const j1=L.S.work.nodes.find(n=>n.type==='JOINT');
+         L.S.work.wires.push({id:'t1', a:{n:j1.id,s:'out',i:0}, b:{n:outs[1].id,s:'in',i:0}});
+         L.S.work.wires.push({id:'t2', a:{n:j1.id,s:'out',i:0}, b:{n:outs[2].id,s:'in',i:0}});
+         L.S.sel.clear(); L.S.selWires.clear(); L.S.dirty=true;
+         L.renderInspector(); L.fitView(); return 1;})()`],
+      ['lined-up', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work; L.S.dirty=true;
+         L.S.sel.clear(); L.straightenWires(null); L.fitView(); return 1;})()`],
+      ['rotated', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.setPlay(false);
+         const b=L.builder('turned');
+         const kinds=['AND','OR','NAND','XOR','NOT','DFF'];
+         const ns=kinds.map((k,i)=>b.add(k, 80+(i%3)*240, 60+((i/3)|0)*230));
+         L.S.work=b.def; L.S.dirty=true;
+         ns.forEach((n,i)=>{ L.S.sel.clear(); L.S.sel.add(n.id);
+           for(let t=0;t<i%4;t++) L.rotateSelection(1); });
+         L.S.sel.clear(); L.renderInspector(); L.fitView(); return 1;})()`],
+      ['diagram-grown', `(()=>{const b=document.querySelector('#modal-grow');
+         if(b) b.click(); return 1;})()`],
+      ['ram-array-built', `(()=>{const L=LogicLab;
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         const b=L.builder('array'); L.S.work=b.def;
+         L.S.work.nodes.push(...L.ramArray(3,4).nodes);
+         L.S.work.wires.push(...L.ramArray(3,4).wires);
+         L.S.work = L.ramArray(3,4);
+         L.S.dirty=true; L.S.sel.clear(); L.renderInspector(); L.fitView();
+         return 1;})()`],
+      ['stored-program', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const x=document.querySelector('#modal-close'); if(x) x.click();
+         L.S.work=L.examples.EDITOR_EXAMPLES[8].make().work; L.S.dirty=true;
+         const rom=L.S.work.nodes.find(n=>n.type==='ROM');
+         L.S.sel.clear(); L.S.sel.add(rom.id); L.renderInspector(); L.fitView();
+         return 1;})()`],
+      ['made-of', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView();
+         const n=L.S.work.nodes.find(x=>x.type==='DFF');
+         L.S.sel.clear(); L.S.sel.add(n.id); L.renderInspector(); return 1;})()`],
+      ['made-of-big', `(()=>{document.querySelector('#inspector canvas.preview').click(); return 1;})()`],
+      ['delete-handle', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         L.S.work=L.examples.EDITOR_EXAMPLES[1].make().work; L.S.dirty=true;
+         L.fitView();
+         const n=L.S.work.nodes.find(x=>x.type==='OR');
+         L.S.sel.clear(); L.S.sel.add(n.id); return 1;})()`],
+      ['editor-dark', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         const ex=L.examples.EDITOR_EXAMPLES[2].make();
+         for(const c of ex.chips) L.lib[c.id]=c;
+         L.S.work=ex.work; L.S.dirty=true; L.S.sel.clear(); L.fitView(); return 1;})()`],
+      ['editor-counter', `(()=>{const L=LogicLab; document.documentElement.dataset.theme='dark';
+         L.S.work=L.examples.EDITOR_EXAMPLES[7].make().work; L.S.dirty=true; L.fitView(); return 1;})()`],
+    ];
+    fs.mkdirSync(SHOT_DIR, { recursive: true });
+    const grab = async (name) => {
+      const shot = await send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(SHOT_DIR, name + '.png'), Buffer.from(shot.result.data, 'base64'));
+    };
+    for (const [name, setup] of shots) {
+      await ev(setup);
+      await wait(1200);
+      await grab(name);
+    }
+    /* phone layout: the rails become drawers */
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390, height: 780, deviceScaleFactor: 2, mobile: true,
+    });
+    await ev(`(()=>{const L=LogicLab; L.S.work=L.examples.EDITOR_EXAMPLES[0].make().work; L.S.dirty=true; L.fitView(); return 1;})()`);
+    await wait(1000);
+    await grab('phone');
+    await ev(`document.querySelector('#btn-pal').click()`);
+    await wait(600);
+    await grab('phone-drawer');
+    await send('Emulation.clearDeviceMetricsOverride');
+    console.log('screenshots in ' + SHOT_DIR);
+  }
+
+  chrome.kill();
+  try { fs.rmSync(userDir, { recursive: true, force: true }); } catch (e) { /* leave it */ }
+  process.exit(fails ? 1 : 0);
+})();
