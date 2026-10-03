@@ -492,3 +492,701 @@ body {
 @media (max-width: 480px) {
   .metric-primary { font-size: 22px; }
 }
+
+
+/* ---------------------------------------------------------------------------
+   SEARCH SUGGESTIONS — recent searches, places on the map, online results
+   --------------------------------------------------------------------------- */
+.search-results .result-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: default;
+}
+.search-results .result-heading:hover { background: transparent; }
+.result-clear {
+  border: none;
+  background: none;
+  color: var(--accent, #1a73e8);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.search-results .result-row { display: flex; align-items: center; gap: 10px; }
+.result-icon { flex: 0 0 auto; width: 22px; text-align: center; font-size: 16px; }
+.result-text { flex: 1 1 auto; min-width: 0; }
+.result-remove {
+  flex: 0 0 auto;
+  border: none;
+  background: none;
+  color: var(--text-faint);
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 50%;
+  cursor: pointer;
+}
+.result-remove:hover { background: var(--surface-2); color: var(--text); }
+
+/* The card on a selected place's pin. */
+.popup-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; max-width: 220px; }
+.popup-action {
+  margin-top: 8px;
+  border: 1px solid var(--line, #dadce0);
+  background: var(--surface);
+  color: var(--accent, #1a73e8);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+}
+.popup-action:hover { background: var(--surface-2); }
+
+
+/* ---------------------------------------------------------------------------
+   THE GOOGLE-MAPS-STYLE FLOW: pick a place -> its card -> Directions -> Start
+   Which of the panels shows is decided by a class on <body> that app.js sets:
+     mode-place  a place is selected: its card replaces the trip sheet
+     mode-route  directions are up: the sheet shows time, distance and Start
+     mode-nav    navigating: only the turn banner and the time-left bar
+   --------------------------------------------------------------------------- */
+body.mode-place .sheet,
+body.mode-nav .sheet,
+body.mode-nav .searchbar { display: none; }
+
+/* pill-shaped action buttons, used on the place card, the route head and the nav bar */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--blue);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 20px;
+  cursor: pointer;
+}
+.action-btn:hover { background: var(--surface-2); }
+.action-btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+.action-btn.primary:hover { background: var(--blue-dark); }
+.action-btn.danger { background: var(--red); border-color: var(--red); color: #fff; }
+.action-btn:disabled { opacity: 0.55; cursor: default; }
+
+.card-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+}
+.card-close:hover { background: var(--surface-2); }
+.card-close.inline { position: static; flex: 0 0 auto; }
+
+/* the place card */
+.place-card {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: var(--sheet-width);
+  max-width: calc(100% - 24px);
+  z-index: 1000;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-2);
+  padding: 16px 16px 14px;
+}
+.place-name { margin: 0 34px 2px 0; font-size: 20px; font-weight: 500; line-height: 1.25; overflow-wrap: anywhere; }
+.place-kind { margin: 0 0 8px; font-size: 13px; color: var(--text-muted); }
+.place-address { margin: 0 0 4px; font-size: 14px; }
+.place-away { margin: 0 0 12px; font-size: 13px; color: var(--text-muted); }
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.place-links { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 12px; font-size: 13px; }
+.place-links a { color: var(--blue); text-decoration: none; }
+.place-links a:hover { text-decoration: underline; }
+.place-links:empty { display: none; }
+
+/* the strip at the top of the sheet once directions exist */
+.route-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 16px 12px;
+  border-bottom: 1px solid var(--divider);
+}
+.route-head[hidden] { display: none; }
+.route-head-main { flex: 1 1 auto; min-width: 0; }
+.route-head-time { font-size: 22px; font-weight: 500; color: var(--green); line-height: 1.2; }
+.route-head-detail { font-size: 13px; color: var(--text-muted); }
+
+/* navigation */
+.nav-banner {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  max-width: 560px;
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: #0b6b4a;
+  color: #fff;
+  box-shadow: var(--shadow-2);
+}
+.nav-banner[hidden] { display: none; }
+.nav-arrow { flex: 0 0 auto; width: 48px; text-align: center; font-size: 40px; line-height: 1; }
+.nav-text { flex: 1 1 auto; min-width: 0; }
+.nav-distance { font-size: 26px; font-weight: 500; line-height: 1.15; }
+.nav-instruction { font-size: 15px; opacity: 0.95; overflow-wrap: anywhere; }
+.nav-voice {
+  flex: 0 0 auto;
+  border: none;
+  background: rgba(255,255,255,.16);
+  color: #fff;
+  border-radius: 50%;
+  width: 38px;
+  height: 38px;
+  font-size: 18px;
+  cursor: pointer;
+}
+.nav-voice:hover { background: rgba(255,255,255,.28); }
+
+.nav-bar {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  width: var(--sheet-width);
+  max-width: calc(100% - 24px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+.nav-bar[hidden] { display: none; }
+.nav-eta { flex: 1 1 auto; min-width: 0; }
+.nav-eta-time { font-size: 24px; font-weight: 500; color: var(--green); line-height: 1.2; }
+.nav-eta-detail { font-size: 13px; color: var(--text-muted); }
+
+/* the "you are here" dot: a soft pulse, like the real thing, and a hand to drag it */
+.gm-here { position: relative; cursor: grab; }
+.gm-here::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid rgba(26,115,232,.5);
+  animation: gm-pulse 2.2s ease-out infinite;
+}
+@keyframes gm-pulse {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .gm-here::after { animation: none; } }
+
+@media (max-width: 720px) {
+  .nav-banner { left: 8px; right: 8px; }
+}
+
+/* while navigating, keep the map's messages clear of the turn banner */
+body.mode-nav .status-toast { top: 100px; }
+
+
+/* ===========================================================================
+   THE GOOGLE-MAPS LAYOUT — rail | side panel | map (bottom sheet on phones)
+   ---------------------------------------------------------------------------
+   These rules replace the earlier floating-card layout. Wide screens get the
+   three columns Google Maps has: a slim rail of shortcuts, a full-height panel
+   with the search box on top and one view underneath, and the map filling the
+   rest. Narrow screens drop the rail and turn the panel into a bottom sheet,
+   with the search box floating over the map.
+   =========================================================================== */
+:root { --rail-width: 72px; --side-width: 408px; }
+
+.app {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--rail-width) var(--side-width) minmax(0, 1fr);
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+body.panel-collapsed .app { grid-template-columns: var(--rail-width) minmax(0, 1fr); }
+body.panel-collapsed .side { display: none; }
+
+.map-area { position: relative; inset: auto; min-width: 0; grid-column: -2 / -1; }
+
+/* ---- the rail ---- */
+.rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 0 12px;
+  background: var(--surface);
+  border-right: 1px solid var(--divider);
+  z-index: 1300;
+}
+.rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 64px;
+  padding: 8px 0 6px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.rail-btn:hover { background: var(--surface-2); color: var(--text); }
+.rail-btn.on { background: #e8f0fe; color: var(--blue); }
+.rail-emoji { font-size: 22px; line-height: 24px; }
+.rail-spacer { flex: 1 1 auto; }
+#rail-menu { padding: 10px 0; }
+
+/* ---- the side panel ---- */
+.side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--surface);
+  box-shadow: 2px 0 6px rgba(60,64,67,.25);
+  z-index: 1250;
+}
+.sheet-handle { display: none; }
+.side-search { position: relative; z-index: 5; padding: 12px 12px 8px; }
+.side-search .searchbox { height: 48px; border-radius: 24px; box-shadow: 0 1px 6px rgba(32,33,36,.28); }
+.side-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+
+.view { padding: 4px 16px 20px; }
+.view[hidden] { display: none; }
+.view-title { margin: 14px 0 8px; font-size: 14px; font-weight: 500; color: var(--text); }
+.view-title.big { margin: 0; font-size: 18px; flex: 1 1 auto; }
+.view-title-row { display: flex; align-items: center; justify-content: space-between; }
+.view-title-row[hidden] { display: none; }
+.view-head { display: flex; align-items: center; gap: 8px; padding: 6px 0 4px; }
+.back-btn {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+.back-btn:hover { background: var(--surface-2); }
+.link-btn {
+  border: none;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.link-btn:hover { background: #e8f0fe; }
+.link-btn[hidden] { display: none; }
+.link-btn.wide { display: block; width: 100%; margin-top: 12px; padding: 10px 6px; text-align: left; }
+
+.home-hint { margin: 18px 2px 0; font-size: 12px; color: var(--text-muted); }
+
+/* "Explore nearby" — round category buttons */
+.explore { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px 6px; }
+.explore-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+.explore-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 22px;
+}
+.explore-btn:hover .explore-icon { background: #e8f0fe; }
+
+/* lists of places (recents, saved, category results) */
+.place-list { list-style: none; margin: 0; padding: 0; }
+.place-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.place-item:hover { background: var(--surface-2); }
+.place-item-icon {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  font-size: 17px;
+}
+.place-item-text { flex: 1 1 auto; min-width: 0; }
+.place-item-name { font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-item-sub { font-size: 12px; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-item-side { flex: 0 0 auto; font-size: 12px; color: var(--text-muted); }
+
+/* ---- the place view ---- */
+.place-view .place-name { margin: 2px 0 2px; font-size: 22px; font-weight: 400; line-height: 1.25; overflow-wrap: anywhere; }
+.place-view .place-kind { margin: 0 0 14px; font-size: 14px; color: var(--text-muted); }
+.place-actions { display: flex; gap: 6px; padding-bottom: 14px; border-bottom: 1px solid var(--divider); }
+.round-action {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--blue);
+  cursor: pointer;
+}
+.round-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 17px;
+}
+.round-action:hover .round-icon { background: #e8f0fe; }
+.round-action.primary .round-icon { background: var(--blue); border-color: var(--blue); color: #fff; }
+.round-action.primary:hover .round-icon { background: var(--blue-dark); }
+.round-action.on .round-icon { background: #e8f0fe; color: var(--blue); }
+.place-rows { padding-top: 6px; }
+.place-row { display: flex; align-items: flex-start; gap: 16px; padding: 12px 2px; border-bottom: 1px solid var(--divider); font-size: 14px; }
+.place-row:last-child { border-bottom: none; }
+.place-row:empty, .place-row.empty { display: none; }
+.place-row a { color: var(--blue); text-decoration: none; }
+.place-row a:hover { text-decoration: underline; }
+.place-row-icon { flex: 0 0 24px; text-align: center; font-size: 16px; line-height: 20px; }
+.place-row > span:last-child, .place-row > a { overflow-wrap: anywhere; }
+
+/* ---- the trip view ---- */
+.trip-top { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 6px; }
+.mode-row { display: flex; gap: 4px; }
+.mode-btn {
+  width: 44px;
+  height: 36px;
+  border: none;
+  border-radius: 18px;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+}
+.mode-btn:hover { background: var(--surface-2); }
+.mode-btn.on { background: #e8f0fe; }
+.trip-view .trip { display: flex; align-items: center; gap: 6px; padding: 6px 0 10px; border-bottom: none; }
+.trip-points { flex: 1 1 auto; min-width: 0; }
+.trip-click { cursor: pointer; border-radius: 8px; padding: 0 6px; }
+.trip-click:hover { background: var(--surface-2); }
+.swap-btn {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+}
+.swap-btn:hover { background: var(--surface-2); }
+.trip-view .route-head { padding: 12px 0; border-top: 1px solid var(--divider); border-bottom: 1px solid var(--divider); }
+.route-options { margin: 4px 0 8px; }
+.route-options[hidden] { display: none; }
+.route-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+.route-option:hover { background: var(--surface-2); }
+.route-option.on { border-color: var(--blue); background: #f4f8fe; }
+.route-option-time { flex: 0 0 74px; font-size: 16px; font-weight: 500; color: var(--green); }
+.route-option-text { flex: 1 1 auto; min-width: 0; font-size: 13px; }
+.route-option-via { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.route-option-sub { color: var(--text-muted); }
+.trip-steps { margin: 6px 0 0; padding-left: 22px; }
+.trip-steps li { padding: 8px 0; border-bottom: 1px solid var(--divider); }
+
+/* ---- floating things on the map ---- */
+.chips {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 130px;
+  z-index: 1100;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 2px 2px 6px;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+.chip {
+  pointer-events: auto;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px 0 10px;
+  border: none;
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  box-shadow: 0 1px 4px rgba(60,64,67,.35);
+  cursor: pointer;
+}
+.chip:hover { background: var(--surface-2); }
+.chip.on { background: #e8f0fe; color: var(--blue); }
+.chip-icon { font-size: 16px; }
+
+.search-area {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  padding: 8px 18px;
+  border: none;
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--blue);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 1px 4px rgba(60,64,67,.4);
+  cursor: pointer;
+}
+.search-area[hidden] { display: none; }
+
+.weather-chip {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: var(--surface);
+  font-size: 14px;
+  box-shadow: 0 1px 4px rgba(60,64,67,.35);
+}
+.weather-chip[hidden] { display: none; }
+
+.layers-wrap { position: absolute; left: 12px; bottom: 30px; z-index: 1100; }
+.layers-btn {
+  position: relative;
+  display: block;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(60,64,67,.5);
+}
+.layers-thumb { position: absolute; inset: 0; background: var(--thumb, linear-gradient(135deg, #3d5a3a, #24404f 55%, #57503b)); }
+.layers-label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 10px 0 3px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #fff;
+  text-align: center;
+  background: linear-gradient(transparent, rgba(0,0,0,.55));
+}
+.layers-menu {
+  position: absolute;
+  left: 0;
+  bottom: 74px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 236px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+}
+.layers-menu[hidden] { display: none; }
+.layer-opt { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0; border: none; background: none; font: inherit; font-size: 12px; color: var(--text); cursor: pointer; }
+.layer-swatch { display: block; width: 62px; height: 62px; border-radius: 10px; border: 2px solid transparent; }
+.layer-opt.on .layer-swatch { border-color: var(--blue); }
+.layer-opt.on { color: var(--blue); font-weight: 500; }
+.sw-default { background: linear-gradient(135deg, #f5f5f5 45%, #c4f0d4 45% 60%, #90daee 60%); }
+.sw-satellite { background: linear-gradient(135deg, #3d5a3a, #24404f 55%, #57503b); }
+.sw-terrain { background: linear-gradient(135deg, #d8cfa8, #a9c790 55%, #7aa06b); }
+.layer-check { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; padding-top: 6px; border-top: 1px solid var(--divider); font-size: 13px; }
+
+.ctx-menu {
+  position: absolute;
+  z-index: 1500;
+  min-width: 210px;
+  margin: 0;
+  padding: 6px 0;
+  list-style: none;
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  font-size: 14px;
+}
+.ctx-menu[hidden] { display: none; }
+.ctx-menu li { padding: 9px 18px; cursor: pointer; }
+.ctx-menu li:hover, .ctx-menu li:focus { background: var(--surface-2); outline: none; }
+
+.leaflet-bottom.leaflet-left .leaflet-control-scale { margin-left: 92px; margin-bottom: 30px; }
+.leaflet-control-scale-line { background: rgba(255,255,255,.85); }
+
+/* the nav bar and banner live in the map column now */
+.nav-bar { width: 420px; }
+
+/* ---- phones and small windows: the panel becomes a bottom sheet ---- */
+@media (max-width: 900px) {
+  .app { display: block; }
+  .rail { display: none; }
+  .map-area { position: absolute; inset: 0; }
+  .side {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    max-height: 45vh;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -2px 10px rgba(60,64,67,.3);
+    transition: max-height 0.25s ease;
+  }
+  .side.expanded { max-height: 90vh; }
+  body.panel-collapsed .side { display: flex; }
+  .sheet-handle { display: flex; width: 100%; justify-content: center; padding: 8px 0 2px; border: none; background: transparent; cursor: pointer; }
+  .side-search { position: fixed; top: 0; left: 0; right: 0; padding: 12px; }
+  .chips { top: 68px; right: 12px; }
+  .weather-chip { display: none; }
+  .layers-wrap { left: auto; right: 12px; bottom: calc(45vh + 68px); }
+  .layers-menu { left: auto; right: 0; }
+  .fab-locate { bottom: calc(45vh + 12px); }
+  .nav-bar { left: 8px; right: 8px; width: auto; max-width: none; }
+  body.mode-nav .side, body.mode-nav .side-search { display: none; }
+  .leaflet-bottom.leaflet-left .leaflet-control-scale { margin-left: 8px; margin-bottom: calc(45vh + 8px); }
+}
+
+.place-row[hidden] { display: none; }
+.trip-steps .step-instruction { font-size: 14px; }
+.trip-steps .step-distance { font-size: 12px; color: var(--text-muted); }
+
+/* a saved place, starred on the map */
+.gm-saved-icon { background: transparent; border: none; }
+.gm-saved {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #f9ab00;
+  border: 2px solid #fff;
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: 0 1px 4px rgba(0,0,0,.45);
+  cursor: pointer;
+}
+
+/* travel modes: an icon with the time it would take under it, like Google's */
+.mode-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 64px; height: 50px; gap: 0; border-radius: 14px; }
+.mode-icon { font-size: 18px; line-height: 22px; }
+.mode-time { font-size: 11px; line-height: 14px; color: var(--text-muted); min-height: 14px; }
+.mode-btn.on .mode-time { color: var(--blue); font-weight: 500; }
+
+
+/* Up to five ways of travelling: they share the row, and hide when they do not apply. */
+.mode-row { flex: 1 1 auto; min-width: 0; }
+.mode-btn { flex: 1 1 0; min-width: 0; max-width: 64px; width: auto; }
+.mode-btn[hidden] { display: none; }
+.mode-time { white-space: nowrap; }
+#route-start[hidden], .route-head [hidden] { display: none; }
+
+/* The globe: black space behind the ball, above the flat map but under every button. */
+.map-area > .globe { position: absolute; inset: 0; z-index: 600; background: radial-gradient(circle at 50% 45%, #0f1730 0%, #04060c 100%); }
+.map-area > .globe[hidden] { display: none; }
+.globe .maplibregl-canvas { outline: none; }
+/* While the globe is up, "−" must not look switched off: it zooms the globe. */
+.globe-on .leaflet-control-zoom a.leaflet-disabled { background-color: #fff; color: #000; cursor: pointer; }
+
+/* Satellite photographs, a little less saturated so deserts do not glow orange. */
+.imagery-tiles { filter: saturate(0.85); }

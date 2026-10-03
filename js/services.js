@@ -114,14 +114,20 @@ export async function fetchJson(url, options) {
  *   A list of up to 5 matches. Returns an empty array if nothing is found.
  * @throws {Error} If the network request fails or returns a non-OK status.
  */
-export async function geocode(query) {
+export async function geocode(query, { viewbox } = {}) {
   // Build the URL. We always encode the user's query so special characters
   // (spaces, &, #, etc.) don't break the request.
   const url =
     "https://nominatim.openstreetmap.org/search" +
     "?format=jsonv2" +
-    "&limit=5" +
+    "&limit=6" +
     "&addressdetails=1" +
+    // `viewbox` (usually what is on screen) makes Nominatim prefer matches inside
+    // it — which is what turns "123 Main St" into the one near you rather than
+    // the one in the biggest city. It is a preference, not a limit.
+    (viewbox
+      ? `&viewbox=${viewbox.west},${viewbox.north},${viewbox.east},${viewbox.south}`
+      : "") +
     "&q=" +
     encodeURIComponent(query);
 
@@ -177,6 +183,7 @@ export async function reverseGeocode(lat, lon) {
   const url =
     "https://nominatim.openstreetmap.org/reverse" +
     "?format=jsonv2" +
+    "&addressdetails=1" +
     "&lat=" +
     encodeURIComponent(lat) +
     "&lon=" +
@@ -190,9 +197,17 @@ export async function reverseGeocode(lat, lon) {
 
   const data = await fetchJson(url, options);
 
-  // The reverse endpoint returns a single object with `display_name`.
+  // The reverse endpoint returns a single object with `display_name` — the full
+  // address, very long. `address` has the parts, from which a short, familiar
+  // one is built: "620 East Page Circle, Layton, UT".
+  const a = data.address || {};
+  const street = [a.house_number, a.road].filter(Boolean).join(" ");
+  const town = a.city || a.town || a.village || a.hamlet || a.suburb || "";
+  const region = a.state_code || (a.state && a.state.length <= 3 ? a.state : "") || a.state || "";
+  const shortAddress = [street, town, region].filter(Boolean).join(", ");
   return {
     displayName: data.display_name || "",
+    shortAddress: shortAddress || (data.display_name || "").split(",").slice(0, 3).join(","),
   };
 }
 
@@ -212,10 +227,13 @@ export async function reverseGeocode(lat, lon) {
  * which is the opposite of the usual "lat, lon" we say out loud. We handle
  * that ordering here so the rest of the app can keep thinking in {lat, lon}.
  *
- * NOTE: The free public OSRM demo server only hosts the CAR ("driving")
- * profile. So even if you pass profile='walking' or 'cycling', the server
- * effectively falls back to CAR routing. The parameter is kept for forward
- * compatibility in case the app later points at a self-hosted OSRM.
+ * The three ways of getting there each have their own server, all running the
+ * same OSRM software and answering in the same shape: the OSRM demo for cars,
+ * and OpenStreetMap's own (routing.openstreetmap.de) for walking and for
+ * cycling — so a walk uses footpaths and crossings, and a bike ride avoids
+ * roads nobody would cycle. They are free and keyless; the walking and cycling
+ * ones are shared community servers, fine for this but not for heavy use.
+ * (Their URLs say "driving" whichever kind they are; the server is the mode.)
  *
  * @param {{lat: number, lon: number}} from - Start point.
  * @param {{lat: number, lon: number}} to - Destination point.
@@ -229,19 +247,25 @@ export async function reverseGeocode(lat, lon) {
  * }>}
  * @throws {Error} If the request fails or no route is found.
  */
+/** Where each way of travelling is routed. */
+const ROUTING_SERVERS = {
+  driving: "https://router.project-osrm.org/route/v1/driving/",
+  walking: "https://routing.openstreetmap.de/routed-foot/route/v1/driving/",
+  cycling: "https://routing.openstreetmap.de/routed-bike/route/v1/driving/",
+};
+
 export async function route(from, to, profile = "driving") {
   // OSRM wants "lon,lat;lon,lat". Note the longitude-first ordering.
   const coordinates =
     `${from.lon},${from.lat};${to.lon},${to.lat}`;
 
   const url =
-    "https://router.project-osrm.org/route/v1/" +
-    encodeURIComponent(profile) +
-    "/" +
+    (ROUTING_SERVERS[profile] || ROUTING_SERVERS.driving) +
     coordinates +
     "?overview=full" + // give us the whole route geometry, not a simplified one
     "&geometries=geojson" + // return geometry as GeoJSON coordinates
-    "&steps=true"; // include turn-by-turn maneuvers
+    "&steps=true" + // include turn-by-turn maneuvers
+    "&alternatives=true"; // and the other sensible ways there, when there are any
 
   const data = await fetchJson(url);
 
@@ -251,11 +275,38 @@ export async function route(from, to, profile = "driving") {
     throw new Error("No route found between the two points.");
   }
 
-  // Use the first (best) route OSRM returned.
-  const best = data.routes[0];
+  // The first route is the best; any others are alternatives to offer.
+  const [best, ...others] = data.routes.map(shapeRoute);
+  return { ...best, alternatives: others };
+}
 
+/**
+ * How long the trip takes by each way of travelling, for the row of buttons —
+ * just the time of the best route, without the map line or the steps, so it is
+ * small and quick. A mode whose server does not answer is left out.
+ * @returns {Promise<{driving?: number, walking?: number, cycling?: number}>} seconds
+ */
+export async function routeTimes(from, to) {
+  const coordinates = `${from.lon},${from.lat};${to.lon},${to.lat}`;
+  const out = {};
+  await Promise.all(Object.entries(ROUTING_SERVERS).map(async ([mode, base]) => {
+    try {
+      const data = await fetchJson(`${base}${coordinates}?overview=false`);
+      if (data.routes && data.routes[0]) out[mode] = data.routes[0].duration;
+    } catch (err) {
+      /* no time for that mode — its button just shows none */
+    }
+  }));
+  return out;
+}
+
+/**
+ * Turn one OSRM route into the clean shape the rest of the app uses.
+ * @param {object} raw - one entry of OSRM's `routes` array
+ */
+function shapeRoute(raw) {
   // The raw GeoJSON LineString: coordinates are [lon, lat] pairs.
-  const rawGeoJSON = best.geometry;
+  const rawGeoJSON = raw.geometry;
 
   // Leaflet (and humans) prefer {lat, lon}. Convert each [lon, lat] pair.
   const geometry = (rawGeoJSON.coordinates || []).map(([lon, lat]) => ({
@@ -267,7 +318,7 @@ export async function route(from, to, profile = "driving") {
   // (individual maneuvers). We have only one leg here (A -> B), but we flatten
   // across all legs to be safe, building a readable instruction for each step.
   const steps = [];
-  for (const leg of best.legs || []) {
+  for (const leg of raw.legs || []) {
     for (const step of leg.steps || []) {
       steps.push({
         instruction: buildInstruction(step),
@@ -275,16 +326,30 @@ export async function route(from, to, profile = "driving") {
         durationSeconds: step.duration,
         // The road/street name for this step (may be empty for unnamed roads).
         name: step.name || "",
+        // Where this step's manoeuvre happens (the place you turn), for following
+        // a route as you drive it. OSRM gives it as [lon, lat].
+        location: step.maneuver && step.maneuver.location
+          ? { lat: step.maneuver.location[1], lon: step.maneuver.location[0] }
+          : null,
       });
     }
   }
 
+  // "via King Street": the road that carries most of the trip, which is how
+  // people tell two routes apart.
+  const byRoad = new Map();
+  for (const st of steps) {
+    if (st.name) byRoad.set(st.name, (byRoad.get(st.name) || 0) + st.distanceMeters);
+  }
+  const via = [...byRoad.entries()].sort((a, b) => b[1] - a[1]).map(([name]) => name)[0] || "";
+
   return {
-    distanceMeters: best.distance, // total route distance in meters
-    durationSeconds: best.duration, // total estimated time in seconds
+    distanceMeters: raw.distance, // total route distance in meters
+    durationSeconds: raw.duration, // total estimated time in seconds
     geometry, // [{lat, lon}, ...] — easy to drop into Leaflet
     rawGeoJSON, // original [lon, lat] GeoJSON, in case it's needed
     steps, // flattened, human-readable turn-by-turn list
+    via, // the main road it follows
   };
 }
 
