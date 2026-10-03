@@ -1,7 +1,7 @@
 /* =========================================================================
    Service worker for the self-contained pages.
 
-   Purpose: make chernobyl.html and logic.html usable with no connection.
+   Purpose: make chernobyl.html, logic.html and breadboard.html usable with no connection.
    Neither pulls in anything external — no fonts, no scripts, no CDN — so
    caching a handful of files is enough to make them work offline.
 
@@ -18,11 +18,12 @@
    online refreshes the copy for next time.
    ========================================================================= */
 
-const CACHE = 'coriantumr-v2';
+const CACHE = 'coriantumr-v3';
 
 const ASSETS = [
   'chernobyl.html',
   'logic.html',
+  'breadboard.html',
   'icon-180.png',
   'icon-192.png',
   'favicon-32.png',

@@ -34,8 +34,8 @@ dependency-free server (`serve.ps1`) is included for Windows.
 If you have Python or Node installed, those work too:
 `python -m http.server 8137` or `npx serve`.
 
-> Only Science Maps needs the server. `logic.html` and `chernobyl.html` are
-> single self-contained files — open either one directly in a browser.
+> Only Science Maps needs the server. `logic.html`, `breadboard.html` and
+> `chernobyl.html` are single self-contained files — open any of them directly in a browser.
 
 ### Using it
 - Click **📍 Use my location** (allow the location prompt) to set your start.
@@ -52,13 +52,18 @@ If you have Python or Node installed, those work too:
 
 ## Also on this site
 
-Two standalone pages are published from this repository alongside Science Maps.
-Each is a single self-contained file with no dependencies, so both open straight
-from disk and keep working with no connection.
+Three standalone pages are published from this repository alongside Science Maps.
+Each is a single self-contained file with no dependencies, so each opens straight
+from disk and keeps working with no connection.
 
-### ⚡ Logic Lab — `logic.html`
+### ⚡ Logic Gate Simulator — `logic.html`
 
-A digital logic simulator with two workspaces sharing one engine.
+A digital logic simulator: a schematic you build from gates, wires and
+reusable chips. The physical bench — a breadboard, real chips, a bare design
+board — is its own app, **Breadboard & Design** (`breadboard.html`, below).
+The two used to be one page ("Logic Lab") and now share nothing but a look.
+Some of the notes below were written when they were one, and mention the
+breadboard.
 
 **Edit or Use.** A switch in the top bar (or the <kbd>E</kbd> key) decides what a
 click does. In **Edit** it builds — place, wire, move, delete. In **Use** a click
@@ -391,6 +396,28 @@ inputs read as 1, exactly as they do on the bench.
 
 Work is saved in your browser as you go. Nothing is uploaded.
 
+### 🔌 Breadboard & Design — `breadboard.html`
+
+A bench-top circuit simulator with two workspaces on one electrical solver.
+
+**Breadboard** is a solderless board whose copper is wired the way a real one is
+(five-hole columns, continuous rails), with real 74-series chips (gates, counters,
+shift registers, decoders, a 555 and a 4017), discrete parts (resistors including
+a potentiometer, photoresistor and thermistor; LEDs and an RGB LED; diodes, a
+zener, a capacitor, an inductor, a fuse, transistors, an SCR, a 7805 regulator,
+relays, a motor, a buzzer, a laser diode), a battery pack and an Arduino Uno
+beside the board. Shorts, floating inputs, unpowered chips, fried parts and
+popped capacitors are reported rather than ignored. A Perfboard setting swaps
+the pre-wired copper for bare pads.
+
+**Design** is a second, independent board of bare copper with its own parts and
+undo history, plus a **Trace pen**: press on a pad and drag across others to
+solder a run of copper in one gesture.
+
+The gate-level editor is the separate **Logic Gate Simulator** above; each app
+saves in its own place in your browser (and picks up what the old combined page
+saved, the first time it opens).
+
 ### ☢️ Chernobyl, 01:23:45 — `chernobyl.html`
 
 A minute-by-minute factual reconstruction of the night of 26 April 1986.
@@ -413,7 +440,8 @@ Everything is vanilla HTML/CSS/JavaScript — no build step, no frameworks.
 | `js/services.js` | Network calls: search, routing, and weather. |
 | `js/app.js` | The UI brain — wires the map + controls to the engines. |
 | `serve.ps1` | Tiny local dev server (so ES modules load over http). |
-| `logic.html` | **Logic Lab**, whole and entire — markup, styling, engine and examples. |
+| `logic.html` | **Logic Gate Simulator**, whole and entire — markup, styling, engine and examples. |
+| `breadboard.html` | **Breadboard & Design**, likewise self-contained. |
 | `chernobyl.html` | **Chernobyl, 01:23:45**, likewise self-contained. |
 | `sw.js` | Service worker; caches the two standalone pages for offline use. |
 
@@ -421,26 +449,26 @@ The golden rule in `app.js`: **actions change `state`, then call `render()`**.
 `render()` only reads state and redraws — never the other way around. That
 one-way flow keeps things predictable.
 
-`logic.html` is one file on purpose: no build step, no modules, no CDN, so it
-runs over `http://` and straight off the filesystem alike. Its sections are
-numbered in comments — parts, model, compiler, simulator, renderer, editing,
-breadboard, examples — and `window.LogicLab` exposes the engine for poking at
-from the console.
+`logic.html` and `breadboard.html` are each one file on purpose: no build step, no
+modules, no CDN, so they run over `http://` and straight off the filesystem
+alike. Their sections are numbered in comments — parts, model, compiler,
+simulator, renderer, editing, examples — and `window.LogicLab` (gates) and
+`window.Bench` (breadboard) expose the engines for poking at from the console.
 
-### Checking Logic Lab still works
+### Checking they still work
 
 ```
-node test/logic.test.js            # run the checks
+node test/logic.test.js            # the gate simulator
 SHOT=1 node test/logic.test.js     # ...and save screenshots too
+node test/breadboard.test.js       # Breadboard & Design
 ```
 
-It opens the real page in headless Chromium and checks both halves: the
-simulator directly (adder truth tables, a latch that holds its bit, a ring
-oscillator that rings, breadboard nets, shorts, floating inputs, the 7493 →
-7447 → display chain) and the interface through synthetic mouse events (place a
-part, drag a wire, join one wire to another, lay a jumper, package a chip,
-reload and find it all still
-there). No dependencies — it drives the browser over the DevTools protocol with
+Each opens its real page in headless Chromium and checks both halves: the
+engine directly (adder truth tables, a latch that holds its bit, a ring
+oscillator that rings — or, on the bench, breadboard nets, shorts, floating
+inputs, the chip library, the discrete parts, the Design board) and the interface
+through synthetic mouse events (place a part, drag a wire, lay a jumper, reload
+and find it all still there). No dependencies — it drives the browser over the DevTools protocol with
 what Node 22 already has. Set `CHROME=/path/to/chrome` if it cannot find a
 browser by itself.
 
